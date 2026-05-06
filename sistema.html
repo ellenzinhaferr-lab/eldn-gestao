@@ -368,7 +368,7 @@ table.gestao tbody tr:last-child td{border-bottom:none}
     <div class="col-md-1"><label class="form-label">UF</label><input class="form-control" id="c-estado" placeholder="SP" maxlength="2"></div>
     <div class="col-12"><label class="form-label">Observações</label><textarea class="form-control" id="c-obs" rows="2"></textarea></div>
   </div></div>
-  <div class="modal-footer"><button class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancelar</button><button class="btn btn-primary" onclick="salvarCliente()">Salvar Cliente</button></div>
+  <div class="modal-footer"><button class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancelar</button><button class="btn btn-success" onclick="salvarClienteECriarPedido()"><i class="bi bi-box-seam me-1"></i>Salvar e Criar Pedido</button><button class="btn btn-primary" onclick="salvarCliente()">Salvar Cliente</button></div>
 </div></div></div>
 
 <div class="modal fade" id="modalHistoricoCliente" tabindex="-1"><div class="modal-dialog modal-lg"><div class="modal-content">
@@ -445,7 +445,7 @@ table.gestao tbody tr:last-child td{border-bottom:none}
 <div class="modal fade" id="modalVerPedido" tabindex="-1"><div class="modal-dialog modal-lg"><div class="modal-content">
   <div class="modal-header"><h5 class="modal-title" id="modalVerPedidoTitulo">Pedido</h5><button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button></div>
   <div class="modal-body" id="modalVerPedidoBody"></div>
-  <div class="modal-footer"><button class="btn btn-outline-secondary" data-bs-dismiss="modal">Fechar</button><button class="btn btn-primary" id="btn-editar-do-ver" onclick=""><i class="bi bi-pencil-fill me-1"></i>Editar</button></div>
+  <div class="modal-footer"><button class="btn btn-outline-secondary" data-bs-dismiss="modal">Fechar</button><button class="btn btn-success" id="btn-imprimir-do-ver" onclick=""><i class="bi bi-printer-fill me-1"></i>Imprimir PDF</button><button class="btn btn-primary" id="btn-editar-do-ver" onclick=""><i class="bi bi-pencil-fill me-1"></i>Editar</button></div>
 </div></div></div>
 
 <div class="modal fade" id="modalFinanceiro" tabindex="-1"><div class="modal-dialog"><div class="modal-content">
@@ -962,6 +962,27 @@ async function salvarCliente() {
   limpaCampos(['c-nome','c-email','c-whatsapp','c-cpf','c-instagram','c-cep','c-logradouro','c-numero','c-complemento','c-bairro','c-cidade','c-estado','c-obs']);
 }
 
+async function salvarClienteECriarPedido() {
+  const nome=document.getElementById('c-nome').value.trim();
+  if(!nome) return alert('Nome é obrigatório');
+  const idx=v('c-idx');
+  const novoId=idx===''?(dados.clientes.length?Math.max(...dados.clientes.map(x=>x.id))+1:1):dados.clientes[parseInt(idx)].id;
+  const obj={id:novoId,nome,email:v('c-email'),whatsapp:v('c-whatsapp'),cpf:v('c-cpf'),instagram:v('c-instagram'),canal:v('c-canal'),cep:v('c-cep'),logradouro:v('c-logradouro'),numero:v('c-numero'),complemento:v('c-complemento'),bairro:v('c-bairro'),cidade:v('c-cidade'),estado:v('c-estado'),obs:v('c-obs')};
+  if(idx==='') await db.collection('clientes').add(obj);
+  else await db.collection('clientes').doc(dados.clientes[parseInt(idx)]._docId).set(obj);
+  bootstrap.Modal.getInstance(document.getElementById('modalCliente')).hide();
+  document.getElementById('c-idx').value='';
+  document.getElementById('modalClienteTitulo').textContent='Novo Cliente';
+  limpaCampos(['c-nome','c-email','c-whatsapp','c-cpf','c-instagram','c-cep','c-logradouro','c-numero','c-complemento','c-bairro','c-cidade','c-estado','c-obs']);
+  setTimeout(()=>{
+    preencherSelectsPedido();
+    document.getElementById('p-cliente').value=novoId;
+    preencherEndereco();
+    sincronizarBuscaCliente();
+    new bootstrap.Modal(document.getElementById('modalPedido')).show();
+  }, 500);
+}
+
 // ============================================================
 // PEDIDOS
 // ============================================================
@@ -1141,6 +1162,7 @@ function verPedido(i) {
   const taxaPagto=bruto*(pagto.taxa||0)+(pagto.taxaFixa||0);
   document.getElementById('modalVerPedidoTitulo').textContent=`Pedido ${p.num}`;
   document.getElementById('btn-editar-do-ver').onclick=()=>{bootstrap.Modal.getInstance(document.getElementById('modalVerPedido')).hide();setTimeout(()=>editarPedido(i),300);};
+  document.getElementById('btn-imprimir-do-ver').onclick=()=>imprimirPedido(i);
   document.getElementById('modalVerPedidoBody').innerHTML=`
     <div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:18px;align-items:center">
       <div style="flex:1;min-width:120px"><div style="font-size:11px;color:var(--cor-texto-suave);text-transform:uppercase;letter-spacing:1px">Data</div><div style="font-weight:600;color:#fff;font-size:15px">${fmtData(p.data)}</div></div>
@@ -1178,6 +1200,63 @@ function verPedido(i) {
     ${p.obs?`<div style="margin-top:16px;padding:10px 14px;background:rgba(124,58,237,.07);border-radius:8px;border:1px solid var(--cor-borda);font-size:13px;color:var(--cor-texto-suave)"><i class="bi bi-chat-left-text me-1"></i>${p.obs}</div>`:''}
   `;
   new bootstrap.Modal(document.getElementById('modalVerPedido')).show();
+}
+
+function imprimirPedido(i) {
+  const p=dados.pedidos[i];
+  const itens=getPedidoItens(p);
+  const bruto=getPedidoTotal(p);
+  const liq=p.liquido!=null?p.liquido:bruto;
+  const cliente=dados.clientes.find(x=>x.id===p.clienteId);
+  const canal=(dados.config.canais||[]).find(c=>c.nome===p.canal)||{taxa:0,taxaFixa:0};
+  const pagto=(dados.config.formasPagto||[]).find(f=>f.nome===p.pagto)||{taxa:0,taxaFixa:0};
+  const taxaCanal=bruto*(canal.taxa||0)+(canal.taxaFixa||0);
+  const taxaPagto=bruto*(pagto.taxa||0)+(pagto.taxaFixa||0);
+  const html=`<!DOCTYPE html><html lang="pt-BR"><head><meta charset="UTF-8"><title>Pedido ${escHtml(p.num)}</title><style>
+    *{box-sizing:border-box}body{font-family:'Segoe UI',Arial,sans-serif;margin:0;padding:28px;color:#1a1a1a;font-size:13px}
+    .header{display:flex;justify-content:space-between;align-items:flex-start;border-bottom:2px solid #7C3AED;padding-bottom:14px;margin-bottom:18px}
+    h1{font-size:22px;margin:0 0 4px;color:#1a1a1a}.marca{font-size:11px;color:#666}
+    .sec{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:1.2px;color:#7C3AED;border-bottom:1px solid #ddd;padding-bottom:4px;margin:16px 0 10px}
+    table{width:100%;border-collapse:collapse;margin-bottom:12px}th{font-size:10px;text-transform:uppercase;letter-spacing:.5px;padding:7px 8px;border-bottom:2px solid #333;text-align:left}
+    td{padding:7px 8px;border-bottom:1px solid #e8e8e8}
+    .totals{max-width:340px;margin-left:auto;font-size:13px}
+    .tr{display:flex;justify-content:space-between;padding:4px 0}
+    .tf{font-size:16px;font-weight:700;border-top:2px solid #333;padding-top:7px;margin-top:4px}
+    .obs{background:#f9f9f9;border:1px solid #e0e0e0;border-radius:6px;padding:10px 14px;margin-top:14px;font-size:12px;color:#555}
+    @media print{body{padding:14px}}
+  </style></head><body>
+  <div class="header">
+    <div><h1>Pedido ${escHtml(p.num)}</h1><div class="marca">ELDN Digital — Meu Lugar de Cura</div></div>
+    <div style="text-align:right;font-size:12px;color:#555;line-height:1.7">
+      <div><strong>Data:</strong> ${fmtData(p.data)}</div>
+      <div><strong>Canal:</strong> ${escHtml(p.canal||'—')}</div>
+      <div><strong>Status:</strong> ${escHtml(p.status||'—')}</div>
+      ${p.rastreio?`<div><strong>Rastreio:</strong> ${escHtml(p.rastreio)}</div>`:''}
+    </div>
+  </div>
+  <div class="sec">Cliente</div>
+  <div style="margin-bottom:14px">
+    <div style="font-weight:700;font-size:15px">${cliente?escHtml(cliente.nome):'—'}</div>
+    ${cliente&&cliente.whatsapp?`<div style="color:#555;font-size:12px;margin-top:2px">WhatsApp: ${escHtml(cliente.whatsapp)}</div>`:''}
+    ${p.endereco?`<div style="color:#555;font-size:12px;margin-top:2px">Endereço: ${escHtml(p.endereco)}</div>`:''}
+  </div>
+  <div class="sec">Itens do Pedido</div>
+  <table><thead><tr><th>SKU</th><th>Produto / Descrição</th><th style="text-align:center">Qtd</th><th style="text-align:right">Preço Unit.</th><th style="text-align:right">Subtotal</th></tr></thead>
+  <tbody>${itens.map(it=>`<tr><td style="font-family:monospace;font-size:11px;color:#5b21b6">${escHtml(it.sku||'—')}</td><td>${escHtml(it.desc||'—')}</td><td style="text-align:center">${it.qtd}</td><td style="text-align:right">${moeda(it.preco)}</td><td style="text-align:right;font-weight:700">${moeda(it.qtd*it.preco)}</td></tr>`).join('')}</tbody></table>
+  <div class="totals">
+    <div class="tr"><span>Subtotal itens</span><span>${moeda(bruto-(p.frete||0))}</span></div>
+    <div class="tr"><span>Frete</span><span>${moeda(p.frete||0)}</span></div>
+    <div class="tr tf"><span>Total Bruto</span><span>${moeda(bruto)}</span></div>
+    ${taxaCanal>0?`<div class="tr" style="color:#888"><span>Taxa canal (${escHtml(p.canal)})</span><span>- ${moeda(taxaCanal)}</span></div>`:''}
+    ${taxaPagto>0?`<div class="tr" style="color:#888"><span>Taxa pagto (${escHtml(p.pagto||'—')})</span><span>- ${moeda(taxaPagto)}</span></div>`:''}
+    <div class="tr tf" style="font-size:18px"><span>Valor Líquido</span><span style="color:#7C3AED">${moeda(liq)}</span></div>
+    <div style="font-size:11px;color:#888;margin-top:4px">Forma de pagamento: ${escHtml(p.pagto||'—')}</div>
+  </div>
+  ${p.obs?`<div class="obs"><strong>Observações:</strong> ${escHtml(p.obs)}</div>`:''}
+  <script>window.onload=function(){window.print();window.close();};<\/script>
+  </body></html>`;
+  const win=window.open('','_blank','width=820,height=680');
+  if(win){win.document.write(html);win.document.close();}
 }
 
 // ============================================================
