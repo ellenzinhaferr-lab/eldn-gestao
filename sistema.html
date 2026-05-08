@@ -609,8 +609,8 @@ const db = firebase.firestore();
 // ============================================================
 const dadosPadrao = {
   config: { canais: [
-    {nome:'Venda Direta',taxa:0,taxaFixa:0},{nome:'Instagram',taxa:0,taxaFixa:0},{nome:'TikTok Shop',taxa:0.05,taxaFixa:0},
-    {nome:'Shopee',taxa:0.14,taxaFixa:0},{nome:'Mercado Livre',taxa:0.12,taxaFixa:0},{nome:'Elo7',taxa:0.08,taxaFixa:0},{nome:'Amazon',taxa:0.35,taxaFixa:0},{nome:'Hotmart',taxa:0.099,taxaFixa:1.00},{nome:'Kiwify',taxa:0.0899,taxaFixa:2.49}
+    {nome:'Venda Direta',taxa:0,taxaFixa:0},{nome:'Instagram',taxa:0,taxaFixa:0},{nome:'TikTok Shop',taxa:0.06,taxaFixa:4.00},
+    {nome:'Shopee',taxa:0.14,taxaFixa:4.00},{nome:'Mercado Livre',taxa:0.12,taxaFixa:0},{nome:'Elo7',taxa:0.08,taxaFixa:0},{nome:'Amazon',taxa:0.35,taxaFixa:0},{nome:'Hotmart',taxa:0.099,taxaFixa:1.00},{nome:'Kiwify',taxa:0.0899,taxaFixa:2.49}
   ], formasPagto: [
     {nome:'PIX',taxa:0,taxaFixa:0},{nome:'Cartão Crédito MP',taxa:0.0399,taxaFixa:0},{nome:'Cartão Débito MP',taxa:0.0199,taxaFixa:0},
     {nome:'QR Code MP',taxa:0.0099,taxaFixa:0},{nome:'Boleto',taxa:0.0199,taxaFixa:3.49},{nome:'Dinheiro',taxa:0,taxaFixa:0},{nome:'Grátis',taxa:0,taxaFixa:0}
@@ -737,6 +737,16 @@ function setupListeners() {
     } else if(kiwifyExist.taxaFixa !== 2.49) {
       kiwifyExist.taxa = 0.0899; kiwifyExist.taxaFixa = 2.49; kiwifyExist.incluiPagamento = true;
       migrou = true;
+    }
+    // Corrige taxas do TikTok Shop (6% + R$4,00 desde fev/2026)
+    const tiktokExist = dados.config.canais.find(c=>c.nome==='TikTok Shop');
+    if(tiktokExist && (tiktokExist.taxa !== 0.06 || tiktokExist.taxaFixa !== 4.00)) {
+      tiktokExist.taxa = 0.06; tiktokExist.taxaFixa = 4.00; migrou = true;
+    }
+    // Corrige taxas da Shopee (14% + R$4,00 sem programa frete grátis)
+    const shopeeExist = dados.config.canais.find(c=>c.nome==='Shopee');
+    if(shopeeExist && shopeeExist.taxaFixa !== 4.00) {
+      shopeeExist.taxa = 0.14; shopeeExist.taxaFixa = 4.00; migrou = true;
     }
     // Marca marketplaces como "inclui pagamento" automaticamente se ainda não tem o campo
     const marketplaces = ['Amazon','Hotmart','Kiwify','Shopee','Mercado Livre','Elo7','TikTok Shop'];
