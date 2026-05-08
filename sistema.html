@@ -516,10 +516,18 @@ table.gestao tbody tr:last-child td{border-bottom:none}
     <div class="col-md-8"><label class="form-label">Nome do Produto *</label><input class="form-control" id="pr-nome"></div>
     <div class="col-md-4"><label class="form-label">Categoria</label><select class="form-select" id="pr-categoria"><option>Livro Físico</option><option>Livro Digital</option><option>Kit</option><option>Serviço</option><option>Outro</option></select></div>
     <div class="col-md-4"><label class="form-label">Fornecedor Principal</label><input class="form-control" id="pr-fornecedor"></div>
-    <div class="col-md-2"><label class="form-label">Qtd Mín.</label><input class="form-control" id="pr-estmin" type="number" value="5"></div>
-    <div class="col-md-2"><label class="form-label">Est. Inicial</label><input class="form-control" id="pr-estini" type="number" value="0"></div>
-    <div class="col-md-3"><label class="form-label">Custo Unit. (R$)</label><input class="form-control" id="pr-custo" type="number" step="0.01" value="0"></div>
-    <div class="col-md-3"><label class="form-label">Frete Unit. (R$)</label><input class="form-control" id="pr-frete" type="number" step="0.01" value="0"></div>
+    <div class="col-md-4" style="display:flex;align-items:flex-end;padding-bottom:6px">
+      <div class="form-check form-switch mb-0">
+        <input class="form-check-input" type="checkbox" id="pr-digital" onchange="toggleDigitalProduto()">
+        <label class="form-check-label" for="pr-digital" style="font-size:13px;cursor:pointer">Produto Digital<br><span style="color:var(--cor-texto-suave);font-size:11px">estoque infinito</span></label>
+      </div>
+    </div>
+    <div id="pr-estoque-section" class="col-12"><div class="row g-3">
+      <div class="col-md-3"><label class="form-label">Qtd Mín.</label><input class="form-control" id="pr-estmin" type="number" value="5"></div>
+      <div class="col-md-3"><label class="form-label">Est. Inicial</label><input class="form-control" id="pr-estini" type="number" value="0"></div>
+      <div class="col-md-3"><label class="form-label">Custo Unit. (R$)</label><input class="form-control" id="pr-custo" type="number" step="0.01" value="0"></div>
+      <div class="col-md-3"><label class="form-label">Frete Unit. (R$)</label><input class="form-control" id="pr-frete" type="number" step="0.01" value="0"></div>
+    </div></div>
     <div class="col-12"><label class="form-label">Observações</label><textarea class="form-control" id="pr-obs" rows="2"></textarea></div>
   </div></div>
   <div class="modal-footer"><button class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancelar</button><button class="btn btn-primary" onclick="salvarProduto()">Salvar Produto</button></div>
@@ -544,7 +552,11 @@ table.gestao tbody tr:last-child td{border-bottom:none}
   <div class="modal-body"><input type="hidden" id="cc-idx">
     <div class="mb-3"><label class="form-label">Nome do Canal *</label><input class="form-control" id="cc-nome"></div>
     <div class="mb-3"><label class="form-label">Taxa % (ex: 0.14 = 14%)</label><input class="form-control" id="cc-taxa" type="number" step="0.01" value="0"></div>
-    <div><label class="form-label">Taxa Fixa (R$) — ex: Hotmart cobra R$ 1,00</label><input class="form-control" id="cc-taxafixa" type="number" step="0.01" value="0"></div>
+    <div class="mb-3"><label class="form-label">Taxa Fixa (R$) — ex: Hotmart cobra R$ 1,00</label><input class="form-control" id="cc-taxafixa" type="number" step="0.01" value="0"></div>
+    <div class="form-check">
+      <input class="form-check-input" type="checkbox" id="cc-incluipagto">
+      <label class="form-check-label" for="cc-incluipagto" style="font-size:13px">Canal já processa o pagamento<br><span style="color:var(--cor-texto-suave);font-size:11px">Não aplica taxa de forma de pagamento (Hotmart, Kiwify, Amazon...)</span></label>
+    </div>
   </div>
   <div class="modal-footer"><button class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancelar</button><button class="btn btn-primary" onclick="salvarCanal()">Salvar</button></div>
 </div></div></div>
@@ -715,6 +727,21 @@ function setupListeners() {
   unsubscribers.push(db.collection('config').doc('main').onSnapshot(doc => {
     dados.config = doc.exists ? doc.data() : dadosPadrao.config;
     if(!dados.config.formasPagto) dados.config.formasPagto = dadosPadrao.config.formasPagto;
+    if(!dados.config.canais) dados.config.canais = [];
+    let migrou = false;
+    // Adiciona Kiwify se não existir
+    if(!dados.config.canais.find(c=>c.nome==='Kiwify')) {
+      dados.config.canais.push({nome:'Kiwify',taxa:0.099,taxaFixa:1.00,incluiPagamento:true});
+      migrou = true;
+    }
+    // Marca marketplaces como "inclui pagamento" automaticamente se ainda não tem o campo
+    const marketplaces = ['Amazon','Hotmart','Kiwify','Shopee','Mercado Livre','Elo7','TikTok Shop'];
+    dados.config.canais.forEach(c => {
+      if(marketplaces.includes(c.nome) && c.incluiPagamento === undefined) {
+        c.incluiPagamento = true; migrou = true;
+      }
+    });
+    if(migrou) db.collection('config').doc('main').set(dados.config);
     if (appReady) renderCurrentPage();
   }));
 
@@ -829,7 +856,7 @@ function renderDashboard() {
   const ultimos = [...dados.pedidos].sort((a,b)=>b.data.localeCompare(a.data)).slice(0,8);
   document.querySelector('#tabela-ultimos-pedidos tbody').innerHTML = ultimos.length ? ultimos.map(p=>`<tr><td style="font-weight:600;color:#fff">${p.num}</td><td>${nomeCliente(p.clienteId)}</td><td style="max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${getPedidoDesc(p)}</td><td style="color:var(--cor-verde);font-weight:600">${moeda(getPedidoTotal(p))}</td><td>${badgeCanal(p.canal)}</td></tr>`).join('') : '<tr><td colspan="5"><div class="empty-state"><i class="bi bi-inbox"></i>Nenhum pedido ainda</div></td></tr>';
 
-  const alerta = calcEstoque().filter(e=>e.saldo<=e.min);
+  const alerta = calcEstoque().filter(e=>!e.digital&&e.saldo<=e.min);
   document.querySelector('#tabela-estoque-alerta tbody').innerHTML = alerta.length ? alerta.map(e=>{ const cor=e.saldo<=0?'status-critico':'status-alerta'; return `<tr><td>${e.nome}</td><td class="${cor}" style="font-weight:700">${e.saldo}</td><td>${e.min}</td><td class="${cor}">${e.saldo<=0?'🔴 Zerado':'🟡 Baixo'}</td></tr>`; }).join('') : `<tr><td colspan="4"><div class="empty-state"><i class="bi bi-check-circle" style="color:var(--cor-verde)"></i>Estoque OK</div></td></tr>`;
 }
 
@@ -1069,7 +1096,9 @@ function calcularValorPedido() {
   document.getElementById('p-total').value=total.toFixed(2);
   const nomCanal=v('p-canal'); const nomPagto=v('p-pagto');
   const canal=(dados.config.canais||[]).find(c=>c.nome===nomCanal)||{taxa:0,taxaFixa:0};
-  const pagto=(dados.config.formasPagto||[]).find(f=>f.nome===nomPagto)||{taxa:0,taxaFixa:0};
+  const pagto=canal.incluiPagamento ? {taxa:0,taxaFixa:0} : ((dados.config.formasPagto||[]).find(f=>f.nome===nomPagto)||{taxa:0,taxaFixa:0});
+  const pagtoSelectEl=document.getElementById('p-pagto');
+  if(pagtoSelectEl) { pagtoSelectEl.disabled=!!canal.incluiPagamento; pagtoSelectEl.style.opacity=canal.incluiPagamento?'0.5':'1'; }
   const taxaCanal=total*(canal.taxa||0)+(canal.taxaFixa||0);
   const taxaPagto=total*(pagto.taxa||0)+(pagto.taxaFixa||0);
   const liquido=total-taxaCanal-taxaPagto;
@@ -1081,8 +1110,9 @@ function calcularValorPedido() {
     const linhas=[];
     linhas.push(`Total vendido: R$ ${total.toFixed(2).replace('.',',')}`);
     if(taxaCanal>0) linhas.push(`− Taxa ${nomCanal} (${(canal.taxa*100).toFixed(1)}%${canal.taxaFixa>0?' + R$ '+canal.taxaFixa.toFixed(2):''}): R$ ${taxaCanal.toFixed(2).replace('.',',')}`);
-    if(taxaPagto>0) linhas.push(`− Taxa ${nomPagto} (${(pagto.taxa*100).toFixed(2)}%${pagto.taxaFixa>0?' + R$ '+pagto.taxaFixa.toFixed(2):''}): R$ ${taxaPagto.toFixed(2).replace('.',',')}`);
-    if(taxaCanal===0&&taxaPagto===0) linhas.push('Nenhuma taxa para este canal e forma de pagamento');
+    if(canal.incluiPagamento) linhas.push('<span style="color:#10B981;font-size:11px">✓ Pagamento já incluso nas taxas do canal — sem taxa adicional de pagamento</span>');
+    else if(taxaPagto>0) linhas.push(`− Taxa ${nomPagto} (${(pagto.taxa*100).toFixed(2)}%${pagto.taxaFixa>0?' + R$ '+pagto.taxaFixa.toFixed(2):''}): R$ ${taxaPagto.toFixed(2).replace('.',',')}`);
+    if(taxaCanal===0&&taxaPagto===0&&!canal.incluiPagamento) linhas.push('Nenhuma taxa para este canal e forma de pagamento');
     infoEl.innerHTML=linhas.join('<br>');
   }
 }
@@ -1408,6 +1438,10 @@ function renderProdutos() {
   document.querySelector('#tabela-produtos tbody').innerHTML=lista.length?lista.map(p=>{const i=dados.produtos.indexOf(p);return `<tr><td style="font-family:monospace;color:var(--cor-secundaria)">${p.sku}</td><td style="font-weight:600;color:#fff">${p.nome}</td><td>${badgeCategoria(p.categoria)}</td><td>${p.fornecedor||'—'}</td><td>${moeda(p.custo)}</td><td>${moeda(p.frete)}</td><td>${moeda((p.custo||0)+(p.frete||0))}</td><td style="color:var(--cor-verde);font-weight:700">${moeda(p.pDireto)}</td><td style="white-space:nowrap"><button class="btn-sm-action btn-edit" onclick="editarProduto(${i})"><i class="bi bi-pencil-fill"></i></button><button class="btn-sm-action btn-delete" onclick="deletar('produtos',${i})"><i class="bi bi-trash-fill"></i></button></td></tr>`}).join(''):'<tr><td colspan="9"><div class="empty-state"><i class="bi bi-bookmark"></i>Nenhum produto cadastrado</div></td></tr>';
   atualizarThSort('produtos',s.col,s.dir);
 }
+function toggleDigitalProduto() {
+  const isDigital=document.getElementById('pr-digital').checked;
+  document.getElementById('pr-estoque-section').style.display=isDigital?'none':'';
+}
 function editarProduto(i) {
   const p=dados.produtos[i];
   document.getElementById('pr-idx').value=i;
@@ -1415,6 +1449,8 @@ function editarProduto(i) {
   document.getElementById('pr-nome').value=p.nome;
   document.getElementById('pr-categoria').value=p.categoria;
   document.getElementById('pr-fornecedor').value=p.fornecedor||'';
+  document.getElementById('pr-digital').checked=!!p.digital;
+  toggleDigitalProduto();
   document.getElementById('pr-estmin').value=p.estMin||0;
   document.getElementById('pr-estini').value=p.estIni||0;
   document.getElementById('pr-custo').value=p.custo||0;
@@ -1427,11 +1463,16 @@ async function salvarProduto() {
   const sku=v('pr-sku').trim(), nome=v('pr-nome').trim();
   if(!sku||!nome) return alert('SKU e Nome são obrigatórios');
   const idx=v('pr-idx');
-  const obj={sku,nome,categoria:v('pr-categoria'),fornecedor:v('pr-fornecedor'),estMin:parseInt(v('pr-estmin'))||0,estIni:parseInt(v('pr-estini'))||0,custo:parseFloat(v('pr-custo'))||0,frete:parseFloat(v('pr-frete'))||0,obs:v('pr-obs')};
+  const isDigital=document.getElementById('pr-digital').checked;
+  const obj={sku,nome,categoria:v('pr-categoria'),fornecedor:v('pr-fornecedor'),digital:isDigital,
+    estMin:isDigital?0:parseInt(v('pr-estmin'))||0,estIni:isDigital?0:parseInt(v('pr-estini'))||0,
+    custo:isDigital?0:parseFloat(v('pr-custo'))||0,frete:isDigital?0:parseFloat(v('pr-frete'))||0,obs:v('pr-obs')};
   if(idx==='') await db.collection('produtos').add(obj);
   else await db.collection('produtos').doc(dados.produtos[parseInt(idx)]._docId).set(obj);
   bootstrap.Modal.getInstance(document.getElementById('modalProduto')).hide();
   document.getElementById('pr-idx').value='';
+  document.getElementById('pr-digital').checked=false;
+  toggleDigitalProduto();
   document.getElementById('modalProdutoTitulo').textContent='Novo Produto';
 }
 
@@ -1440,6 +1481,7 @@ async function salvarProduto() {
 // ============================================================
 function calcEstoque() {
   return dados.produtos.map(p=>{
+    if(p.digital) return {sku:p.sku,nome:p.nome,min:0,entradas:0,vendido:0,devolvido:0,saldo:Infinity,digital:true};
     const entradas=dados.estoqueMovimentos.filter(m=>m.sku===p.sku).reduce((s,m)=>s+(m.qtd||0),0);
     const vendido=dados.pedidos.filter(pd=>pd.status!=='Cancelado'&&pd.status!=='Devolvido')
       .reduce((s,pd)=>s+getPedidoItens(pd).filter(it=>it.sku===p.sku).reduce((a,it)=>a+it.qtd,0),0);
@@ -1457,7 +1499,7 @@ function renderEstoque() {
     else{va=(a[s.col]||'').toString().toLowerCase();vb=(b[s.col]||'').toString().toLowerCase();}
     return compararSort(va,vb,s.dir);
   });
-  document.querySelector('#tabela-estoque tbody').innerHTML=lista.length?lista.map(e=>{let status,cor;if(e.saldo<=0){status='🔴 Zerado';cor='status-critico';}else if(e.saldo<=e.min){status='🟡 Baixo';cor='status-alerta';}else{status='🟢 OK';cor='status-ok';}return `<tr><td style="font-family:monospace;color:var(--cor-secundaria);font-size:12px">${e.sku}</td><td style="font-weight:600;color:#fff">${e.nome}</td><td style="text-align:center;color:#3B82F6;font-weight:600">+${e.entradas}</td><td style="text-align:center;color:#EF4444;font-weight:600">−${e.vendido}</td><td style="text-align:center;color:var(--cor-texto-suave)">${e.devolvido>0?'↩'+e.devolvido:'—'}</td><td style="font-weight:700;font-size:16px;text-align:center" class="${cor}">${e.saldo}</td><td class="${cor}" style="font-weight:600">${status}</td></tr>`;}).join(''):'<tr><td colspan="7"><div class="empty-state"><i class="bi bi-archive"></i>Nenhum produto</div></td></tr>';
+  document.querySelector('#tabela-estoque tbody').innerHTML=lista.length?lista.map(e=>{let status,cor,saldoTxt;if(e.digital){status='♾ Digital';cor='status-ok';saldoTxt='∞';}else if(e.saldo<=0){status='🔴 Zerado';cor='status-critico';saldoTxt=e.saldo;}else if(e.saldo<=e.min){status='🟡 Baixo';cor='status-alerta';saldoTxt=e.saldo;}else{status='🟢 OK';cor='status-ok';saldoTxt=e.saldo;}return `<tr><td style="font-family:monospace;color:var(--cor-secundaria);font-size:12px">${e.sku}</td><td style="font-weight:600;color:#fff">${e.nome}</td><td style="text-align:center;color:#3B82F6;font-weight:600">${e.digital?'—':'+'+e.entradas}</td><td style="text-align:center;color:#EF4444;font-weight:600">${e.digital?'—':'−'+e.vendido}</td><td style="text-align:center;color:var(--cor-texto-suave)">${e.digital?'—':(e.devolvido>0?'↩'+e.devolvido:'—')}</td><td style="font-weight:700;font-size:16px;text-align:center" class="${cor}">${saldoTxt}</td><td class="${cor}" style="font-weight:600">${status}</td></tr>`;}).join(''):'<tr><td colspan="7"><div class="empty-state"><i class="bi bi-archive"></i>Nenhum produto</div></td></tr>';
   atualizarThSort('estoque',s.col,s.dir);
   renderMovimentosEstoque();
 }
@@ -1663,18 +1705,20 @@ function editarCanal(i) {
   document.getElementById('cc-nome').value=c.nome;
   document.getElementById('cc-taxa').value=c.taxa;
   document.getElementById('cc-taxafixa').value=c.taxaFixa||0;
+  document.getElementById('cc-incluipagto').checked=!!c.incluiPagamento;
   new bootstrap.Modal(document.getElementById('modalCanal')).show();
 }
 async function salvarCanal() {
   const nome=v('cc-nome').trim(); if(!nome) return alert('Nome é obrigatório');
   const idx=v('cc-idx');
-  const obj={nome,taxa:parseFloat(v('cc-taxa'))||0,taxaFixa:parseFloat(v('cc-taxafixa'))||0};
+  const obj={nome,taxa:parseFloat(v('cc-taxa'))||0,taxaFixa:parseFloat(v('cc-taxafixa'))||0,incluiPagamento:document.getElementById('cc-incluipagto').checked};
   if(!dados.config.canais) dados.config.canais=[];
   if(idx==='') dados.config.canais.push(obj);
   else dados.config.canais[parseInt(idx)]=obj;
   await db.collection('config').doc('main').set(dados.config);
   bootstrap.Modal.getInstance(document.getElementById('modalCanal')).hide();
   document.getElementById('cc-idx').value='';
+  document.getElementById('cc-incluipagto').checked=false;
   limpaCampos(['cc-nome','cc-taxa','cc-taxafixa']);
 }
 function editarFormaPagto(i) {
