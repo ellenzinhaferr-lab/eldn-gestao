@@ -522,6 +522,7 @@ table.gestao tbody tr:last-child td{border-bottom:none}
         <label class="form-check-label" for="pr-digital" style="font-size:13px;cursor:pointer">Produto Digital<br><span style="color:var(--cor-texto-suave);font-size:11px">estoque infinito</span></label>
       </div>
     </div>
+    <div class="col-md-4"><label class="form-label">Preço de Venda (R$)</label><input class="form-control" id="pr-preco" type="number" step="0.01" value="0" placeholder="0,00"></div>
     <div id="pr-estoque-section" class="col-12"><div class="row g-3">
       <div class="col-md-3"><label class="form-label">Qtd Mín.</label><input class="form-control" id="pr-estmin" type="number" value="5"></div>
       <div class="col-md-3"><label class="form-label">Est. Inicial</label><input class="form-control" id="pr-estini" type="number" value="0"></div>
@@ -1068,8 +1069,7 @@ function preencherItemPedido(i) {
   const prod=dados.produtos.find(p=>p.sku===sku);
   if(prod) {
     document.getElementById('item-desc-'+i).value=prod.nome;
-    document.getElementById('item-preco-'+i).value='';
-    document.getElementById('item-preco-'+i).focus();
+    document.getElementById('item-preco-'+i).value=prod.preco||'';
   }
   calcularValorPedido();
 }
@@ -1465,6 +1465,7 @@ function editarProduto(i) {
   document.getElementById('pr-fornecedor').value=p.fornecedor||'';
   document.getElementById('pr-digital').checked=!!p.digital;
   toggleDigitalProduto();
+  document.getElementById('pr-preco').value=p.preco||0;
   document.getElementById('pr-estmin').value=p.estMin||0;
   document.getElementById('pr-estini').value=p.estIni||0;
   document.getElementById('pr-custo').value=p.custo||0;
@@ -1479,6 +1480,7 @@ async function salvarProduto() {
   const idx=v('pr-idx');
   const isDigital=document.getElementById('pr-digital').checked;
   const obj={sku,nome,categoria:v('pr-categoria'),fornecedor:v('pr-fornecedor'),digital:isDigital,
+    preco:parseFloat(v('pr-preco'))||0,
     estMin:isDigital?0:parseInt(v('pr-estmin'))||0,estIni:isDigital?0:parseInt(v('pr-estini'))||0,
     custo:isDigital?0:parseFloat(v('pr-custo'))||0,frete:isDigital?0:parseFloat(v('pr-frete'))||0,obs:v('pr-obs')};
   if(idx==='') await db.collection('produtos').add(obj);
