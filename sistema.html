@@ -68,6 +68,7 @@ table.gestao tbody tr:last-child td{border-bottom:none}
 .badge-ml{background:rgba(255,212,0,.15);color:#FFD400}
 .badge-elo7{background:rgba(99,102,241,.15);color:#818CF8}
 .badge-hotmart{background:rgba(255,77,0,.15);color:#FF4D00}
+.badge-kiwify{background:rgba(0,200,100,.15);color:#00C864}
 .badge-entrada{background:rgba(16,185,129,.15);color:#10B981}
 .badge-saida{background:rgba(239,68,68,.15);color:#EF4444}
 .badge-livro{background:rgba(124,58,237,.15);color:var(--cor-secundaria)}
@@ -518,6 +519,8 @@ table.gestao tbody tr:last-child td{border-bottom:none}
     <div class="col-md-3"><label class="form-label">Shopee</label><input class="form-control" id="pr-p-shopee" type="number" step="0.01"></div>
     <div class="col-md-3"><label class="form-label">Mercado Livre</label><input class="form-control" id="pr-p-ml" type="number" step="0.01"></div>
     <div class="col-md-3"><label class="form-label">TikTok Shop</label><input class="form-control" id="pr-p-tiktok" type="number" step="0.01"></div>
+    <div class="col-md-3"><label class="form-label">Hotmart</label><input class="form-control" id="pr-p-hotmart" type="number" step="0.01"></div>
+    <div class="col-md-3"><label class="form-label">Kiwify</label><input class="form-control" id="pr-p-kiwify" type="number" step="0.01"></div>
     <div class="col-12"><label class="form-label">Observações</label><textarea class="form-control" id="pr-obs" rows="2"></textarea></div>
   </div></div>
   <div class="modal-footer"><button class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancelar</button><button class="btn btn-primary" onclick="salvarProduto()">Salvar Produto</button></div>
@@ -596,7 +599,7 @@ const db = firebase.firestore();
 const dadosPadrao = {
   config: { canais: [
     {nome:'Venda Direta',taxa:0,taxaFixa:0},{nome:'Instagram',taxa:0,taxaFixa:0},{nome:'TikTok Shop',taxa:0.05,taxaFixa:0},
-    {nome:'Shopee',taxa:0.14,taxaFixa:0},{nome:'Mercado Livre',taxa:0.12,taxaFixa:0},{nome:'Elo7',taxa:0.08,taxaFixa:0},{nome:'Amazon',taxa:0.35,taxaFixa:0},{nome:'Hotmart',taxa:0.099,taxaFixa:1.00}
+    {nome:'Shopee',taxa:0.14,taxaFixa:0},{nome:'Mercado Livre',taxa:0.12,taxaFixa:0},{nome:'Elo7',taxa:0.08,taxaFixa:0},{nome:'Amazon',taxa:0.35,taxaFixa:0},{nome:'Hotmart',taxa:0.099,taxaFixa:1.00},{nome:'Kiwify',taxa:0.099,taxaFixa:1.00}
   ], formasPagto: [
     {nome:'PIX',taxa:0,taxaFixa:0},{nome:'Cartão Crédito MP',taxa:0.0399,taxaFixa:0},{nome:'Cartão Débito MP',taxa:0.0199,taxaFixa:0},
     {nome:'QR Code MP',taxa:0.0099,taxaFixa:0},{nome:'Boleto',taxa:0.0199,taxaFixa:3.49},{nome:'Dinheiro',taxa:0,taxaFixa:0},{nome:'Grátis',taxa:0,taxaFixa:0}
@@ -608,9 +611,9 @@ const dadosPadrao = {
     {id:4,nome:'Ivani R Campanile',email:'',whatsapp:'',cpf:'072.209.238-56',instagram:'@ivanicampanile',canal:'Instagram',cidade:'Poa',estado:'RS',obs:''},
   ],
   produtos: [
-    {sku:'DEV-MLCF-01',nome:'Devocional Meu Lugar de Cura Físico',categoria:'Livro Físico',fornecedor:'ELDN Digital / Gráfica',custo:25.30,frete:0.53,estMin:5,estIni:20,pDireto:79.90,pInstagram:79.90,pAmazon:0,pShopee:0,pML:0,pTiktok:0,obs:''},
-    {sku:'DEV-MLCD-01',nome:'Devocional Meu Lugar de Cura Digital',categoria:'Livro Digital',fornecedor:'ELDN Digital / Gráfica',custo:0,frete:0,estMin:0,estIni:1000,pDireto:29.90,pInstagram:29.90,pAmazon:39.00,pShopee:0,pML:0,pTiktok:0,obs:''},
-    {sku:'KIT-MLCF-01',nome:'KIT Devocional Meu Lugar de Cura Físico',categoria:'Kit',fornecedor:'ELDN Digital / Gráfica',custo:27.15,frete:0.53,estMin:5,estIni:100,pDireto:79.90,pInstagram:79.90,pAmazon:0,pShopee:0,pML:0,pTiktok:0,obs:''},
+    {sku:'DEV-MLCF-01',nome:'Devocional Meu Lugar de Cura Físico',categoria:'Livro Físico',fornecedor:'ELDN Digital / Gráfica',custo:25.30,frete:0.53,estMin:5,estIni:20,pDireto:79.90,pInstagram:79.90,pAmazon:0,pShopee:0,pML:0,pTiktok:0,pHotmart:0,pKiwify:0,obs:''},
+    {sku:'DEV-MLCD-01',nome:'Devocional Meu Lugar de Cura Digital',categoria:'Livro Digital',fornecedor:'ELDN Digital / Gráfica',custo:0,frete:0,estMin:0,estIni:1000,pDireto:29.90,pInstagram:29.90,pAmazon:39.00,pShopee:0,pML:0,pTiktok:0,pHotmart:0,pKiwify:0,obs:''},
+    {sku:'KIT-MLCF-01',nome:'KIT Devocional Meu Lugar de Cura Físico',categoria:'Kit',fornecedor:'ELDN Digital / Gráfica',custo:27.15,frete:0.53,estMin:5,estIni:100,pDireto:79.90,pInstagram:79.90,pAmazon:0,pShopee:0,pML:0,pTiktok:0,pHotmart:0,pKiwify:0,obs:''},
   ],
   pedidos: [
     {data:'2026-01-01',num:'PED-01',sku:'KIT-MLCF-01',desc:'KIT Devocional Meu Lugar de Cura Físico',clienteId:1,endereco:'',canal:'Instagram',qtd:1,preco:79.90,frete:0,status:'Entregue',rastreio:'',obs:''},
@@ -736,7 +739,7 @@ function renderCurrentPage() { renderPage(currentPage); }
 // ============================================================
 function moeda(v) { if (!v && v!==0) return '—'; return 'R$ '+Number(v).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2}); }
 function fmtData(d) { if (!d) return '—'; const p=d.split('-'); return p.length===3?`${p[2]}/${p[1]}/${p[0]}`:d; }
-function badgeCanal(c) { const m={'Instagram':'badge-instagram','Amazon':'badge-amazon','Shopee':'badge-shopee','TikTok Shop':'badge-tiktok','Venda Direta':'badge-direta','Mercado Livre':'badge-ml','Elo7':'badge-elo7','Hotmart':'badge-hotmart'}; return `<span class="badge-canal ${m[c]||'badge-direta'}">${c||'—'}</span>`; }
+function badgeCanal(c) { const m={'Instagram':'badge-instagram','Amazon':'badge-amazon','Shopee':'badge-shopee','TikTok Shop':'badge-tiktok','Venda Direta':'badge-direta','Mercado Livre':'badge-ml','Elo7':'badge-elo7','Hotmart':'badge-hotmart','Kiwify':'badge-kiwify'}; return `<span class="badge-canal ${m[c]||'badge-direta'}">${c||'—'}</span>`; }
 function badgeCategoria(c) { const m={'Livro Físico':'badge-livro','Livro Digital':'badge-digital','Kit':'badge-kit'}; return `<span class="badge-canal ${m[c]||'badge-livro'}">${c}</span>`; }
 function badgeTipo(t) { return t==='Entrada'?`<span class="badge-canal badge-entrada">↑ Entrada</span>`:`<span class="badge-canal badge-saida">↓ Saída</span>`; }
 function badgeStatus(s) { const m={'Entregue':'#10B981','Enviado':'#3B82F6','Em separação':'#F59E0B','Pendente':'#9D8EC4','Cancelado':'#EF4444','Devolvido':'#EF4444'}; return `<span style="color:${m[s]||'#9D8EC4'};font-size:12px;font-weight:600;">${s}</span>`; }
@@ -1026,7 +1029,7 @@ function preencherItemPedido(i) {
   if(prod) {
     document.getElementById('item-desc-'+i).value=prod.nome;
     const canal=v('p-canal');
-    const precos={'Venda Direta':prod.pDireto,'Instagram':prod.pInstagram,'Amazon':prod.pAmazon,'Shopee':prod.pShopee,'Mercado Livre':prod.pML,'TikTok Shop':prod.pTiktok};
+    const precos={'Venda Direta':prod.pDireto,'Instagram':prod.pInstagram,'Amazon':prod.pAmazon,'Shopee':prod.pShopee,'Mercado Livre':prod.pML,'TikTok Shop':prod.pTiktok,'Hotmart':prod.pHotmart,'Kiwify':prod.pKiwify};
     document.getElementById('item-preco-'+i).value=precos[canal]||prod.pDireto||0;
   }
   calcularValorPedido();
@@ -1418,6 +1421,8 @@ function editarProduto(i) {
   document.getElementById('pr-p-shopee').value=p.pShopee||0;
   document.getElementById('pr-p-ml').value=p.pML||0;
   document.getElementById('pr-p-tiktok').value=p.pTiktok||0;
+  document.getElementById('pr-p-hotmart').value=p.pHotmart||0;
+  document.getElementById('pr-p-kiwify').value=p.pKiwify||0;
   document.getElementById('pr-obs').value=p.obs||'';
   document.getElementById('modalProdutoTitulo').textContent='Editar Produto';
   new bootstrap.Modal(document.getElementById('modalProduto')).show();
@@ -1426,7 +1431,7 @@ async function salvarProduto() {
   const sku=v('pr-sku').trim(), nome=v('pr-nome').trim();
   if(!sku||!nome) return alert('SKU e Nome são obrigatórios');
   const idx=v('pr-idx');
-  const obj={sku,nome,categoria:v('pr-categoria'),fornecedor:v('pr-fornecedor'),estMin:parseInt(v('pr-estmin'))||0,estIni:parseInt(v('pr-estini'))||0,custo:parseFloat(v('pr-custo'))||0,frete:parseFloat(v('pr-frete'))||0,pDireto:parseFloat(v('pr-p-direto'))||0,pInstagram:parseFloat(v('pr-p-instagram'))||0,pAmazon:parseFloat(v('pr-p-amazon'))||0,pShopee:parseFloat(v('pr-p-shopee'))||0,pML:parseFloat(v('pr-p-ml'))||0,pTiktok:parseFloat(v('pr-p-tiktok'))||0,obs:v('pr-obs')};
+  const obj={sku,nome,categoria:v('pr-categoria'),fornecedor:v('pr-fornecedor'),estMin:parseInt(v('pr-estmin'))||0,estIni:parseInt(v('pr-estini'))||0,custo:parseFloat(v('pr-custo'))||0,frete:parseFloat(v('pr-frete'))||0,pDireto:parseFloat(v('pr-p-direto'))||0,pInstagram:parseFloat(v('pr-p-instagram'))||0,pAmazon:parseFloat(v('pr-p-amazon'))||0,pShopee:parseFloat(v('pr-p-shopee'))||0,pML:parseFloat(v('pr-p-ml'))||0,pTiktok:parseFloat(v('pr-p-tiktok'))||0,pHotmart:parseFloat(v('pr-p-hotmart'))||0,pKiwify:parseFloat(v('pr-p-kiwify'))||0,obs:v('pr-obs')};
   if(idx==='') await db.collection('produtos').add(obj);
   else await db.collection('produtos').doc(dados.produtos[parseInt(idx)]._docId).set(obj);
   bootstrap.Modal.getInstance(document.getElementById('modalProduto')).hide();
