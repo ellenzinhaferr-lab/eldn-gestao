@@ -69,6 +69,7 @@ table.gestao tbody tr:last-child td{border-bottom:none}
 .badge-elo7{background:rgba(99,102,241,.15);color:#818CF8}
 .badge-hotmart{background:rgba(255,77,0,.15);color:#FF4D00}
 .badge-kiwify{background:rgba(0,200,100,.15);color:#00C864}
+.badge-amazonkdp{background:rgba(255,153,0,.15);color:#ff9900}
 .badge-entrada{background:rgba(16,185,129,.15);color:#10B981}
 .badge-saida{background:rgba(239,68,68,.15);color:#EF4444}
 .badge-livro{background:rgba(124,58,237,.15);color:var(--cor-secundaria)}
@@ -420,9 +421,9 @@ table.gestao tbody tr:last-child td{border-bottom:none}
     <!-- VALORES E PAGAMENTO -->
     <div style="border-top:1px solid var(--cor-borda);padding-top:10px;margin-bottom:12px"><small style="color:var(--cor-secundaria);font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:1.2px"><i class="bi bi-cash-stack me-1"></i>Valores e Pagamento</small></div>
     <div class="row g-3 mb-3">
-      <div class="col-md-3"><label class="form-label">Frete (R$)</label><input class="form-control" id="p-frete" type="number" step="0.01" value="0" oninput="calcularValorPedido()"></div>
-      <div class="col-md-3"><label class="form-label">Total Vendido (R$)</label><input class="form-control" id="p-total" readonly style="font-weight:700;color:var(--cor-verde)"></div>
-      <div class="col-md-6">
+      <div class="col-md-3" id="col-frete"><label class="form-label">Frete (R$)</label><input class="form-control" id="p-frete" type="number" step="0.01" value="0" oninput="calcularValorPedido()"></div>
+      <div class="col-md-3"><label class="form-label" id="lbl-total">Total Vendido (R$)</label><input class="form-control" id="p-total" readonly style="font-weight:700;color:var(--cor-verde)"></div>
+      <div class="col-md-6" id="col-pagto">
         <label class="form-label">Forma de Pagamento</label>
         <select class="form-select" id="p-pagto" onchange="calcularValorPedido()"></select>
         <small style="color:var(--cor-texto-suave);font-size:11px;font-style:italic">Juros de parcelamento por conta do cliente — use a taxa correspondente.</small>
@@ -557,6 +558,10 @@ table.gestao tbody tr:last-child td{border-bottom:none}
     <div class="form-check">
       <input class="form-check-input" type="checkbox" id="cc-incluipagto">
       <label class="form-check-label" for="cc-incluipagto" style="font-size:13px">Canal já processa o pagamento<br><span style="color:var(--cor-texto-suave);font-size:11px">Não aplica taxa de forma de pagamento (Hotmart, Kiwify, Amazon...)</span></label>
+    </div>
+    <div class="form-check mt-2">
+      <input class="form-check-input" type="checkbox" id="cc-isroyalties">
+      <label class="form-check-label" for="cc-isroyalties" style="font-size:13px">Canal de Royalties (ex: Amazon KDP)<br><span style="color:var(--cor-texto-suave);font-size:11px">Sem frete e taxas — informe apenas os royalties recebidos em R$</span></label>
     </div>
   </div>
   <div class="modal-footer"><button class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancelar</button><button class="btn btn-primary" onclick="salvarCanal()">Salvar</button></div>
@@ -749,6 +754,12 @@ function setupListeners() {
     if(shopeeExist && shopeeExist.taxaFixa !== 4.00) {
       shopeeExist.taxa = 0.14; shopeeExist.taxaFixa = 4.00; migrou = true;
     }
+    // Adiciona Amazon KDP se não existir
+    const kdpExist = dados.config.canais.find(c=>c.nome==='Amazon KDP');
+    if(!kdpExist) {
+      dados.config.canais.push({nome:'Amazon KDP',taxa:0,taxaFixa:0,incluiPagamento:true,isRoyalties:true});
+      migrou = true;
+    }
     // Marca marketplaces como "inclui pagamento" automaticamente se ainda não tem o campo
     const marketplaces = ['Amazon','Hotmart','Kiwify','Shopee','Mercado Livre','Elo7','TikTok Shop'];
     dados.config.canais.forEach(c => {
@@ -780,7 +791,7 @@ function renderCurrentPage() { renderPage(currentPage); }
 // ============================================================
 function moeda(v) { if (!v && v!==0) return '—'; return 'R$ '+Number(v).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2}); }
 function fmtData(d) { if (!d) return '—'; const p=d.split('-'); return p.length===3?`${p[2]}/${p[1]}/${p[0]}`:d; }
-function badgeCanal(c) { const m={'Instagram':'badge-instagram','Amazon':'badge-amazon','Shopee':'badge-shopee','TikTok Shop':'badge-tiktok','Venda Direta':'badge-direta','Mercado Livre':'badge-ml','Elo7':'badge-elo7','Hotmart':'badge-hotmart','Kiwify':'badge-kiwify'}; return `<span class="badge-canal ${m[c]||'badge-direta'}">${c||'—'}</span>`; }
+function badgeCanal(c) { const m={'Instagram':'badge-instagram','Amazon':'badge-amazon','Amazon KDP':'badge-amazonkdp','Shopee':'badge-shopee','TikTok Shop':'badge-tiktok','Venda Direta':'badge-direta','Mercado Livre':'badge-ml','Elo7':'badge-elo7','Hotmart':'badge-hotmart','Kiwify':'badge-kiwify'}; return `<span class="badge-canal ${m[c]||'badge-direta'}">${c||'—'}</span>`; }
 function badgeCategoria(c) { const m={'Livro Físico':'badge-livro','Livro Digital':'badge-digital','Kit':'badge-kit'}; return `<span class="badge-canal ${m[c]||'badge-livro'}">${c}</span>`; }
 function badgeTipo(t) { return t==='Entrada'?`<span class="badge-canal badge-entrada">↑ Entrada</span>`:`<span class="badge-canal badge-saida">↓ Saída</span>`; }
 function badgeStatus(s) { const m={'Entregue':'#10B981','Enviado':'#3B82F6','Em separação':'#F59E0B','Pendente':'#9D8EC4','Cancelado':'#EF4444','Devolvido':'#EF4444'}; return `<span style="color:${m[s]||'#9D8EC4'};font-size:12px;font-weight:600;">${s}</span>`; }
@@ -1095,6 +1106,20 @@ function preencherEndereco() {
   }
 }
 function calcularValorPedido() {
+  const nomCanal=v('p-canal');
+  const canal=(dados.config.canais||[]).find(c=>c.nome===nomCanal)||{taxa:0,taxaFixa:0};
+  const isRoyalties=!!canal.isRoyalties;
+
+  // Ajusta UI para modo royalties (Amazon KDP)
+  const colFreteEl=document.getElementById('col-frete');
+  const colPagtoEl=document.getElementById('col-pagto');
+  const lblTotalEl=document.getElementById('lbl-total');
+  const pTotalEl=document.getElementById('p-total');
+  if(colFreteEl) colFreteEl.style.display=isRoyalties?'none':'';
+  if(colPagtoEl) colPagtoEl.style.display=isRoyalties?'none':'';
+  if(lblTotalEl) lblTotalEl.textContent=isRoyalties?'Royalties Recebidos (R$)':'Total Vendido (R$)';
+  if(pTotalEl) { pTotalEl.readOnly=!isRoyalties; if(isRoyalties) pTotalEl.oninput=calcularValorPedido; else pTotalEl.oninput=null; }
+
   let subtotal=0;
   document.querySelectorAll('#itens-body tr').forEach(tr=>{
     const i=tr.dataset.i;
@@ -1105,11 +1130,23 @@ function calcularValorPedido() {
     if(el) el.value=sub.toFixed(2);
     subtotal+=sub;
   });
+
+  if(isRoyalties) {
+    // Frete zerado e oculto
+    const freteEl=document.getElementById('p-frete'); if(freteEl) freteEl.value='0';
+    const royalties=parseFloat(v('p-total'))||0;
+    document.getElementById('p-liquido').value=royalties.toFixed(2);
+    const dispEl=document.getElementById('p-liquido-display');
+    if(dispEl) dispEl.textContent='R$ '+royalties.toFixed(2).replace('.',',');
+    const infoEl=document.getElementById('p-pagto-info');
+    if(infoEl) infoEl.innerHTML='<span style="color:#60A5FA;font-size:12px"><i class="bi bi-info-circle me-1"></i>Canal de Royalties — informe o valor já convertido de USD para R$ (cotação do dia). Sem taxas.</span>';
+    return;
+  }
+
   const frete=parseFloat(v('p-frete'))||0;
   const total=subtotal+frete;
   document.getElementById('p-total').value=total.toFixed(2);
-  const nomCanal=v('p-canal'); const nomPagto=v('p-pagto');
-  const canal=(dados.config.canais||[]).find(c=>c.nome===nomCanal)||{taxa:0,taxaFixa:0};
+  const nomPagto=v('p-pagto');
   const pagto=canal.incluiPagamento ? {taxa:0,taxaFixa:0} : ((dados.config.formasPagto||[]).find(f=>f.nome===nomPagto)||{taxa:0,taxaFixa:0});
   const pagtoSelectEl=document.getElementById('p-pagto');
   if(pagtoSelectEl) { pagtoSelectEl.disabled=!!canal.incluiPagamento; pagtoSelectEl.style.opacity=canal.incluiPagamento?'0.5':'1'; }
@@ -1601,7 +1638,7 @@ function renderCanais() {
     else{va=(a[s.col]||'').toString().toLowerCase();vb=(b[s.col]||'').toString().toLowerCase();}
     return compararSort(va,vb,s.dir);
   });
-  document.querySelector('#tabela-canais tbody').innerHTML=lista.map(c=>`<tr><td>${badgeCanal(c.nome)}</td><td>${(c.taxa*100).toFixed(1)}%</td><td>${c.taxaFixa>0?moeda(c.taxaFixa):'—'}</td><td style="font-weight:700;color:var(--cor-verde)">${moeda(c._total)}</td><td>${moeda(c._ticket)}</td><td style="text-align:center">${c._n}</td><td>${c._n>0?'🟢 Ativo':'⚪ Sem vendas'}</td></tr>`).join('');
+  document.querySelector('#tabela-canais tbody').innerHTML=lista.map(c=>`<tr><td>${badgeCanal(c.nome)}</td><td>${c.isRoyalties?'<span style="color:#60A5FA;font-size:11px;font-weight:600">Royalties</span>':`${(c.taxa*100).toFixed(1)}%`}</td><td>${c.isRoyalties?'—':c.taxaFixa>0?moeda(c.taxaFixa):'—'}</td><td style="font-weight:700;color:var(--cor-verde)">${moeda(c._total)}</td><td>${moeda(c._ticket)}</td><td style="text-align:center">${c._n}</td><td>${c._n>0?'🟢 Ativo':'⚪ Sem vendas'}</td></tr>`).join('');
   atualizarThSort('canais',s.col,s.dir);
 }
 
@@ -1722,12 +1759,13 @@ function editarCanal(i) {
   document.getElementById('cc-taxa').value=c.taxa;
   document.getElementById('cc-taxafixa').value=c.taxaFixa||0;
   document.getElementById('cc-incluipagto').checked=!!c.incluiPagamento;
+  document.getElementById('cc-isroyalties').checked=!!c.isRoyalties;
   new bootstrap.Modal(document.getElementById('modalCanal')).show();
 }
 async function salvarCanal() {
   const nome=v('cc-nome').trim(); if(!nome) return alert('Nome é obrigatório');
   const idx=v('cc-idx');
-  const obj={nome,taxa:parseFloat(v('cc-taxa'))||0,taxaFixa:parseFloat(v('cc-taxafixa'))||0,incluiPagamento:document.getElementById('cc-incluipagto').checked};
+  const obj={nome,taxa:parseFloat(v('cc-taxa'))||0,taxaFixa:parseFloat(v('cc-taxafixa'))||0,incluiPagamento:document.getElementById('cc-incluipagto').checked,isRoyalties:document.getElementById('cc-isroyalties').checked};
   if(!dados.config.canais) dados.config.canais=[];
   if(idx==='') dados.config.canais.push(obj);
   else dados.config.canais[parseInt(idx)]=obj;
@@ -1735,6 +1773,7 @@ async function salvarCanal() {
   bootstrap.Modal.getInstance(document.getElementById('modalCanal')).hide();
   document.getElementById('cc-idx').value='';
   document.getElementById('cc-incluipagto').checked=false;
+  document.getElementById('cc-isroyalties').checked=false;
   limpaCampos(['cc-nome','cc-taxa','cc-taxafixa']);
 }
 function editarFormaPagto(i) {
