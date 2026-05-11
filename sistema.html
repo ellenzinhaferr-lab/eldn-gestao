@@ -7,6 +7,7 @@
 <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
 <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
@@ -154,6 +155,7 @@ table.gestao tbody tr:last-child td{border-bottom:none}
     <div class="nav-item"><button class="nav-link" onclick="showPage('estoque')"><i class="bi bi-archive-fill"></i> Estoque</button></div>
     <div class="nav-item"><button class="nav-link" onclick="showPage('canais')"><i class="bi bi-share-fill"></i> Canais</button></div>
     <div class="nav-item"><button class="nav-link" onclick="showPage('afiliados')"><i class="bi bi-person-check-fill"></i> Afiliados</button></div>
+    <div class="nav-item"><button class="nav-link" onclick="showPage('relatorios')"><i class="bi bi-file-earmark-bar-graph-fill"></i> Relatórios</button></div>
     <div class="nav-item" style="margin-top:8px;border-top:1px solid var(--cor-borda);padding-top:8px;">
       <button class="nav-link" onclick="showPage('usuarios')"><i class="bi bi-shield-lock-fill"></i> Usuários</button>
     </div>
@@ -283,6 +285,38 @@ table.gestao tbody tr:last-child td{border-bottom:none}
       <div class="table-card">
         <div class="table-header"><h6>Afiliados & Comissões</h6><button class="btn btn-primary btn-sm" onclick="abrirModal('afiliado')"><i class="bi bi-plus-lg"></i> Novo</button></div>
         <div class="table-responsive"><table class="gestao" id="tabela-afiliados"><thead><tr><th class="th-sort" data-col="cod" onclick="sortBy('afiliados','cod',renderAfiliados)">Cód.</th><th class="th-sort" data-col="nome" onclick="sortBy('afiliados','nome',renderAfiliados)">Nome</th><th>Produtos</th><th class="th-sort" data-col="canal" onclick="sortBy('afiliados','canal',renderAfiliados)">Canal</th><th class="th-sort" data-col="comissao" onclick="sortBy('afiliados','comissao',renderAfiliados)">Comissão %</th><th>Total (R$)</th><th class="th-sort" data-col="forma" onclick="sortBy('afiliados','forma',renderAfiliados)">Forma Pgto</th><th></th></tr></thead><tbody></tbody></table></div>
+      </div>
+    </div>
+
+    <!-- RELATÓRIOS -->
+    <div class="page" id="pg-relatorios">
+      <div class="chart-card mb-3">
+        <h6><i class="bi bi-funnel-fill me-2" style="color:var(--cor-secundaria)"></i>Filtros do Relatório</h6>
+        <div style="display:flex;gap:12px;flex-wrap:wrap;align-items:flex-end;margin-top:12px">
+          <div>
+            <label class="form-label">Tipo</label>
+            <select class="form-select" id="rel-tipo" style="width:210px" onchange="limparRelatorio()">
+              <option value="vendas">Vendas (Pedidos)</option>
+              <option value="compras">Compras</option>
+              <option value="despesas">Despesas / Lançamentos</option>
+            </select>
+          </div>
+          <div><label class="form-label">De</label><input type="date" class="form-control" id="rel-de" style="width:160px"></div>
+          <div><label class="form-label">Até</label><input type="date" class="form-control" id="rel-ate" style="width:160px"></div>
+          <div style="display:flex;gap:8px;padding-bottom:2px">
+            <button class="btn btn-primary" onclick="gerarRelatorio()"><i class="bi bi-play-fill me-1"></i>Gerar Relatório</button>
+            <button class="btn btn-success" id="btn-rel-excel" onclick="exportarRelatorioExcel()" style="display:none"><i class="bi bi-file-earmark-excel-fill me-1"></i>Excel</button>
+            <button class="btn" id="btn-rel-pdf" onclick="exportarRelatorioPDF()" style="display:none;background:rgba(239,68,68,.15);color:#EF4444;border:1px solid rgba(239,68,68,.3)"><i class="bi bi-file-earmark-pdf-fill me-1"></i>PDF</button>
+          </div>
+        </div>
+      </div>
+      <div class="kpi-grid mb-3" id="rel-kpis" style="display:none"></div>
+      <div class="table-card" id="rel-table-card" style="display:none">
+        <div class="table-header">
+          <h6 id="rel-table-titulo">Relatório</h6>
+          <span id="rel-periodo-label" style="font-size:12px;color:var(--cor-texto-suave)"></span>
+        </div>
+        <div class="table-responsive"><table class="gestao" id="tabela-relatorio"><thead id="rel-thead"></thead><tbody id="rel-tbody"></tbody></table></div>
       </div>
     </div>
 
@@ -468,6 +502,8 @@ table.gestao tbody tr:last-child td{border-bottom:none}
     <div class="col-md-6"><label class="form-label">Valor (R$) *</label><input class="form-control" id="f-valor" type="number" step="0.01"></div>
     <div class="col-md-6"><label class="form-label">Forma de Pagamento</label><select class="form-select" id="f-forma"><option>Pix</option><option>Cartão Crédito</option><option>Cartão Débito</option><option>Boleto</option><option>Dinheiro</option><option>Transferência</option></select></div>
     <div class="col-md-6"><label class="form-label">Parcela Nº</label><input class="form-control" id="f-parcela" type="number" min="1" value="1"></div>
+    <div class="col-md-6"><label class="form-label">Data de Vencimento</label><input class="form-control" id="f-vencimento" type="date"></div>
+    <div class="col-md-6"><label class="form-label">Situação</label><select class="form-select" id="f-situacao"><option value="Realizada">Realizada</option><option value="Prevista">Prevista</option></select></div>
     <div class="col-12"><label class="form-label">Observações</label><textarea class="form-control" id="f-obs" rows="2"></textarea></div>
   </div></div>
   <div class="modal-footer"><button class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancelar</button><button class="btn btn-primary" onclick="salvarFinanceiro()">Salvar</button></div>
@@ -806,7 +842,7 @@ function nextNumPedido() { if (!dados.pedidos.length) return 'PED-01'; const num
 // ============================================================
 // NAVEGAÇÃO
 // ============================================================
-const pageTitles = { dashboard:['Dashboard','Visão geral da operação'], clientes:['Clientes','Cadastro e gestão de clientes'], pedidos:['Pedidos','Pedidos diários — todos os canais'], financeiro:['Financeiro','Lançamentos de entradas e saídas'], fluxo:['Fluxo de Caixa','Resumo mensal automático'], compras:['Compras','Compras e fornecedores'], produtos:['Produtos','Cadastro de produtos e preços'], estoque:['Estoque','Controle automático de estoque'], canais:['Canais','Desempenho por canal de venda'], afiliados:['Afiliados','Gestão de afiliados e comissões'], usuarios:['Usuários','Gerenciar acessos ao sistema'], config:['Configurações','Taxas de canais e dados do sistema'] };
+const pageTitles = { dashboard:['Dashboard','Visão geral da operação'], clientes:['Clientes','Cadastro e gestão de clientes'], pedidos:['Pedidos','Pedidos diários — todos os canais'], financeiro:['Financeiro','Lançamentos de entradas e saídas'], fluxo:['Fluxo de Caixa','Resumo mensal automático'], compras:['Compras','Compras e fornecedores'], produtos:['Produtos','Cadastro de produtos e preços'], estoque:['Estoque','Controle automático de estoque'], canais:['Canais','Desempenho por canal de venda'], afiliados:['Afiliados','Gestão de afiliados e comissões'], usuarios:['Usuários','Gerenciar acessos ao sistema'], config:['Configurações','Taxas de canais e dados do sistema'], relatorios:['Relatórios','Geração de relatórios por período'] };
 
 function showPage(id) {
   currentPage = id;
@@ -820,7 +856,7 @@ function showPage(id) {
   renderPage(id);
 }
 
-function renderPage(id) { const fn={dashboard:renderDashboard,clientes:renderClientes,pedidos:renderPedidos,financeiro:renderFinanceiro,fluxo:renderFluxo,compras:renderCompras,produtos:renderProdutos,estoque:renderEstoque,canais:renderCanais,afiliados:renderAfiliados,usuarios:renderUsuarios,config:renderConfig}; if(fn[id]) fn[id](); }
+function renderPage(id) { const fn={dashboard:renderDashboard,clientes:renderClientes,pedidos:renderPedidos,financeiro:renderFinanceiro,fluxo:renderFluxo,compras:renderCompras,produtos:renderProdutos,estoque:renderEstoque,canais:renderCanais,afiliados:renderAfiliados,usuarios:renderUsuarios,config:renderConfig,relatorios:renderRelatorios}; if(fn[id]) fn[id](); }
 
 // ============================================================
 // DASHBOARD
@@ -1373,18 +1409,20 @@ function editarFinanceiro(i) {
   document.getElementById('f-valor').value=f.valor;
   document.getElementById('f-forma').value=f.forma;
   document.getElementById('f-parcela').value=f.parcela;
+  document.getElementById('f-vencimento').value=f.vencimento||'';
+  document.getElementById('f-situacao').value=f.situacao||'Realizada';
   document.getElementById('f-obs').value=f.obs||'';
   new bootstrap.Modal(document.getElementById('modalFinanceiro')).show();
 }
 async function salvarFinanceiro() {
   if(!v('f-data')||!v('f-desc')||!v('f-valor')) return alert('Preencha os campos obrigatórios');
   const idx=v('f-idx');
-  const obj={data:v('f-data'),tipo:v('f-tipo'),desc:v('f-desc'),categoria:v('f-categoria'),valor:parseFloat(v('f-valor'))||0,forma:v('f-forma'),parcela:parseInt(v('f-parcela'))||1,obs:v('f-obs')};
+  const obj={data:v('f-data'),tipo:v('f-tipo'),desc:v('f-desc'),categoria:v('f-categoria'),valor:parseFloat(v('f-valor'))||0,forma:v('f-forma'),parcela:parseInt(v('f-parcela'))||1,vencimento:v('f-vencimento')||'',situacao:v('f-situacao')||'Realizada',obs:v('f-obs')};
   if(idx==='') await db.collection('financeiro').add(obj);
   else await db.collection('financeiro').doc(dados.financeiro[parseInt(idx)]._docId).set(obj);
   bootstrap.Modal.getInstance(document.getElementById('modalFinanceiro')).hide();
   document.getElementById('f-idx').value='';
-  limpaCampos(['f-data','f-desc','f-valor','f-obs']);
+  limpaCampos(['f-data','f-desc','f-valor','f-vencimento','f-obs']);
 }
 
 // ============================================================
@@ -1795,6 +1833,199 @@ async function salvarFormaPagto() {
   bootstrap.Modal.getInstance(document.getElementById('modalFormaPagto')).hide();
   document.getElementById('fp-idx').value='';
   limpaCampos(['fp-nome','fp-taxa','fp-taxafixa']);
+}
+
+// ============================================================
+// RELATÓRIOS
+// ============================================================
+let _dadosRelatorio = [];
+let _tipoRelatorio = '';
+
+function renderRelatorios() {
+  const hoje = new Date().toISOString().split('T')[0];
+  const inicioMes = hoje.slice(0,7)+'-01';
+  const de = document.getElementById('rel-de');
+  const ate = document.getElementById('rel-ate');
+  if(!de.value) de.value = inicioMes;
+  if(!ate.value) ate.value = hoje;
+}
+
+function limparRelatorio() {
+  _dadosRelatorio = [];
+  document.getElementById('rel-kpis').style.display='none';
+  document.getElementById('rel-table-card').style.display='none';
+  document.getElementById('btn-rel-excel').style.display='none';
+  document.getElementById('btn-rel-pdf').style.display='none';
+}
+
+function gerarRelatorio() {
+  const tipo = document.getElementById('rel-tipo').value;
+  const de = document.getElementById('rel-de').value;
+  const ate = document.getElementById('rel-ate').value;
+  if(!de||!ate) return alert('Selecione o período');
+  _tipoRelatorio = tipo;
+  if(tipo==='vendas') _gerarRelVendas(de,ate);
+  else if(tipo==='compras') _gerarRelCompras(de,ate);
+  else _gerarRelDespesas(de,ate);
+}
+
+function _kpiCardRel(label,value,sub,cor) {
+  return `<div class="kpi-card"><div class="kpi-label">${label}</div><div class="kpi-value" style="color:${cor}">${value}</div><div class="kpi-sub">${sub}</div></div>`;
+}
+function _mostrarResultado(titulo, de, ate) {
+  document.getElementById('rel-kpis').style.display='grid';
+  document.getElementById('rel-table-titulo').textContent=titulo;
+  document.getElementById('rel-periodo-label').textContent=`Período: ${fmtData(de)} a ${fmtData(ate)} — ${_dadosRelatorio.length} registro(s)`;
+  document.getElementById('rel-table-card').style.display='block';
+  document.getElementById('btn-rel-excel').style.display='';
+  document.getElementById('btn-rel-pdf').style.display='';
+}
+
+function _gerarRelVendas(de, ate) {
+  const lista = dados.pedidos.filter(p=>p.data>=de&&p.data<=ate).sort((a,b)=>a.data.localeCompare(b.data));
+  _dadosRelatorio = lista;
+  const totalBruto = lista.reduce((s,p)=>s+getPedidoTotal(p),0);
+  const totalFrete = lista.reduce((s,p)=>s+(p.frete||0),0);
+  const totalLiq = lista.reduce((s,p)=>s+(p.liquido!=null?p.liquido:getPedidoTotal(p)),0);
+  document.getElementById('rel-kpis').innerHTML =
+    _kpiCardRel('Total de Pedidos',lista.length,'no período','#A78BFA')+
+    _kpiCardRel('Receita Bruta',moeda(totalBruto),'valor total vendido','#10B981')+
+    _kpiCardRel('Frete',moeda(totalFrete),'cobrado dos clientes','#3B82F6')+
+    _kpiCardRel('Despesas/Taxas',moeda(totalBruto-totalLiq),'canal + pagamento','#EF4444')+
+    _kpiCardRel('Receita Líquida',moeda(totalLiq),'após todas as taxas','#F59E0B');
+  document.getElementById('rel-thead').innerHTML=`<tr><th>Nº Pedido</th><th>Cód.</th><th>Nome do Cliente</th><th>Data da Venda</th><th>Produto(s)</th><th>Canal</th><th>Qtd</th><th>Valor Bruto</th><th>Frete</th><th>Despesas</th><th>Valor Líquido</th><th>Status</th></tr>`;
+  document.getElementById('rel-tbody').innerHTML = lista.length ? lista.map(p=>{
+    const cli=dados.clientes.find(x=>x.id===p.clienteId);
+    const bruto=getPedidoTotal(p);
+    const liq=p.liquido!=null?p.liquido:bruto;
+    const desp=bruto-liq;
+    const qtd=getPedidoItens(p).reduce((s,i)=>s+i.qtd,0);
+    return `<tr><td style="font-weight:600;color:#fff">${p.num}</td><td style="color:var(--cor-texto-suave)">${cli?cli.id:'—'}</td><td>${cli?cli.nome:'—'}</td><td>${fmtData(p.data)}</td><td style="max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${getPedidoDesc(p)}</td><td>${badgeCanal(p.canal)}</td><td style="text-align:center">${qtd}</td><td style="color:var(--cor-verde);font-weight:600">${moeda(bruto)}</td><td>${moeda(p.frete||0)}</td><td style="color:#EF4444">${moeda(desp)}</td><td style="color:var(--cor-acento);font-weight:700">${moeda(liq)}</td><td>${badgeStatus(p.status)}</td></tr>`;
+  }).join('') : '<tr><td colspan="12"><div class="empty-state"><i class="bi bi-inbox"></i>Nenhum pedido no período</div></td></tr>';
+  _mostrarResultado('Relatório de Vendas',de,ate);
+}
+
+function _gerarRelCompras(de, ate) {
+  const lista = dados.compras.filter(c=>c.data>=de&&c.data<=ate).sort((a,b)=>a.data.localeCompare(b.data));
+  _dadosRelatorio = lista;
+  const totalGeral = lista.reduce((s,c)=>s+(c.qtd*c.custo)+(c.frete||0)+(c.imposto||0),0);
+  const totalFrete = lista.reduce((s,c)=>s+(c.frete||0),0);
+  const totalImposto = lista.reduce((s,c)=>s+(c.imposto||0),0);
+  const totalItens = lista.reduce((s,c)=>s+c.qtd,0);
+  document.getElementById('rel-kpis').innerHTML =
+    _kpiCardRel('Total de Compras',lista.length,'registros no período','#A78BFA')+
+    _kpiCardRel('Itens Comprados',totalItens,'unidades totais','#3B82F6')+
+    _kpiCardRel('Frete Pago',moeda(totalFrete),'custo de envio','#F59E0B')+
+    _kpiCardRel('Impostos',moeda(totalImposto),'tributação','#EF4444')+
+    _kpiCardRel('Total Geral',moeda(totalGeral),'custo total do período','#10B981');
+  document.getElementById('rel-thead').innerHTML=`<tr><th>Data</th><th>Nº NF</th><th>Fornecedor</th><th>Item Comprado</th><th>Categoria</th><th>SKU</th><th>Qtd</th><th>Custo Unit.</th><th>Frete</th><th>Imposto</th><th>Total</th></tr>`;
+  document.getElementById('rel-tbody').innerHTML = lista.length ? lista.map(c=>{
+    const total=(c.qtd*c.custo)+(c.frete||0)+(c.imposto||0);
+    return `<tr><td>${fmtData(c.data)}</td><td style="color:var(--cor-texto-suave)">${c.nf||'—'}</td><td style="font-weight:600;color:#fff">${c.fornecedor}</td><td>${c.item}</td><td><span class="badge-canal badge-livro">${c.categoria}</span></td><td style="font-family:monospace;color:var(--cor-secundaria)">${c.sku||'—'}</td><td style="text-align:center">${c.qtd}</td><td>${moeda(c.custo)}</td><td>${moeda(c.frete||0)}</td><td>${moeda(c.imposto||0)}</td><td style="color:var(--cor-acento);font-weight:700">${moeda(total)}</td></tr>`;
+  }).join('') : '<tr><td colspan="11"><div class="empty-state"><i class="bi bi-cart"></i>Nenhuma compra no período</div></td></tr>';
+  _mostrarResultado('Relatório de Compras',de,ate);
+}
+
+function _gerarRelDespesas(de, ate) {
+  const lista = dados.financeiro.filter(f=>f.data>=de&&f.data<=ate).sort((a,b)=>a.data.localeCompare(b.data));
+  _dadosRelatorio = lista;
+  const totalEnt = lista.filter(f=>f.tipo==='Entrada').reduce((s,f)=>s+f.valor,0);
+  const totalSai = lista.filter(f=>f.tipo==='Saída').reduce((s,f)=>s+f.valor,0);
+  const totalPrev = lista.filter(f=>f.situacao==='Prevista').reduce((s,f)=>s+f.valor,0);
+  const resultado = totalEnt-totalSai;
+  document.getElementById('rel-kpis').innerHTML =
+    _kpiCardRel('Lançamentos',lista.length,'no período','#A78BFA')+
+    _kpiCardRel('Total Entradas',moeda(totalEnt),'receitas registradas','#10B981')+
+    _kpiCardRel('Total Saídas',moeda(totalSai),'despesas registradas','#EF4444')+
+    _kpiCardRel('Previstas',moeda(totalPrev),'a realizar','#F59E0B')+
+    _kpiCardRel('Resultado',moeda(resultado),'entradas − saídas',resultado>=0?'#10B981':'#EF4444');
+  document.getElementById('rel-thead').innerHTML=`<tr><th>Data Emissão</th><th>Vencimento</th><th>Situação</th><th>Tipo</th><th>Descrição</th><th>Categoria</th><th>Valor</th><th>Forma Pgto</th><th>Observações</th></tr>`;
+  document.getElementById('rel-tbody').innerHTML = lista.length ? lista.map(f=>{
+    const situCor=f.situacao==='Prevista'?'#F59E0B':'#10B981';
+    return `<tr><td>${fmtData(f.data)}</td><td>${f.vencimento?fmtData(f.vencimento):'—'}</td><td><span style="color:${situCor};font-size:11px;font-weight:600">${f.situacao||'Realizada'}</span></td><td>${badgeTipo(f.tipo)}</td><td style="font-weight:600;color:#fff">${f.desc}</td><td style="color:var(--cor-texto-suave)">${f.categoria}</td><td style="font-weight:700;color:${f.tipo==='Entrada'?'#10B981':'#EF4444'}">${moeda(f.valor)}</td><td>${f.forma||'—'}</td><td style="font-size:12px;color:var(--cor-texto-suave);max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${f.obs||'—'}</td></tr>`;
+  }).join('') : '<tr><td colspan="9"><div class="empty-state"><i class="bi bi-cash-stack"></i>Nenhum lançamento no período</div></td></tr>';
+  _mostrarResultado('Relatório de Despesas / Lançamentos',de,ate);
+}
+
+function exportarRelatorioExcel() {
+  if(!_dadosRelatorio.length) return alert('Gere o relatório primeiro');
+  const tipo=_tipoRelatorio;
+  const de=document.getElementById('rel-de').value;
+  const ate=document.getElementById('rel-ate').value;
+  let wsData=[], nome='';
+  if(tipo==='vendas') {
+    wsData.push(['Nº Pedido','Cód. Cliente','Nome do Cliente','Data da Venda','Produto(s)','Canal','Qtd','Valor Bruto (R$)','Frete (R$)','Despesas/Taxas (R$)','Valor Líquido (R$)','Status']);
+    _dadosRelatorio.forEach(p=>{
+      const cli=dados.clientes.find(x=>x.id===p.clienteId);
+      const bruto=getPedidoTotal(p);
+      const liq=p.liquido!=null?p.liquido:bruto;
+      const qtd=getPedidoItens(p).reduce((s,i)=>s+i.qtd,0);
+      wsData.push([p.num,cli?cli.id:'',cli?cli.nome:'',p.data,getPedidoDesc(p),p.canal,qtd,bruto,p.frete||0,bruto-liq,liq,p.status]);
+    });
+    nome='Relatorio_Vendas_'+de+'_a_'+ate;
+  } else if(tipo==='compras') {
+    wsData.push(['Data','Nº NF','Fornecedor','Item Comprado','Categoria','SKU','Qtd','Custo Unit. (R$)','Frete (R$)','Imposto (R$)','Total (R$)']);
+    _dadosRelatorio.forEach(c=>{
+      wsData.push([c.data,c.nf||'',c.fornecedor,c.item,c.categoria,c.sku||'',c.qtd,c.custo,c.frete||0,c.imposto||0,(c.qtd*c.custo)+(c.frete||0)+(c.imposto||0)]);
+    });
+    nome='Relatorio_Compras_'+de+'_a_'+ate;
+  } else {
+    wsData.push(['Data Emissão','Data Vencimento','Situação','Tipo','Descrição','Categoria','Valor (R$)','Forma Pgto','Observações']);
+    _dadosRelatorio.forEach(f=>{
+      wsData.push([f.data,f.vencimento||'',f.situacao||'Realizada',f.tipo,f.desc,f.categoria,f.valor,f.forma||'',f.obs||'']);
+    });
+    nome='Relatorio_Despesas_'+de+'_a_'+ate;
+  }
+  const wb=XLSX.utils.book_new();
+  const ws=XLSX.utils.aoa_to_sheet(wsData);
+  XLSX.utils.book_append_sheet(wb,ws,'Relatório');
+  XLSX.writeFile(wb,nome+'.xlsx');
+}
+
+function exportarRelatorioPDF() {
+  if(!_dadosRelatorio.length) return alert('Gere o relatório primeiro');
+  const tipo=_tipoRelatorio;
+  const de=document.getElementById('rel-de').value;
+  const ate=document.getElementById('rel-ate').value;
+  const titulosMap={vendas:'Relatório de Vendas',compras:'Relatório de Compras',despesas:'Relatório de Despesas / Lançamentos'};
+  const titulo=titulosMap[tipo]||'Relatório';
+  let thead='', tbody='';
+  const _r=(v)=>v!=null?v:'—';
+  const _m=(v)=>{if(!v&&v!==0)return'—';return'R$ '+Number(v).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2});};
+  if(tipo==='vendas') {
+    thead=`<tr><th>Nº Pedido</th><th>Cód.</th><th>Cliente</th><th>Data</th><th>Produto(s)</th><th>Canal</th><th>Qtd</th><th>Bruto</th><th>Frete</th><th>Despesas</th><th>Líquido</th><th>Status</th></tr>`;
+    tbody=_dadosRelatorio.map(p=>{
+      const cli=dados.clientes.find(x=>x.id===p.clienteId);
+      const bruto=getPedidoTotal(p);
+      const liq=p.liquido!=null?p.liquido:bruto;
+      const qtd=getPedidoItens(p).reduce((s,i)=>s+i.qtd,0);
+      return `<tr><td><b>${p.num}</b></td><td>${cli?cli.id:''}</td><td>${cli?cli.nome:''}</td><td>${fmtData(p.data)}</td><td>${getPedidoDesc(p)}</td><td>${p.canal}</td><td style="text-align:center">${qtd}</td><td class="verde">${_m(bruto)}</td><td>${_m(p.frete||0)}</td><td class="vermelho">${_m(bruto-liq)}</td><td class="laranja"><b>${_m(liq)}</b></td><td>${p.status}</td></tr>`;
+    }).join('');
+  } else if(tipo==='compras') {
+    thead=`<tr><th>Data</th><th>Nº NF</th><th>Fornecedor</th><th>Item</th><th>Categoria</th><th>SKU</th><th>Qtd</th><th>Custo Unit.</th><th>Frete</th><th>Imposto</th><th>Total</th></tr>`;
+    tbody=_dadosRelatorio.map(c=>{
+      const total=(c.qtd*c.custo)+(c.frete||0)+(c.imposto||0);
+      return `<tr><td>${fmtData(c.data)}</td><td>${_r(c.nf)}</td><td><b>${c.fornecedor}</b></td><td>${c.item}</td><td>${c.categoria}</td><td style="font-family:monospace">${c.sku||'—'}</td><td style="text-align:center">${c.qtd}</td><td>${_m(c.custo)}</td><td>${_m(c.frete||0)}</td><td>${_m(c.imposto||0)}</td><td class="laranja"><b>${_m(total)}</b></td></tr>`;
+    }).join('');
+  } else {
+    thead=`<tr><th>Data Emissão</th><th>Vencimento</th><th>Situação</th><th>Tipo</th><th>Descrição</th><th>Categoria</th><th>Valor</th><th>Forma Pgto</th><th>Obs</th></tr>`;
+    tbody=_dadosRelatorio.map(f=>{
+      return `<tr><td>${fmtData(f.data)}</td><td>${f.vencimento?fmtData(f.vencimento):'—'}</td><td class="${f.situacao==='Prevista'?'laranja':'verde'}">${f.situacao||'Realizada'}</td><td class="${f.tipo==='Entrada'?'verde':'vermelho'}">${f.tipo}</td><td><b>${f.desc}</b></td><td>${f.categoria}</td><td class="${f.tipo==='Entrada'?'verde':'vermelho'}"><b>${_m(f.valor)}</b></td><td>${f.forma||'—'}</td><td style="font-size:10px">${f.obs||'—'}</td></tr>`;
+    }).join('');
+  }
+  const geradoEm=new Date().toLocaleDateString('pt-BR',{day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit'});
+  const html=`<!DOCTYPE html><html lang="pt-BR"><head><meta charset="UTF-8"><title>${titulo}</title>
+<style>body{font-family:'Segoe UI',Arial,sans-serif;font-size:12px;color:#1E1B4B;margin:24px}h2{color:#7C3AED;font-size:18px;margin-bottom:4px}.periodo{font-size:12px;color:#6B7280;margin-bottom:16px}table{width:100%;border-collapse:collapse;font-size:11px}th{background:#7C3AED;color:#fff;padding:8px 10px;text-align:left;font-size:10px;text-transform:uppercase;letter-spacing:.8px;white-space:nowrap}td{padding:7px 10px;border-bottom:1px solid #EDE9FE;vertical-align:middle}tr:nth-child(even) td{background:#F9F7FF}.verde{color:#047857}.vermelho{color:#B91C1C}.laranja{color:#B45309}.footer{margin-top:20px;font-size:10px;color:#9CA3AF;text-align:right}.acao{display:flex;gap:8px;margin-bottom:16px}button{padding:8px 16px;border:none;border-radius:6px;cursor:pointer;font-size:13px}@media print{.acao{display:none}}</style>
+</head><body>
+<div class="acao"><button onclick="window.print()" style="background:#7C3AED;color:#fff">Imprimir / Salvar PDF</button><button onclick="window.close()" style="background:#EDE9FE;color:#7C3AED">Fechar</button></div>
+<h2>${titulo}</h2>
+<div class="periodo">Período: ${fmtData(de)} a ${fmtData(ate)} &nbsp;|&nbsp; Gerado em: ${geradoEm} &nbsp;|&nbsp; ${_dadosRelatorio.length} registro(s)</div>
+<table><thead>${thead}</thead><tbody>${tbody}</tbody></table>
+<div class="footer">ELDN Digital — Sistema de Gestão · ${titulo}</div>
+</body></html>`;
+  const w=window.open('','_blank');
+  w.document.write(html);
+  w.document.close();
 }
 
 // ============================================================
