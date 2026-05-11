@@ -1048,14 +1048,14 @@ function getPedidoDesc(p) {
 // ORDENAÇÃO UNIVERSAL
 // ============================================================
 const sortState={
-  clientes:{col:'id',dir:'asc'},
+  clientes:{col:'id',dir:'desc'},
   pedidos:{col:'data',dir:'desc'},
   financeiro:{col:'data',dir:'desc'},
   compras:{col:'data',dir:'desc'},
   produtos:{col:'nome',dir:'asc'},
   estoque:{col:'nome',dir:'asc'},
   estoqueMovimentos:{col:'data',dir:'desc'},
-  canais:{col:'total',dir:'desc'},
+  canais:{col:'nome',dir:'asc'},
   afiliados:{col:'nome',dir:'asc'}
 };
 function sortBy(tabela,col,renderFn){
