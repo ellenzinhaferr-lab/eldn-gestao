@@ -230,7 +230,7 @@ body.modo-claro .dp-btn:hover,body.modo-claro .dp-btn.ativo{background:rgba(124,
     <!-- CLIENTES -->
     <div class="page" id="pg-clientes">
       <div class="table-card">
-        <div class="table-header"><h6>Cadastro de Clientes</h6><div style="display:flex;gap:8px;align-items:center;"><input type="text" class="input-search" placeholder="Buscar cliente..." oninput="filtrarTabela('tabela-clientes',this.value)"><button class="btn btn-primary btn-sm" onclick="abrirModal('cliente')"><i class="bi bi-plus-lg"></i> Novo</button></div></div>
+        <div class="table-header"><h6>Cadastro de Clientes</h6><div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap"><input type="text" class="input-search" placeholder="Buscar cliente..." oninput="filtrarTabela('tabela-clientes',this.value)"><button class="btn btn-success btn-sm" onclick="exportarClientes('excel')" title="Exportar lista completa para Excel"><i class="bi bi-file-earmark-excel-fill me-1"></i>Excel</button><button class="btn btn-sm" style="background:rgba(0,100,255,.12);color:#4F8EF7;border:1px solid rgba(0,100,255,.25)" onclick="exportarClientes('meta')" title="Exportar leads formatados para Meta Ads (CSV)"><i class="bi bi-file-earmark-person-fill me-1"></i>Meta Ads</button><button class="btn btn-primary btn-sm" onclick="abrirModal('cliente')"><i class="bi bi-plus-lg"></i> Novo</button></div></div>
         <div class="table-responsive"><table class="gestao" id="tabela-clientes"><thead><tr><th class="th-sort" data-col="id" onclick="sortBy('clientes','id',renderClientes)">#</th><th class="th-sort" data-col="nome" onclick="sortBy('clientes','nome',renderClientes)">Nome</th><th>E-mail</th><th>WhatsApp</th><th>Instagram</th><th class="th-sort" data-col="canal" onclick="sortBy('clientes','canal',renderClientes)">Canal</th><th class="th-sort" data-col="cidade" onclick="sortBy('clientes','cidade',renderClientes)">Cidade</th><th class="th-sort" data-col="pedidos" onclick="sortBy('clientes','pedidos',renderClientes)">Pedidos</th><th></th></tr></thead><tbody></tbody></table></div>
       </div>
     </div>
@@ -2156,6 +2156,59 @@ async function deletar(colecao, idx) {
 // ============================================================
 // EXPORT
 // ============================================================
+function exportarClientes(formato) {
+  const lista = dados.clientes;
+  if(!lista.length) return alert('Nenhum cliente cadastrado');
+
+  if(formato === 'excel') {
+    const wsData = [['ID','Nome','E-mail','WhatsApp','CPF','Instagram','Canal','CEP','Logradouro','Número','Complemento','Bairro','Cidade','UF','Observações']];
+    lista.forEach(c => {
+      wsData.push([c.id,c.nome,c.email||'',c.whatsapp||'',c.cpf||'',c.instagram||'',c.canal||'',c.cep||'',c.logradouro||'',c.numero||'',c.complemento||'',c.bairro||'',c.cidade||'',c.estado||'',c.obs||'']);
+    });
+    const wb = XLSX.utils.book_new();
+    const ws = XLSX.utils.aoa_to_sheet(wsData);
+    // Largura das colunas
+    ws['!cols'] = [{wch:6},{wch:30},{wch:30},{wch:18},{wch:16},{wch:20},{wch:14},{wch:10},{wch:30},{wch:8},{wch:16},{wch:18},{wch:18},{wch:5},{wch:30}];
+    XLSX.utils.book_append_sheet(wb, ws, 'Clientes');
+    XLSX.writeFile(wb, `Clientes_ELDN_${new Date().toISOString().slice(0,10)}.xlsx`);
+
+  } else if(formato === 'meta') {
+    // Formato Meta Ads Custom Audience
+    // https://www.facebook.com/business/help/2082575038703844
+    const rows = [['fn','ln','email','phone','city','state','zip','country']];
+    const _norm = s => (s||'').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,'').trim();
+    lista.forEach(c => {
+      const partes = (c.nome||'').trim().split(/\s+/);
+      const fn = _norm(partes[0]);
+      const ln = _norm(partes.slice(1).join(' '));
+      const email = (c.email||'').toLowerCase().trim();
+      let phone = (c.whatsapp||'').replace(/\D/g,'');
+      if(phone.length >= 10) {
+        if(!phone.startsWith('55')) phone = '55' + phone;
+        phone = '+' + phone;
+      } else { phone = ''; }
+      const city = _norm(c.cidade);
+      const state = (c.estado||'').toLowerCase().trim();
+      const zip = (c.cep||'').replace(/\D/g,'');
+      rows.push([fn, ln, email, phone, city, state, zip, 'br']);
+    });
+    const csv = rows.map(r => r.map(cel => `"${String(cel).replace(/"/g,'""')}"`).join(',')).join('\r\n');
+    const blob = new Blob(['﻿'+csv], {type:'text/csv;charset=utf-8;'});
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `Leads_MetaAds_${new Date().toISOString().slice(0,10)}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+    setTimeout(()=>{
+      const total = lista.length;
+      const comEmail = lista.filter(c=>c.email).length;
+      const comPhone = lista.filter(c=>(c.whatsapp||'').replace(/\D/g,'').length>=10).length;
+      alert(`✅ CSV exportado com ${total} cliente(s).\n\n📧 Com e-mail: ${comEmail}\n📱 Com telefone: ${comPhone}\n\nDica: importe no Meta Ads em Públicos → Criar público → Lista de clientes.`);
+    }, 500);
+  }
+}
+
 function exportarDados() {
   const exp={};
   ['clientes','pedidos','financeiro','compras','estoqueMovimentos','produtos','afiliados'].forEach(k=>{ exp[k]=dados[k].map(({_docId,...rest})=>rest); });
