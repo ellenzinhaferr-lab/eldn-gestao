@@ -109,6 +109,10 @@ table.gestao tbody tr:last-child td{border-bottom:none}
 .th-sort::after{content:' ⇅';opacity:.35;font-size:10px}
 .th-sort.asc::after{content:' ▲';opacity:1;color:var(--cor-secundaria)}
 .th-sort.desc::after{content:' ▼';opacity:1;color:var(--cor-secundaria)}
+.dp-btn{background:rgba(124,58,237,.1);border:1px solid var(--cor-borda);color:var(--cor-texto-suave);border-radius:8px;font-size:12px;padding:4px 12px;cursor:pointer;transition:all .15s;white-space:nowrap}
+.dp-btn:hover,.dp-btn.ativo{background:rgba(124,58,237,.3);color:#fff;border-color:var(--cor-primaria)}
+body.modo-claro .dp-btn{background:rgba(124,58,237,.06);color:var(--cor-texto-suave)}
+body.modo-claro .dp-btn:hover,body.modo-claro .dp-btn.ativo{background:rgba(124,58,237,.2);color:var(--cor-primaria);border-color:var(--cor-primaria)}
 </style>
 </head>
 <body>
@@ -186,15 +190,31 @@ table.gestao tbody tr:last-child td{border-bottom:none}
 
     <!-- DASHBOARD -->
     <div class="page active" id="pg-dashboard">
+      <!-- Barra de filtro de período -->
+      <div style="background:var(--cor-card);border:1px solid var(--cor-borda);border-radius:14px;padding:14px 20px;margin-bottom:20px;display:flex;align-items:center;gap:12px;flex-wrap:wrap">
+        <span style="font-size:12px;color:var(--cor-texto-suave);white-space:nowrap;font-weight:600"><i class="bi bi-funnel me-1"></i>Período:</span>
+        <div style="display:flex;gap:6px;flex-wrap:wrap">
+          <button class="dp-btn" id="dp-mes" onclick="aplicarPeriodoDash('mes')">Este Mês</button>
+          <button class="dp-btn" id="dp-mesant" onclick="aplicarPeriodoDash('mesant')">Mês Ant.</button>
+          <button class="dp-btn" id="dp-ano" onclick="aplicarPeriodoDash('ano')">Este Ano</button>
+          <button class="dp-btn" id="dp-tudo" onclick="aplicarPeriodoDash('tudo')">Tudo</button>
+        </div>
+        <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+          <input type="date" class="form-control form-control-sm" id="dash-de" style="width:148px" onchange="aplicarPeriodoDash('custom')">
+          <span style="color:var(--cor-texto-suave);font-size:12px">até</span>
+          <input type="date" class="form-control form-control-sm" id="dash-ate" style="width:148px" onchange="aplicarPeriodoDash('custom')">
+        </div>
+        <span id="dash-periodo-label" style="font-size:12px;color:var(--cor-secundaria);font-weight:600"></span>
+      </div>
       <div class="kpi-grid" id="kpi-container"></div>
       <div class="row g-3 mb-3">
-        <div class="col-lg-8"><div class="chart-card"><h6><i class="bi bi-bar-chart-fill me-2" style="color:var(--cor-secundaria)"></i>Receita Mensal (R$)</h6><canvas id="chartReceita" height="80"></canvas></div></div>
-        <div class="col-lg-4"><div class="chart-card"><h6><i class="bi bi-pie-chart-fill me-2" style="color:var(--cor-acento)"></i>Vendas por Canal</h6><canvas id="chartCanais" height="180"></canvas></div></div>
+        <div class="col-lg-6"><div class="chart-card"><h6 id="dash-titulo-mensal"><i class="bi bi-bar-chart-fill me-2" style="color:var(--cor-secundaria)"></i>Receita por Mês (R$)</h6><canvas id="chartReceita" height="110"></canvas></div></div>
+        <div class="col-lg-6"><div class="chart-card"><h6><i class="bi bi-bar-chart-steps me-2" style="color:var(--cor-acento)"></i>Vendas por Canal (R$)</h6><canvas id="chartCanais" height="110"></canvas></div></div>
       </div>
       <div class="row g-3">
         <div class="col-lg-6">
           <div class="table-card">
-            <div class="table-header"><h6><i class="bi bi-clock-history me-2" style="color:var(--cor-secundaria)"></i>Últimos Pedidos</h6></div>
+            <div class="table-header"><h6 id="dash-titulo-pedidos"><i class="bi bi-clock-history me-2" style="color:var(--cor-secundaria)"></i>Pedidos no Período</h6></div>
             <div class="table-responsive"><table class="gestao" id="tabela-ultimos-pedidos"><thead><tr><th>Pedido</th><th>Cliente</th><th>Produto</th><th>Valor</th><th>Canal</th></tr></thead><tbody></tbody></table></div>
           </div>
         </div>
@@ -701,6 +721,7 @@ let dados = { config:{canais:[]}, clientes:[], pedidos:[], financeiro:[], compra
 let currentPage = 'dashboard';
 let appReady = false;
 const unsubscribers = [];
+let dashFiltro = {de:'', ate:'', modo:'mes'};
 
 // ============================================================
 // AUTH
@@ -883,43 +904,130 @@ function parseMes(data) {
   const q=data.split('-'); if(q.length===3) return parseInt(q[1])-1;
   return -1;
 }
+
+function _initDashFiltro() {
+  const hoje = new Date();
+  const y = hoje.getFullYear();
+  const m = String(hoje.getMonth()+1).padStart(2,'0');
+  dashFiltro.de = `${y}-${m}-01`;
+  dashFiltro.ate = hoje.toISOString().split('T')[0];
+  dashFiltro.modo = 'mes';
+}
+
+function aplicarPeriodoDash(modo) {
+  const hoje = new Date();
+  const y = hoje.getFullYear();
+  const m = String(hoje.getMonth()+1).padStart(2,'0');
+  if(modo==='mes') {
+    dashFiltro.de=`${y}-${m}-01`;
+    dashFiltro.ate=hoje.toISOString().split('T')[0];
+  } else if(modo==='mesant') {
+    const d=new Date(y,hoje.getMonth()-1,1);
+    const ya=d.getFullYear(), ma=String(d.getMonth()+1).padStart(2,'0');
+    const ult=new Date(y,hoje.getMonth(),0).getDate();
+    dashFiltro.de=`${ya}-${ma}-01`;
+    dashFiltro.ate=`${ya}-${ma}-${String(ult).padStart(2,'0')}`;
+  } else if(modo==='ano') {
+    dashFiltro.de=`${y}-01-01`;
+    dashFiltro.ate=hoje.toISOString().split('T')[0];
+  } else if(modo==='tudo') {
+    dashFiltro.de='2000-01-01';
+    dashFiltro.ate=hoje.toISOString().split('T')[0];
+  } else if(modo==='custom') {
+    const vDe=document.getElementById('dash-de').value;
+    const vAte=document.getElementById('dash-ate').value;
+    if(vDe) dashFiltro.de=vDe;
+    if(vAte) dashFiltro.ate=vAte;
+  }
+  dashFiltro.modo=modo;
+  renderDashboard();
+}
+
 function renderDashboard() {
-  const k = calcKPIs();
-  const saldo = k.saldoInicial + k.totalEntradas - k.totalSaidas;
-  const card = c=>`<div class="kpi-card"><div class="kpi-label">${c.label} <span style="float:right;font-size:20px">${c.icon}</span></div><div class="kpi-value" style="color:${c.cor}">${c.value}</div><div class="kpi-sub">${c.sub}</div></div>`;
-  const sec = (t,cs)=>`<div style="grid-column:1/-1;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:1.5px;color:var(--cor-secundaria);padding:6px 0 10px;border-bottom:1px solid var(--cor-borda);margin-top:8px">${t}</div>${cs.map(card).join('')}`;
-  document.getElementById('kpi-container').innerHTML =
-    sec('📦 Visão de Vendas — Pedidos',[
-      {label:'Receita Bruta',value:moeda(k.totalVendas),sub:`${k.totalPedidos} pedidos (excl. cancelados)`,cor:'#10B981',icon:'💰'},
-      {label:'Receita Líquida',value:moeda(k.receitaLiquida),sub:'após taxas de canal e pagamento',cor:'#F59E0B',icon:'💵'},
-      {label:'Ticket Médio',value:moeda(k.ticketMedio),sub:'por pedido',cor:'#A78BFA',icon:'🎯'},
-      {label:'Clientes',value:k.totalClientes,sub:'cadastrados',cor:'#3B82F6',icon:'👥'},
-      {label:'Pedidos',value:k.totalPedidos,sub:'total de pedidos',cor:'#EC4899',icon:'📋'},
+  if(!dashFiltro.de) _initDashFiltro();
+
+  const de=dashFiltro.de, ate=dashFiltro.ate;
+  document.getElementById('dash-de').value=de;
+  document.getElementById('dash-ate').value=ate;
+
+  // Botão ativo
+  ['mes','mesant','ano','tudo'].forEach(m=>{
+    const b=document.getElementById('dp-'+m);
+    if(b) b.classList.toggle('ativo',m===dashFiltro.modo);
+  });
+  const labelModos={mes:'Este Mês',mesant:'Mês Anterior',ano:'Este Ano',tudo:'Todo o Período',custom:'Período Personalizado'};
+  document.getElementById('dash-periodo-label').textContent=labelModos[dashFiltro.modo]||'';
+
+  // Dados filtrados
+  const pedsFiltro=dados.pedidos.filter(p=>p.data>=de&&p.data<=ate);
+  const finFiltro=dados.financeiro.filter(f=>f.data>=de&&f.data<=ate);
+  const ativos=pedsFiltro.filter(p=>p.status!=='Cancelado'&&p.status!=='Devolvido');
+
+  const totalVendas=ativos.reduce((s,p)=>s+getPedidoTotal(p),0);
+  const receitaLiq=ativos.reduce((s,p)=>s+(p.liquido!=null?p.liquido:getPedidoTotal(p)),0);
+  const ticketMedio=ativos.length?totalVendas/ativos.length:0;
+  const totalEnt=finFiltro.filter(f=>f.tipo==='Entrada').reduce((s,f)=>s+f.valor,0);
+  const totalSai=finFiltro.filter(f=>f.tipo==='Saída').reduce((s,f)=>s+f.valor,0);
+  // Globais (não filtrados)
+  const totalClientes=dados.clientes.length;
+  const saldoInicial=parseFloat(dados.config.saldoInicial)||0;
+  const saldoReal=saldoInicial+dados.financeiro.filter(f=>f.tipo==='Entrada').reduce((s,f)=>s+f.valor,0)-dados.financeiro.filter(f=>f.tipo==='Saída').reduce((s,f)=>s+f.valor,0);
+
+  const card=c=>`<div class="kpi-card"><div class="kpi-label">${c.label} <span style="float:right;font-size:20px">${c.icon}</span></div><div class="kpi-value" style="color:${c.cor}">${c.value}</div><div class="kpi-sub">${c.sub}</div></div>`;
+  const sec=(t,cs)=>`<div style="grid-column:1/-1;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:1.5px;color:var(--cor-secundaria);padding:6px 0 10px;border-bottom:1px solid var(--cor-borda);margin-top:8px">${t}</div>${cs.map(card).join('')}`;
+  document.getElementById('kpi-container').innerHTML=
+    sec('📦 Vendas no Período',[
+      {label:'Receita Bruta',value:moeda(totalVendas),sub:`${ativos.length} pedido(s) ativo(s)`,cor:'#10B981',icon:'💰'},
+      {label:'Receita Líquida',value:moeda(receitaLiq),sub:'após taxas de canal e pagamento',cor:'#F59E0B',icon:'💵'},
+      {label:'Ticket Médio',value:moeda(ticketMedio),sub:'por pedido ativo',cor:'#A78BFA',icon:'🎯'},
+      {label:'Pedidos',value:pedsFiltro.length,sub:'total (incluindo cancelados)',cor:'#EC4899',icon:'📋'},
     ])+
-    sec('🏦 Visão Bancária — Financeiro',[
-      {label:'Entradas (Extrato)',value:moeda(k.totalEntradas),sub:'lançamentos financeiros',cor:'#10B981',icon:'📈'},
-      {label:'Saídas (Extrato)',value:moeda(k.totalSaidas),sub:'despesas lançadas',cor:'#EF4444',icon:'📉'},
-      {label:'Saldo Real',value:moeda(saldo),sub:`saldo inicial + entradas − saídas`,cor:saldo>=0?'#10B981':'#EF4444',icon:'🏦'},
+    sec('🏦 Financeiro no Período',[
+      {label:'Entradas',value:moeda(totalEnt),sub:'lançamentos no período',cor:'#10B981',icon:'📈'},
+      {label:'Saídas',value:moeda(totalSai),sub:'despesas no período',cor:'#EF4444',icon:'📉'},
+      {label:'Clientes',value:totalClientes,sub:'cadastrados no total',cor:'#3B82F6',icon:'👥'},
+      {label:'Saldo Real',value:moeda(saldoReal),sub:'acumulado total',cor:saldoReal>=0?'#10B981':'#EF4444',icon:'🏦'},
     ]);
 
-  const meses = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
-  const receitaMes = new Array(12).fill(0);
-  dados.pedidos.forEach(p=>{ const m=parseMes(p.data); if(m>=0) receitaMes[m]+=getPedidoTotal(p); });
+  // Gráfico 1 — Receita por mês no período
+  const mesesNomes=['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
+  const recMes={};
+  ativos.forEach(p=>{if(p.data){const ym=p.data.slice(0,7);recMes[ym]=(recMes[ym]||0)+getPedidoTotal(p);}});
+  const labM=[], valM=[];
+  let cur=new Date(de.slice(0,7)+'-01T12:00:00');
+  const fim=new Date(ate.slice(0,7)+'-01T12:00:00');
+  const multiAno=de.slice(0,4)!==ate.slice(0,4);
+  let cnt=0;
+  while(cur<=fim&&cnt<36){
+    const yy=cur.getFullYear(), mm=cur.getMonth();
+    const ym=`${yy}-${String(mm+1).padStart(2,'0')}`;
+    labM.push(mesesNomes[mm]+(multiAno?`'${String(yy).slice(2)}`:''));
+    valM.push(recMes[ym]||0);
+    cur.setMonth(mm+1); cnt++;
+  }
+  if(chartReceita) chartReceita.destroy();
+  chartReceita=new Chart(document.getElementById('chartReceita'),{type:'bar',data:{labels:labM,datasets:[{label:'Receita (R$)',data:valM,backgroundColor:'rgba(124,58,237,0.75)',borderRadius:6}]},options:{plugins:{legend:{display:false}},scales:{x:{ticks:{color:'#9D8EC4',maxRotation:45},grid:{color:'rgba(45,31,94,.5)'}},y:{ticks:{color:'#9D8EC4',callback:v=>'R$ '+v.toLocaleString('pt-BR')},grid:{color:'rgba(45,31,94,.5)'}}}}});
 
-  if (chartReceita) chartReceita.destroy();
-  chartReceita = new Chart(document.getElementById('chartReceita'),{type:'bar',data:{labels:meses,datasets:[{label:'Receita (R$)',data:receitaMes,backgroundColor:'rgba(124,58,237,0.7)',borderRadius:6}]},options:{plugins:{legend:{display:false}},scales:{x:{ticks:{color:'#9D8EC4'},grid:{color:'rgba(45,31,94,.5)'}},y:{ticks:{color:'#9D8EC4',callback:v=>'R$ '+v.toLocaleString('pt-BR')},grid:{color:'rgba(45,31,94,.5)'}}}}});
+  // Gráfico 2 — Vendas por canal (barras horizontais) no período
+  const canalMap={};
+  ativos.forEach(p=>{canalMap[p.canal]=(canalMap[p.canal]||0)+getPedidoTotal(p);});
+  const canalLabels=Object.keys(canalMap).sort((a,b)=>canalMap[b]-canalMap[a]);
+  const canalVals=canalLabels.map(c=>canalMap[c]);
+  const coresBarra=['#7C3AED','#10B981','#F59E0B','#3B82F6','#EF4444','#EC4899','#14B8A6','#8B5CF6'];
+  if(chartCanaisChart) chartCanaisChart.destroy();
+  if(canalLabels.length){
+    chartCanaisChart=new Chart(document.getElementById('chartCanais'),{type:'bar',data:{labels:canalLabels,datasets:[{label:'Receita (R$)',data:canalVals,backgroundColor:coresBarra.slice(0,canalLabels.length),borderRadius:6}]},options:{indexAxis:'y',plugins:{legend:{display:false}},scales:{x:{ticks:{color:'#9D8EC4',callback:v=>'R$ '+v.toLocaleString('pt-BR')},grid:{color:'rgba(45,31,94,.5)'}},y:{ticks:{color:'#9D8EC4'},grid:{color:'rgba(45,31,94,.5)'}}}}});
+  } else {
+    chartCanaisChart=new Chart(document.getElementById('chartCanais'),{type:'bar',data:{labels:['Sem dados'],datasets:[{data:[0],backgroundColor:'rgba(45,31,94,.5)',borderRadius:6}]},options:{plugins:{legend:{display:false}},scales:{x:{ticks:{color:'#9D8EC4'}},y:{ticks:{color:'#9D8EC4'}}}}});
+  }
 
-  const canalVendas = {};
-  dados.pedidos.forEach(p=>{ canalVendas[p.canal]=(canalVendas[p.canal]||0)+getPedidoTotal(p); });
-  const cores = ['#7C3AED','#10B981','#F59E0B','#EF4444','#3B82F6','#EC4899','#14B8A6'];
-  if (chartCanaisChart) chartCanaisChart.destroy();
-  chartCanaisChart = new Chart(document.getElementById('chartCanais'),{type:'doughnut',data:{labels:Object.keys(canalVendas),datasets:[{data:Object.values(canalVendas),backgroundColor:cores,borderWidth:0}]},options:{plugins:{legend:{labels:{color:'#9D8EC4',font:{size:11}}}},cutout:'65%'}});
+  // Tabela — pedidos no período (mais recentes primeiro)
+  const pedsPeriodo=[...pedsFiltro].sort((a,b)=>b.data.localeCompare(a.data)).slice(0,10);
+  document.querySelector('#tabela-ultimos-pedidos tbody').innerHTML=pedsPeriodo.length?pedsPeriodo.map(p=>`<tr><td style="font-weight:600;color:#fff">${p.num}</td><td>${nomeCliente(p.clienteId)}</td><td style="max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${getPedidoDesc(p)}</td><td style="color:var(--cor-verde);font-weight:600">${moeda(getPedidoTotal(p))}</td><td>${badgeCanal(p.canal)}</td></tr>`).join(''):'<tr><td colspan="5"><div class="empty-state"><i class="bi bi-inbox"></i>Nenhum pedido no período</div></td></tr>';
 
-  const ultimos = [...dados.pedidos].sort((a,b)=>b.data.localeCompare(a.data)).slice(0,8);
-  document.querySelector('#tabela-ultimos-pedidos tbody').innerHTML = ultimos.length ? ultimos.map(p=>`<tr><td style="font-weight:600;color:#fff">${p.num}</td><td>${nomeCliente(p.clienteId)}</td><td style="max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${getPedidoDesc(p)}</td><td style="color:var(--cor-verde);font-weight:600">${moeda(getPedidoTotal(p))}</td><td>${badgeCanal(p.canal)}</td></tr>`).join('') : '<tr><td colspan="5"><div class="empty-state"><i class="bi bi-inbox"></i>Nenhum pedido ainda</div></td></tr>';
-
-  const alerta = calcEstoque().filter(e=>!e.digital&&e.saldo<=e.min);
-  document.querySelector('#tabela-estoque-alerta tbody').innerHTML = alerta.length ? alerta.map(e=>{ const cor=e.saldo<=0?'status-critico':'status-alerta'; return `<tr><td>${e.nome}</td><td class="${cor}" style="font-weight:700">${e.saldo}</td><td>${e.min}</td><td class="${cor}">${e.saldo<=0?'🔴 Zerado':'🟡 Baixo'}</td></tr>`; }).join('') : `<tr><td colspan="4"><div class="empty-state"><i class="bi bi-check-circle" style="color:var(--cor-verde)"></i>Estoque OK</div></td></tr>`;
+  // Estoque em alerta (sempre global)
+  const alerta=calcEstoque().filter(e=>!e.digital&&e.saldo<=e.min);
+  document.querySelector('#tabela-estoque-alerta tbody').innerHTML=alerta.length?alerta.map(e=>{const cor=e.saldo<=0?'status-critico':'status-alerta';return `<tr><td>${e.nome}</td><td class="${cor}" style="font-weight:700">${e.saldo}</td><td>${e.min}</td><td class="${cor}">${e.saldo<=0?'🔴 Zerado':'🟡 Baixo'}</td></tr>`;}).join(''):`<tr><td colspan="4"><div class="empty-state"><i class="bi bi-check-circle" style="color:var(--cor-verde)"></i>Estoque OK</div></td></tr>`;
 }
 
 // ============================================================
