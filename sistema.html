@@ -498,7 +498,10 @@ body.modo-claro .dp-btn:hover,body.modo-claro .dp-btn.ativo{background:rgba(124,
     <div style="border-top:1px solid var(--cor-borda);padding-top:10px;margin-bottom:12px"><small style="color:var(--cor-secundaria);font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:1.2px"><i class="bi bi-truck me-1"></i>Entrega</small></div>
     <div class="row g-3">
       <div class="col-md-4"><label class="form-label">Status</label><select class="form-select" id="p-status"><option>Pendente</option><option>Em separação</option><option>Enviado</option><option>Entregue</option><option>Cancelado</option><option>Devolvido</option></select></div>
-      <div class="col-md-8"><label class="form-label">Código de Rastreio</label><input class="form-control" id="p-rastreio" placeholder="Ex: BR123456789BR"></div>
+      <div class="col-md-5"><label class="form-label">Código de Rastreio</label><input class="form-control" id="p-rastreio" placeholder="Ex: BR123456789BR"></div>
+      <div class="col-md-3 d-flex align-items-end"><button type="button" class="btn btn-outline-info w-100" onclick="consultarRastreioModal()"><i class="bi bi-search me-1"></i>Consultar</button></div>
+      <div class="col-12"><label class="form-label">Link de Rastreio <small style="color:var(--cor-texto-suave)">(opcional)</small></label><input class="form-control" id="p-link-rastreio" type="url" placeholder="https://rastreamento.correios.com.br/..."></div>
+      <div class="col-12" id="resultado-rastreio-modal" style="display:none"></div>
       <div class="col-12"><label class="form-label">Observações</label><textarea class="form-control" id="p-obs" rows="2"></textarea></div>
     </div>
 
@@ -1196,6 +1199,9 @@ function preencherSelectsPedido() {
   document.getElementById('p-num').value=nextNumPedido();
   document.getElementById('p-frete').value='0';
   document.getElementById('p-rastreio').value='';
+  document.getElementById('p-link-rastreio').value='';
+  document.getElementById('resultado-rastreio-modal').style.display='none';
+  document.getElementById('resultado-rastreio-modal').innerHTML='';
   document.getElementById('p-obs').value='';
   document.getElementById('p-status').value='Pendente';
   _itemCount=0;
@@ -1349,6 +1355,9 @@ function editarPedido(i) {
   document.getElementById('p-liquido').value=p.liquido!=null?p.liquido.toFixed(2):'';
   document.getElementById('p-status').value=p.status;
   document.getElementById('p-rastreio').value=p.rastreio||'';
+  document.getElementById('p-link-rastreio').value=p.linkRastreio||'';
+  document.getElementById('resultado-rastreio-modal').style.display='none';
+  document.getElementById('resultado-rastreio-modal').innerHTML='';
   document.getElementById('p-obs').value=p.obs||'';
   document.getElementById('modalPedidoTitulo').textContent='Editar Pedido';
   calcularValorPedido();
@@ -1368,7 +1377,7 @@ async function salvarPedido() {
   if(!itens.length) return alert('Adicione pelo menos um item ao pedido');
   const idx=v('p-idx');
   const statusSalvo=v('p-status');
-  const obj={data:v('p-data'),num,canal:v('p-canal'),clienteId:parseInt(v('p-cliente'))||null,endereco:v('p-endereco'),itens,frete:parseFloat(v('p-frete'))||0,pagto:v('p-pagto'),liquido:parseFloat(v('p-liquido'))||0,status:statusSalvo,rastreio:v('p-rastreio'),obs:v('p-obs')};
+  const obj={data:v('p-data'),num,canal:v('p-canal'),clienteId:parseInt(v('p-cliente'))||null,endereco:v('p-endereco'),itens,frete:parseFloat(v('p-frete'))||0,pagto:v('p-pagto'),liquido:parseFloat(v('p-liquido'))||0,status:statusSalvo,rastreio:v('p-rastreio'),linkRastreio:v('p-link-rastreio'),obs:v('p-obs')};
   if(idx==='') await db.collection('pedidos').add(obj);
   else await db.collection('pedidos').doc(dados.pedidos[parseInt(idx)]._docId).set(obj);
   bootstrap.Modal.getInstance(document.getElementById('modalPedido')).hide();
@@ -1400,8 +1409,10 @@ function verPedido(i) {
       <div style="flex:1;min-width:120px"><div style="font-size:11px;color:var(--cor-texto-suave);text-transform:uppercase;letter-spacing:1px">Data</div><div style="font-weight:600;color:#fff;font-size:15px">${fmtData(p.data)}</div></div>
       <div style="flex:1;min-width:120px"><div style="font-size:11px;color:var(--cor-texto-suave);text-transform:uppercase;letter-spacing:1px">Canal</div><div style="margin-top:4px">${badgeCanal(p.canal)}</div></div>
       <div style="flex:1;min-width:120px"><div style="font-size:11px;color:var(--cor-texto-suave);text-transform:uppercase;letter-spacing:1px">Status</div><div style="margin-top:4px">${badgeStatus(p.status)}</div></div>
-      ${p.rastreio?`<div style="flex:2;min-width:180px"><div style="font-size:11px;color:var(--cor-texto-suave);text-transform:uppercase;letter-spacing:1px">Rastreio</div><div style="font-weight:600;color:var(--cor-azul);font-size:14px">${p.rastreio}</div></div>`:''}
+      ${p.rastreio?`<div style="flex:2;min-width:200px"><div style="font-size:11px;color:var(--cor-texto-suave);text-transform:uppercase;letter-spacing:1px">Rastreio</div><div style="display:flex;align-items:center;gap:8px;margin-top:4px;flex-wrap:wrap"><span style="font-weight:600;color:var(--cor-azul);font-size:14px;font-family:monospace">${escHtml(p.rastreio)}</span>${p.linkRastreio?`<a href="${escHtml(p.linkRastreio)}" target="_blank" class="btn btn-outline-secondary btn-sm" style="font-size:11px;padding:2px 8px"><i class="bi bi-box-arrow-up-right me-1"></i>Abrir link</a>`:''}` +
+      `<button class="btn btn-outline-info btn-sm" style="font-size:11px;padding:2px 8px" onclick="consultarRastreioView('${escHtml(p.rastreio)}')"><i class="bi bi-search me-1"></i>Consultar</button></div></div>`:''}
     </div>
+    <div id="resultado-rastreio-view" style="margin-bottom:12px"></div>
     <div style="border-top:1px solid var(--cor-borda);padding-top:12px;margin-bottom:12px"><small style="color:var(--cor-secundaria);font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:1.2px"><i class="bi bi-person-fill me-1"></i>Cliente</small></div>
     <div style="margin-bottom:16px">
       <div style="font-weight:600;color:#fff;font-size:14px">${cliente?cliente.nome:'—'}</div>
@@ -1434,6 +1445,54 @@ function verPedido(i) {
   new bootstrap.Modal(document.getElementById('modalVerPedido')).show();
 }
 
+async function _buscarCorreios(codigo) {
+  const res=await fetch(`https://api.linketrack.com/track/json?user=teste&token=1abcd00b2731640422b22a281f7c8e726e63ac3f&codigo=${encodeURIComponent(codigo)}`);
+  if(!res.ok) throw new Error('Erro na consulta');
+  return await res.json();
+}
+function _renderEventos(data,onAtualizarStatus) {
+  if(!data.eventos||data.eventos.length===0) return '<div style="padding:10px;color:var(--cor-texto-suave);font-size:13px"><i class="bi bi-info-circle me-1"></i>Nenhum evento encontrado para este código.</div>';
+  const ultimo=data.eventos[0];
+  const statusMap={'entregue ao destinatário':'Entregue','postado':'Enviado','em trânsito':'Enviado','saiu para entrega':'Enviado'};
+  const novoStatus=Object.entries(statusMap).find(([k])=>ultimo.status.toLowerCase().includes(k))?.[1];
+  const eventos=data.eventos.slice(0,5);
+  return `<div style="background:rgba(6,182,212,.07);border:1px solid rgba(6,182,212,.2);border-radius:8px;padding:12px;font-size:13px">
+    <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:10px;flex-wrap:wrap">
+      <strong style="color:var(--cor-texto)">${escHtml(data.nome||data.categoria||'Correios')} — ${escHtml(data.codigo||'')}</strong>
+      ${novoStatus&&onAtualizarStatus?`<button class="btn btn-success btn-sm" onclick="${onAtualizarStatus}('${novoStatus}')"><i class="bi bi-check-circle me-1"></i>Atualizar para "${novoStatus}"</button>`:''}
+    </div>
+    <div style="display:flex;flex-direction:column;gap:6px">
+      ${eventos.map((e,idx)=>`<div style="display:flex;gap:10px;opacity:${idx===0?1:0.65}">
+        <div style="min-width:90px;font-size:11px;color:var(--cor-texto-suave)">${escHtml(e.data)} ${escHtml(e.hora)}</div>
+        <div><div style="color:${idx===0?'#fff':'var(--cor-texto)'};font-weight:${idx===0?'600':'400'}">${escHtml(e.status)}</div>${e.local?`<div style="font-size:11px;color:var(--cor-texto-suave)">${escHtml(e.local)}</div>`:''}</div>
+      </div>`).join('')}
+    </div>
+  </div>`;
+}
+async function consultarRastreioModal() {
+  const codigo=v('p-rastreio').trim();
+  if(!codigo) return alert('Informe o código de rastreio primeiro');
+  const area=document.getElementById('resultado-rastreio-modal');
+  area.style.display='block';
+  area.innerHTML='<div style="text-align:center;padding:10px;color:var(--cor-texto-suave)"><i class="bi bi-arrow-clockwise"></i> Consultando...</div>';
+  try {
+    const data=await _buscarCorreios(codigo);
+    area.innerHTML=_renderEventos(data,'_aplicarStatusModal');
+  } catch(e) {
+    area.innerHTML='<div style="padding:10px;color:#EF4444;font-size:13px"><i class="bi bi-exclamation-triangle me-1"></i>Erro ao consultar. Verifique o código e tente novamente.</div>';
+  }
+}
+function _aplicarStatusModal(status) { document.getElementById('p-status').value=status; }
+async function consultarRastreioView(codigo) {
+  const area=document.getElementById('resultado-rastreio-view');
+  area.innerHTML='<div style="text-align:center;padding:10px;color:var(--cor-texto-suave)"><i class="bi bi-arrow-clockwise"></i> Consultando...</div>';
+  try {
+    const data=await _buscarCorreios(codigo);
+    area.innerHTML=_renderEventos(data,null);
+  } catch(e) {
+    area.innerHTML='<div style="padding:10px;color:#EF4444;font-size:13px"><i class="bi bi-exclamation-triangle me-1"></i>Erro ao consultar. Verifique o código e tente novamente.</div>';
+  }
+}
 function imprimirPedido(i) {
   const p=dados.pedidos[i];
   const itens=getPedidoItens(p);
@@ -1464,6 +1523,7 @@ function imprimirPedido(i) {
       <div><strong>Canal:</strong> ${escHtml(p.canal||'—')}</div>
       <div><strong>Status:</strong> ${escHtml(p.status||'—')}</div>
       ${p.rastreio?`<div><strong>Rastreio:</strong> ${escHtml(p.rastreio)}</div>`:''}
+      ${p.linkRastreio?`<div><strong>Link rastreio:</strong> <a href="${escHtml(p.linkRastreio)}" style="color:#7C3AED">${escHtml(p.linkRastreio)}</a></div>`:''}
     </div>
   </div>
   <div class="sec">Cliente</div>
