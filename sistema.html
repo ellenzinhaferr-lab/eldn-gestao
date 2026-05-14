@@ -676,7 +676,7 @@ const db = firebase.firestore();
 const dadosPadrao = {
   config: { canais: [
     {nome:'Venda Direta',taxa:0,taxaFixa:0},{nome:'Instagram',taxa:0,taxaFixa:0},{nome:'TikTok Shop',taxa:0.06,taxaFixa:4.00},
-    {nome:'Shopee',taxa:0.14,taxaFixa:4.00},{nome:'Mercado Livre',taxa:0.12,taxaFixa:0},{nome:'Elo7',taxa:0.08,taxaFixa:0},{nome:'Amazon',taxa:0.35,taxaFixa:0},{nome:'Hotmart',taxa:0.099,taxaFixa:1.00},{nome:'Kiwify',taxa:0.0899,taxaFixa:2.49},{nome:'Cakto',taxa:0.0999,taxaFixa:1.99,incluiPagamento:true}
+    {nome:'Shopee',taxa:0.14,taxaFixa:4.00},{nome:'Mercado Livre',taxa:0.12,taxaFixa:0},{nome:'Elo7',taxa:0.08,taxaFixa:0},{nome:'Amazon',taxa:0.35,taxaFixa:0},{nome:'Hotmart',taxa:0.099,taxaFixa:1.00},{nome:'Kiwify',taxa:0.0899,taxaFixa:2.49},{nome:'Cakto',taxa:0,taxaFixa:2.49,incluiPagamento:true}
   ], formasPagto: [
     {nome:'PIX',taxa:0,taxaFixa:0},{nome:'Cartão Crédito MP',taxa:0.0399,taxaFixa:0},{nome:'Cartão Débito MP',taxa:0.0199,taxaFixa:0},
     {nome:'QR Code MP',taxa:0.0099,taxaFixa:0},{nome:'Boleto',taxa:0.0199,taxaFixa:3.49},{nome:'Dinheiro',taxa:0,taxaFixa:0},{nome:'Grátis',taxa:0,taxaFixa:0}
@@ -815,10 +815,13 @@ function setupListeners() {
     if(shopeeExist && shopeeExist.taxaFixa !== 4.00) {
       shopeeExist.taxa = 0.14; shopeeExist.taxaFixa = 4.00; migrou = true;
     }
-    // Adiciona Cakto se não existir
+    // Adiciona Cakto se não existir ou corrige taxa
     const caktoExist = dados.config.canais.find(c=>c.nome==='Cakto');
     if(!caktoExist) {
-      dados.config.canais.push({nome:'Cakto',taxa:0.0999,taxaFixa:1.99,incluiPagamento:true});
+      dados.config.canais.push({nome:'Cakto',taxa:0,taxaFixa:2.49,incluiPagamento:true});
+      migrou = true;
+    } else if(caktoExist.taxa !== 0 || caktoExist.taxaFixa !== 2.49) {
+      caktoExist.taxa = 0; caktoExist.taxaFixa = 2.49; caktoExist.incluiPagamento = true;
       migrou = true;
     }
     // Adiciona Amazon KDP se não existir
