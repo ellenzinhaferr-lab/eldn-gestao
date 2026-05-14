@@ -70,6 +70,7 @@ table.gestao tbody tr:last-child td{border-bottom:none}
 .badge-elo7{background:rgba(99,102,241,.15);color:#818CF8}
 .badge-hotmart{background:rgba(255,77,0,.15);color:#FF4D00}
 .badge-kiwify{background:rgba(0,200,100,.15);color:#00C864}
+.badge-cakto{background:rgba(99,179,237,.15);color:#63B3ED}
 .badge-amazonkdp{background:rgba(255,153,0,.15);color:#ff9900}
 .badge-entrada{background:rgba(16,185,129,.15);color:#10B981}
 .badge-saida{background:rgba(239,68,68,.15);color:#EF4444}
@@ -675,7 +676,7 @@ const db = firebase.firestore();
 const dadosPadrao = {
   config: { canais: [
     {nome:'Venda Direta',taxa:0,taxaFixa:0},{nome:'Instagram',taxa:0,taxaFixa:0},{nome:'TikTok Shop',taxa:0.06,taxaFixa:4.00},
-    {nome:'Shopee',taxa:0.14,taxaFixa:4.00},{nome:'Mercado Livre',taxa:0.12,taxaFixa:0},{nome:'Elo7',taxa:0.08,taxaFixa:0},{nome:'Amazon',taxa:0.35,taxaFixa:0},{nome:'Hotmart',taxa:0.099,taxaFixa:1.00},{nome:'Kiwify',taxa:0.0899,taxaFixa:2.49}
+    {nome:'Shopee',taxa:0.14,taxaFixa:4.00},{nome:'Mercado Livre',taxa:0.12,taxaFixa:0},{nome:'Elo7',taxa:0.08,taxaFixa:0},{nome:'Amazon',taxa:0.35,taxaFixa:0},{nome:'Hotmart',taxa:0.099,taxaFixa:1.00},{nome:'Kiwify',taxa:0.0899,taxaFixa:2.49},{nome:'Cakto',taxa:0.0999,taxaFixa:1.99,incluiPagamento:true}
   ], formasPagto: [
     {nome:'PIX',taxa:0,taxaFixa:0},{nome:'Cartão Crédito MP',taxa:0.0399,taxaFixa:0},{nome:'Cartão Débito MP',taxa:0.0199,taxaFixa:0},
     {nome:'QR Code MP',taxa:0.0099,taxaFixa:0},{nome:'Boleto',taxa:0.0199,taxaFixa:3.49},{nome:'Dinheiro',taxa:0,taxaFixa:0},{nome:'Grátis',taxa:0,taxaFixa:0}
@@ -814,6 +815,12 @@ function setupListeners() {
     if(shopeeExist && shopeeExist.taxaFixa !== 4.00) {
       shopeeExist.taxa = 0.14; shopeeExist.taxaFixa = 4.00; migrou = true;
     }
+    // Adiciona Cakto se não existir
+    const caktoExist = dados.config.canais.find(c=>c.nome==='Cakto');
+    if(!caktoExist) {
+      dados.config.canais.push({nome:'Cakto',taxa:0.0999,taxaFixa:1.99,incluiPagamento:true});
+      migrou = true;
+    }
     // Adiciona Amazon KDP se não existir
     const kdpExist = dados.config.canais.find(c=>c.nome==='Amazon KDP');
     if(!kdpExist) {
@@ -821,7 +828,7 @@ function setupListeners() {
       migrou = true;
     }
     // Marca marketplaces como "inclui pagamento" automaticamente se ainda não tem o campo
-    const marketplaces = ['Amazon','Hotmart','Kiwify','Shopee','Mercado Livre','Elo7','TikTok Shop'];
+    const marketplaces = ['Amazon','Hotmart','Kiwify','Cakto','Shopee','Mercado Livre','Elo7','TikTok Shop'];
     dados.config.canais.forEach(c => {
       if(marketplaces.includes(c.nome) && c.incluiPagamento === undefined) {
         c.incluiPagamento = true; migrou = true;
@@ -851,7 +858,7 @@ function renderCurrentPage() { renderPage(currentPage); }
 // ============================================================
 function moeda(v) { if (!v && v!==0) return '—'; return 'R$ '+Number(v).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2}); }
 function fmtData(d) { if (!d) return '—'; const p=d.split('-'); return p.length===3?`${p[2]}/${p[1]}/${p[0]}`:d; }
-function badgeCanal(c) { const m={'Instagram':'badge-instagram','Amazon':'badge-amazon','Amazon KDP':'badge-amazonkdp','Shopee':'badge-shopee','TikTok Shop':'badge-tiktok','Venda Direta':'badge-direta','Mercado Livre':'badge-ml','Elo7':'badge-elo7','Hotmart':'badge-hotmart','Kiwify':'badge-kiwify'}; return `<span class="badge-canal ${m[c]||'badge-direta'}">${c||'—'}</span>`; }
+function badgeCanal(c) { const m={'Instagram':'badge-instagram','Amazon':'badge-amazon','Amazon KDP':'badge-amazonkdp','Shopee':'badge-shopee','TikTok Shop':'badge-tiktok','Venda Direta':'badge-direta','Mercado Livre':'badge-ml','Elo7':'badge-elo7','Hotmart':'badge-hotmart','Kiwify':'badge-kiwify','Cakto':'badge-cakto'}; return `<span class="badge-canal ${m[c]||'badge-direta'}">${c||'—'}</span>`; }
 function badgeCategoria(c) { const m={'Livro Físico':'badge-livro','Livro Digital':'badge-digital','Kit':'badge-kit'}; return `<span class="badge-canal ${m[c]||'badge-livro'}">${c}</span>`; }
 function badgeTipo(t) { return t==='Entrada'?`<span class="badge-canal badge-entrada">↑ Entrada</span>`:`<span class="badge-canal badge-saida">↓ Saída</span>`; }
 function badgeStatus(s) { const m={'Entregue':'#10B981','Enviado':'#3B82F6','Em separação':'#F59E0B','Pendente':'#9D8EC4','Cancelado':'#EF4444','Devolvido':'#EF4444'}; return `<span style="color:${m[s]||'#9D8EC4'};font-size:12px;font-weight:600;">${s}</span>`; }
