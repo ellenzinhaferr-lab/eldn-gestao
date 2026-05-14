@@ -846,7 +846,7 @@ function setupListeners() {
       dados[col] = snap.docs.map(d => ({...d.data(), _docId: d.id}));
       if (!appReady) {
         loaded.add(col);
-        if (loaded.size >= cols.length) { appReady = true; renderPage('dashboard'); }
+        if (loaded.size >= cols.length) { appReady = true; migrarLiquidoPedidos(); renderPage('dashboard'); }
       } else {
         renderCurrentPage();
       }
@@ -861,6 +861,22 @@ function renderCurrentPage() { renderPage(currentPage); }
 // ============================================================
 function moeda(v) { if (!v && v!==0) return '—'; return 'R$ '+Number(v).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2}); }
 function fmtData(d) { if (!d) return '—'; const p=d.split('-'); return p.length===3?`${p[2]}/${p[1]}/${p[0]}`:d; }
+function migrarLiquidoPedidos() {
+  dados.pedidos.forEach(p => {
+    const canal=(dados.config.canais||[]).find(c=>c.nome===p.canal)||{taxa:0,taxaFixa:0};
+    if(canal.taxa===0&&canal.taxaFixa===0&&!canal.incluiPagamento) return;
+    const bruto=getPedidoTotal(p);
+    if(bruto<=0||!p._docId) return;
+    const pagtoConfig=(dados.config.formasPagto||[]).find(f=>f.nome===p.pagto)||{taxa:0,taxaFixa:0};
+    const pagtoEfetivo=canal.incluiPagamento?{taxa:0,taxaFixa:0}:pagtoConfig;
+    const taxaCanal=bruto*(canal.taxa||0)+(canal.taxaFixa||0);
+    const taxaPagto=bruto*(pagtoEfetivo.taxa||0)+(pagtoEfetivo.taxaFixa||0);
+    const liquidoCorreto=parseFloat((bruto-taxaCanal-taxaPagto).toFixed(2));
+    if(p.liquido==null||Math.abs(p.liquido-liquidoCorreto)>0.01) {
+      db.collection('pedidos').doc(p._docId).update({liquido:liquidoCorreto});
+    }
+  });
+}
 function badgeCanal(c) { const m={'Instagram':'badge-instagram','Amazon':'badge-amazon','Amazon KDP':'badge-amazonkdp','Shopee':'badge-shopee','TikTok Shop':'badge-tiktok','Venda Direta':'badge-direta','Mercado Livre':'badge-ml','Elo7':'badge-elo7','Hotmart':'badge-hotmart','Kiwify':'badge-kiwify','Cakto':'badge-cakto'}; return `<span class="badge-canal ${m[c]||'badge-direta'}">${c||'—'}</span>`; }
 function badgeCategoria(c) { const m={'Livro Físico':'badge-livro','Livro Digital':'badge-digital','Kit':'badge-kit'}; return `<span class="badge-canal ${m[c]||'badge-livro'}">${c}</span>`; }
 function badgeTipo(t) { return t==='Entrada'?`<span class="badge-canal badge-entrada">↑ Entrada</span>`:`<span class="badge-canal badge-saida">↓ Saída</span>`; }
@@ -1405,12 +1421,13 @@ function verPedido(i) {
   const p=dados.pedidos[i];
   const itens=getPedidoItens(p);
   const bruto=getPedidoTotal(p);
-  const liq=p.liquido!=null?p.liquido:bruto;
   const cliente=dados.clientes.find(x=>x.id===p.clienteId);
   const canal=(dados.config.canais||[]).find(c=>c.nome===p.canal)||{taxa:0,taxaFixa:0};
-  const pagto=(dados.config.formasPagto||[]).find(f=>f.nome===p.pagto)||{taxa:0,taxaFixa:0};
+  const pagtoConfig=(dados.config.formasPagto||[]).find(f=>f.nome===p.pagto)||{taxa:0,taxaFixa:0};
+  const pagtoEfetivo=canal.incluiPagamento?{taxa:0,taxaFixa:0}:pagtoConfig;
   const taxaCanal=bruto*(canal.taxa||0)+(canal.taxaFixa||0);
-  const taxaPagto=bruto*(pagto.taxa||0)+(pagto.taxaFixa||0);
+  const taxaPagto=bruto*(pagtoEfetivo.taxa||0)+(pagtoEfetivo.taxaFixa||0);
+  const liq=bruto-taxaCanal-taxaPagto;
   document.getElementById('modalVerPedidoTitulo').textContent=`Pedido ${p.num}`;
   document.getElementById('btn-editar-do-ver').onclick=()=>{bootstrap.Modal.getInstance(document.getElementById('modalVerPedido')).hide();setTimeout(()=>editarPedido(i),300);};
   document.getElementById('btn-imprimir-do-ver').onclick=()=>imprimirPedido(i);
@@ -1507,12 +1524,13 @@ function imprimirPedido(i) {
   const p=dados.pedidos[i];
   const itens=getPedidoItens(p);
   const bruto=getPedidoTotal(p);
-  const liq=p.liquido!=null?p.liquido:bruto;
   const cliente=dados.clientes.find(x=>x.id===p.clienteId);
   const canal=(dados.config.canais||[]).find(c=>c.nome===p.canal)||{taxa:0,taxaFixa:0};
-  const pagto=(dados.config.formasPagto||[]).find(f=>f.nome===p.pagto)||{taxa:0,taxaFixa:0};
+  const pagtoConfig=(dados.config.formasPagto||[]).find(f=>f.nome===p.pagto)||{taxa:0,taxaFixa:0};
+  const pagtoEfetivo=canal.incluiPagamento?{taxa:0,taxaFixa:0}:pagtoConfig;
   const taxaCanal=bruto*(canal.taxa||0)+(canal.taxaFixa||0);
-  const taxaPagto=bruto*(pagto.taxa||0)+(pagto.taxaFixa||0);
+  const taxaPagto=bruto*(pagtoEfetivo.taxa||0)+(pagtoEfetivo.taxaFixa||0);
+  const liq=bruto-taxaCanal-taxaPagto;
   const html=`<!DOCTYPE html><html lang="pt-BR"><head><meta charset="UTF-8"><title>Pedido ${escHtml(p.num)}</title><style>
     *{box-sizing:border-box}body{font-family:'Segoe UI',Arial,sans-serif;margin:0;padding:28px;color:#1a1a1a;font-size:13px}
     .header{display:flex;justify-content:space-between;align-items:flex-start;border-bottom:2px solid #7C3AED;padding-bottom:14px;margin-bottom:18px}
