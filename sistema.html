@@ -363,10 +363,12 @@ body.modo-claro .dp-btn:hover,body.modo-claro .dp-btn.ativo{background:rgba(124,
         <div class="table-responsive">
           <table class="gestao" id="tabela-trafego">
             <thead><tr>
-              <th>Data</th><th>Campanha</th><th>Plataforma</th>
-              <th>Investido</th><th>Cliques</th><th>CTR</th>
-              <th>PageViews</th><th>Checkouts</th><th>Compras</th>
-              <th>ROAS</th><th>CPA</th><th>Resultado</th><th></th>
+              <th>Data</th><th>Campanha</th><th>Conjunto</th><th>Anúncio</th>
+              <th>Valor Usado</th><th>Resultados</th><th>Custo/Result.</th>
+              <th>Alcance</th><th>Impressões</th><th>Freq.</th><th>CPM</th>
+              <th>Cliques Link</th><th>Cliques Total</th><th>CPC</th><th>CTR</th>
+              <th>Page Views</th><th>Connect Rate</th><th>Checkouts</th><th>TX Conv.</th>
+              <th>Compras</th><th>CPA</th><th>ROAS</th><th>Resultado</th><th></th>
             </tr></thead>
             <tbody></tbody>
           </table>
@@ -674,29 +676,55 @@ body.modo-claro .dp-btn:hover,body.modo-claro .dp-btn.ativo{background:rgba(124,
   <div class="modal-footer"><button class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancelar</button><button class="btn btn-primary" onclick="salvarAfiliado()">Salvar</button></div>
 </div></div></div>
 
-<div class="modal fade" id="modalTrafego" tabindex="-1"><div class="modal-dialog modal-lg"><div class="modal-content">
+<div class="modal fade" id="modalTrafego" tabindex="-1"><div class="modal-dialog modal-xl"><div class="modal-content">
   <div class="modal-header"><h5 class="modal-title" id="modalTrafegoTitulo">Novo Registro de Tráfego</h5><button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button></div>
   <div class="modal-body"><input type="hidden" id="tr-idx"><div class="row g-3">
-    <div class="col-md-4"><label class="form-label">Data *</label><input class="form-control" id="tr-data" type="date"></div>
-    <div class="col-md-5"><label class="form-label">Campanha *</label><input class="form-control" id="tr-campanha" placeholder="Ex: Livro Físico Maio 2026"></div>
+
+    <!-- Identificação -->
+    <div class="col-md-3"><label class="form-label">Data *</label><input class="form-control" id="tr-data" type="date"></div>
+    <div class="col-md-3"><label class="form-label">Data Criação da Campanha</label><input class="form-control" id="tr-data-criacao" type="date"></div>
     <div class="col-md-3"><label class="form-label">Plataforma</label><select class="form-select" id="tr-plataforma"><option>Meta Ads</option><option>Google Ads</option><option>TikTok Ads</option><option>Outro</option></select></div>
-    <div class="col-12"><div style="font-size:11px;color:var(--cor-secundaria);font-weight:600;letter-spacing:1px;text-transform:uppercase;padding:4px 0 0;border-top:1px solid var(--cor-borda)">💰 Investimento &amp; Resultado</div></div>
-    <div class="col-md-4"><label class="form-label">Investimento (R$) *</label><input class="form-control" id="tr-investimento" type="number" step="0.01" oninput="calcularTrafego()"></div>
-    <div class="col-md-4"><label class="form-label">Receita gerada (R$)</label><input class="form-control" id="tr-receita" type="number" step="0.01" oninput="calcularTrafego()"></div>
-    <div class="col-md-4"><label class="form-label">Compras (Purchases)</label><input class="form-control" id="tr-compras-modal" type="number" min="0" value="0" oninput="calcularTrafego()"></div>
-    <div class="col-md-4"><label class="form-label">ROAS</label><input class="form-control" id="tr-roas-calc" readonly style="font-weight:700;color:var(--cor-verde)"></div>
-    <div class="col-md-4"><label class="form-label">CPA (R$)</label><input class="form-control" id="tr-cpa-calc" readonly style="font-weight:700;color:var(--cor-acento)"></div>
-    <div class="col-md-4"><label class="form-label">Resultado do Dia (Receita − Investimento)</label><input class="form-control" id="tr-resultado-calc" readonly style="font-weight:700;font-size:15px"></div>
-    <div class="col-12"><div style="font-size:11px;color:var(--cor-secundaria);font-weight:600;letter-spacing:1px;text-transform:uppercase;padding:4px 0 0;border-top:1px solid var(--cor-borda)">📊 Entrega do Anúncio</div></div>
-    <div class="col-md-4"><label class="form-label">Impressões</label><input class="form-control" id="tr-impressoes" type="number" min="0" value="0" oninput="calcularTrafego()"></div>
-    <div class="col-md-4"><label class="form-label">Alcance</label><input class="form-control" id="tr-alcance" type="number" min="0" value="0"></div>
-    <div class="col-md-4"><label class="form-label">Cliques</label><input class="form-control" id="tr-cliques" type="number" min="0" value="0" oninput="calcularTrafego()"></div>
-    <div class="col-md-4"><label class="form-label">CTR (%)</label><input class="form-control" id="tr-ctr-calc" readonly style="color:var(--cor-azul);font-weight:700"></div>
-    <div class="col-md-4"><label class="form-label">CPM (R$)</label><input class="form-control" id="tr-cpm-calc" readonly style="color:var(--cor-texto-suave)"></div>
-    <div class="col-md-4"><label class="form-label">CPC (R$)</label><input class="form-control" id="tr-cpc-calc" readonly style="color:var(--cor-texto-suave)"></div>
-    <div class="col-12"><div style="font-size:11px;color:var(--cor-secundaria);font-weight:600;letter-spacing:1px;text-transform:uppercase;padding:4px 0 0;border-top:1px solid var(--cor-borda)">🔁 Funil de Conversão</div></div>
-    <div class="col-md-4"><label class="form-label">Visualizações de Página</label><input class="form-control" id="tr-pageviews" type="number" min="0" value="0"></div>
-    <div class="col-md-4"><label class="form-label">Checkouts Iniciados</label><input class="form-control" id="tr-checkouts" type="number" min="0" value="0"></div>
+    <div class="col-md-9"><label class="form-label">Campanha *</label><input class="form-control" id="tr-campanha" placeholder="Ex: Livro Físico — Maio 2026"></div>
+    <div class="col-md-6"><label class="form-label">Conjunto de Anúncios</label><input class="form-control" id="tr-conjunto" placeholder="Ex: Cj 03 — Lookalike 1%"></div>
+    <div class="col-md-6"><label class="form-label">Anúncio</label><input class="form-control" id="tr-anuncio" placeholder="Ex: AD01 — Vídeo depoimento"></div>
+
+    <!-- Financeiro -->
+    <div class="col-12"><div style="font-size:11px;color:var(--cor-acento);font-weight:700;letter-spacing:1px;text-transform:uppercase;padding:6px 0 0;border-top:1px solid var(--cor-borda)">💰 Financeiro</div></div>
+    <div class="col-md-3"><label class="form-label">Valor Usado (R$) *</label><input class="form-control" id="tr-investimento" type="number" step="0.01" oninput="calcularTrafego()"></div>
+    <div class="col-md-3"><label class="form-label">Receita Gerada (R$)</label><input class="form-control" id="tr-receita" type="number" step="0.01" oninput="calcularTrafego()"></div>
+    <div class="col-md-3"><label class="form-label">ROAS <small style="color:var(--cor-texto-suave)">(auto)</small></label><input class="form-control" id="tr-roas-calc" readonly style="font-weight:700;color:var(--cor-verde)"></div>
+    <div class="col-md-3"><label class="form-label">Resultado do Dia <small style="color:var(--cor-texto-suave)">(auto)</small></label><input class="form-control" id="tr-resultado-calc" readonly style="font-weight:700;font-size:14px"></div>
+
+    <!-- Resultados & Conversão -->
+    <div class="col-12"><div style="font-size:11px;color:var(--cor-verde);font-weight:700;letter-spacing:1px;text-transform:uppercase;padding:6px 0 0;border-top:1px solid var(--cor-borda)">🎯 Resultados &amp; Conversão</div></div>
+    <div class="col-md-3"><label class="form-label">Ações</label><input class="form-control" id="tr-acoes" type="number" min="0" value="0" oninput="calcularTrafego()"></div>
+    <div class="col-md-3"><label class="form-label">Resultados (obj. campanha)</label><input class="form-control" id="tr-resultados" type="number" min="0" value="0" oninput="calcularTrafego()"></div>
+    <div class="col-md-3"><label class="form-label">Custo por Resultado <small style="color:var(--cor-texto-suave)">(auto)</small></label><input class="form-control" id="tr-custo-resultado-calc" readonly style="color:var(--cor-acento);font-weight:600"></div>
+    <div class="col-md-3"><label class="form-label">Compras</label><input class="form-control" id="tr-compras-modal" type="number" min="0" value="0" oninput="calcularTrafego()"></div>
+    <div class="col-md-3"><label class="form-label">CPA (R$) <small style="color:var(--cor-texto-suave)">(auto)</small></label><input class="form-control" id="tr-cpa-calc" readonly style="color:var(--cor-acento);font-weight:600"></div>
+
+    <!-- Entrega do Anúncio -->
+    <div class="col-12"><div style="font-size:11px;color:var(--cor-secundaria);font-weight:700;letter-spacing:1px;text-transform:uppercase;padding:6px 0 0;border-top:1px solid var(--cor-borda)">📊 Entrega do Anúncio</div></div>
+    <div class="col-md-3"><label class="form-label">Alcance</label><input class="form-control" id="tr-alcance" type="number" min="0" value="0" oninput="calcularTrafego()"></div>
+    <div class="col-md-3"><label class="form-label">Impressões</label><input class="form-control" id="tr-impressoes" type="number" min="0" value="0" oninput="calcularTrafego()"></div>
+    <div class="col-md-3"><label class="form-label">Frequência <small style="color:var(--cor-texto-suave)">(auto)</small></label><input class="form-control" id="tr-frequencia-calc" readonly style="color:var(--cor-texto-suave)"></div>
+    <div class="col-md-3"><label class="form-label">CPM (R$) <small style="color:var(--cor-texto-suave)">(auto)</small></label><input class="form-control" id="tr-cpm-calc" readonly style="color:var(--cor-texto-suave)"></div>
+    <div class="col-md-3"><label class="form-label">Visitas ao Perfil Instagram</label><input class="form-control" id="tr-visitas-perfil" type="number" min="0" value="0"></div>
+
+    <!-- Cliques -->
+    <div class="col-12"><div style="font-size:11px;color:var(--cor-azul);font-weight:700;letter-spacing:1px;text-transform:uppercase;padding:6px 0 0;border-top:1px solid var(--cor-borda)">🖱️ Cliques</div></div>
+    <div class="col-md-3"><label class="form-label">Cliques no Link</label><input class="form-control" id="tr-cliques-link" type="number" min="0" value="0" oninput="calcularTrafego()"></div>
+    <div class="col-md-3"><label class="form-label">Cliques (Todos)</label><input class="form-control" id="tr-cliques-total" type="number" min="0" value="0"></div>
+    <div class="col-md-3"><label class="form-label">CPC (R$) <small style="color:var(--cor-texto-suave)">(auto)</small></label><input class="form-control" id="tr-cpc-calc" readonly style="color:var(--cor-azul);font-weight:600"></div>
+    <div class="col-md-3"><label class="form-label">CTR (%) <small style="color:var(--cor-texto-suave)">(auto)</small></label><input class="form-control" id="tr-ctr-calc" readonly style="color:var(--cor-azul);font-weight:600"></div>
+
+    <!-- Funil de Conversão -->
+    <div class="col-12"><div style="font-size:11px;color:var(--cor-verde);font-weight:700;letter-spacing:1px;text-transform:uppercase;padding:6px 0 0;border-top:1px solid var(--cor-borda)">🔁 Funil de Conversão</div></div>
+    <div class="col-md-3"><label class="form-label">Visualiz. Página de Destino</label><input class="form-control" id="tr-pageviews" type="number" min="0" value="0" oninput="calcularTrafego()"></div>
+    <div class="col-md-3"><label class="form-label">Connect Rate (%) <small style="color:var(--cor-texto-suave)">(auto)</small></label><input class="form-control" id="tr-connect-calc" readonly style="color:var(--cor-verde);font-weight:600"></div>
+    <div class="col-md-3"><label class="form-label">Finaliz. Compras Iniciadas</label><input class="form-control" id="tr-checkouts" type="number" min="0" value="0"></div>
+    <div class="col-md-3"><label class="form-label">TX Conv. Pág. Vendas (%) <small style="color:var(--cor-texto-suave)">(auto)</small></label><input class="form-control" id="tr-tx-conv-calc" readonly style="color:var(--cor-verde);font-weight:600"></div>
+
     <div class="col-12"><label class="form-label">Observações</label><textarea class="form-control" id="tr-obs" rows="2"></textarea></div>
   </div></div>
   <div class="modal-footer"><button class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancelar</button><button class="btn btn-primary" onclick="salvarTrafego()"><i class="bi bi-check-lg me-1"></i>Salvar</button></div>
@@ -2515,39 +2543,52 @@ function aplicarPeriodoTrafego(modo) {
 }
 
 function calcularTrafego() {
-  const inv = parseFloat(document.getElementById('tr-investimento').value)||0;
-  const rec = parseFloat(document.getElementById('tr-receita').value)||0;
+  const inv  = parseFloat(document.getElementById('tr-investimento').value)||0;
+  const rec  = parseFloat(document.getElementById('tr-receita').value)||0;
   const comp = parseFloat(document.getElementById('tr-compras-modal').value)||0;
-  const imp = parseFloat(document.getElementById('tr-impressoes').value)||0;
-  const cli = parseFloat(document.getElementById('tr-cliques').value)||0;
+  const imp  = parseFloat(document.getElementById('tr-impressoes').value)||0;
+  const alc  = parseFloat(document.getElementById('tr-alcance').value)||0;
+  const cli  = parseFloat(document.getElementById('tr-cliques-link').value)||0;
+  const pv   = parseFloat(document.getElementById('tr-pageviews').value)||0;
+  const res  = parseFloat(document.getElementById('tr-resultados').value)||0;
+
+  const set = (id, val, fmt) => { document.getElementById(id).value = val ? (fmt ? fmt(val) : val) : ''; };
+
+  // Financeiro
   document.getElementById('tr-roas-calc').value = inv>0?(rec/inv).toFixed(2):'';
-  document.getElementById('tr-cpa-calc').value = comp>0?(inv/comp).toFixed(2):'';
-  document.getElementById('tr-ctr-calc').value = imp>0?((cli/imp)*100).toFixed(2)+'%':'';
-  document.getElementById('tr-cpm-calc').value = imp>0?((inv/imp)*1000).toFixed(2):'';
-  document.getElementById('tr-cpc-calc').value = cli>0?(inv/cli).toFixed(2):'';
   const resultado = rec - inv;
   const elRes = document.getElementById('tr-resultado-calc');
-  if(inv>0||rec>0) {
-    const absVal = Math.abs(resultado).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2});
-    elRes.value = (resultado>=0?'+ R$ ':'- R$ ') + absVal;
-    elRes.style.color = resultado>=0?'var(--cor-verde)':'var(--cor-vermelho)';
-  } else {
-    elRes.value='';
-    elRes.style.color='';
-  }
+  if(inv>0||rec>0){
+    elRes.value=(resultado>=0?'+ R$ ':'- R$ ')+Math.abs(resultado).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2});
+    elRes.style.color=resultado>=0?'var(--cor-verde)':'var(--cor-vermelho)';
+  } else { elRes.value=''; elRes.style.color=''; }
+
+  // Resultados & conversão
+  document.getElementById('tr-custo-resultado-calc').value = res>0&&inv>0?(inv/res).toFixed(2):'';
+  document.getElementById('tr-cpa-calc').value = comp>0&&inv>0?(inv/comp).toFixed(2):'';
+
+  // Entrega
+  document.getElementById('tr-frequencia-calc').value = alc>0&&imp>0?(imp/alc).toFixed(2):'';
+  document.getElementById('tr-cpm-calc').value = imp>0&&inv>0?((inv/imp)*1000).toFixed(2):'';
+
+  // Cliques
+  document.getElementById('tr-cpc-calc').value = cli>0&&inv>0?(inv/cli).toFixed(2):'';
+  document.getElementById('tr-ctr-calc').value = imp>0&&cli>0?((cli/imp)*100).toFixed(2)+'%':'';
+
+  // Funil
+  document.getElementById('tr-connect-calc').value = cli>0&&pv>0?((pv/cli)*100).toFixed(2)+'%':'';
+  document.getElementById('tr-tx-conv-calc').value = pv>0&&comp>0?((comp/pv)*100).toFixed(2)+'%':'';
 }
 
 function abrirModalTrafego() {
   document.getElementById('tr-idx').value='';
   document.getElementById('modalTrafegoTitulo').textContent='Novo Registro de Tráfego';
   document.getElementById('tr-data').value=new Date().toISOString().split('T')[0];
-  document.getElementById('tr-campanha').value='';
-  document.getElementById('tr-obs').value='';
-  document.getElementById('tr-investimento').value='';
-  document.getElementById('tr-receita').value='';
   document.getElementById('tr-plataforma').value='Meta Ads';
-  ['tr-impressoes','tr-alcance','tr-cliques','tr-pageviews','tr-checkouts','tr-compras-modal'].forEach(id=>document.getElementById(id).value='0');
-  ['tr-roas-calc','tr-cpa-calc','tr-ctr-calc','tr-cpm-calc','tr-cpc-calc','tr-resultado-calc'].forEach(id=>{const el=document.getElementById(id);el.value='';el.style.color='';});
+  ['tr-campanha','tr-conjunto','tr-anuncio','tr-obs','tr-data-criacao'].forEach(id=>document.getElementById(id).value='');
+  ['tr-investimento','tr-receita'].forEach(id=>document.getElementById(id).value='');
+  ['tr-acoes','tr-resultados','tr-compras-modal','tr-alcance','tr-impressoes','tr-visitas-perfil','tr-cliques-link','tr-cliques-total','tr-pageviews','tr-checkouts'].forEach(id=>document.getElementById(id).value='0');
+  ['tr-roas-calc','tr-cpa-calc','tr-ctr-calc','tr-cpm-calc','tr-cpc-calc','tr-resultado-calc','tr-frequencia-calc','tr-custo-resultado-calc','tr-connect-calc','tr-tx-conv-calc'].forEach(id=>{const el=document.getElementById(id);el.value='';el.style.color='';});
   new bootstrap.Modal(document.getElementById('modalTrafego')).show();
 }
 
@@ -2555,15 +2596,22 @@ function editarTrafego(i) {
   const r = dados.trafegodiario[i];
   document.getElementById('tr-idx').value=i;
   document.getElementById('modalTrafegoTitulo').textContent='Editar Registro';
-  document.getElementById('tr-data').value=r.data;
-  document.getElementById('tr-campanha').value=r.campanha||'';
+  document.getElementById('tr-data').value=r.data||'';
+  document.getElementById('tr-data-criacao').value=r.dataCriacao||'';
   document.getElementById('tr-plataforma').value=r.plataforma||'Meta Ads';
+  document.getElementById('tr-campanha').value=r.campanha||'';
+  document.getElementById('tr-conjunto').value=r.conjunto||'';
+  document.getElementById('tr-anuncio').value=r.anuncio||'';
   document.getElementById('tr-investimento').value=r.investimento||'';
   document.getElementById('tr-receita').value=r.receita||'';
+  document.getElementById('tr-acoes').value=r.acoes||0;
+  document.getElementById('tr-resultados').value=r.resultados||0;
   document.getElementById('tr-compras-modal').value=r.compras||0;
-  document.getElementById('tr-impressoes').value=r.impressoes||0;
   document.getElementById('tr-alcance').value=r.alcance||0;
-  document.getElementById('tr-cliques').value=r.cliques||0;
+  document.getElementById('tr-impressoes').value=r.impressoes||0;
+  document.getElementById('tr-visitas-perfil').value=r.visitasPerfil||0;
+  document.getElementById('tr-cliques-link').value=r.cliquesLink||0;
+  document.getElementById('tr-cliques-total').value=r.cliquesTotal||0;
   document.getElementById('tr-pageviews').value=r.pageviews||0;
   document.getElementById('tr-checkouts').value=r.checkouts||0;
   document.getElementById('tr-obs').value=r.obs||'';
@@ -2572,23 +2620,36 @@ function editarTrafego(i) {
 }
 
 async function salvarTrafego() {
-  if(!v('tr-data')||!v('tr-campanha')||!v('tr-investimento')) return alert('Preencha: Data, Campanha e Investimento');
-  const inv=parseFloat(v('tr-investimento'))||0;
-  const rec=parseFloat(v('tr-receita'))||0;
-  const comp=parseFloat(v('tr-compras-modal'))||0;
-  const imp=parseFloat(v('tr-impressoes'))||0;
-  const cli=parseFloat(v('tr-cliques'))||0;
-  const obj={
-    data:v('tr-data'), campanha:v('tr-campanha'), plataforma:v('tr-plataforma'),
-    investimento:inv, receita:rec, compras:comp,
-    impressoes:imp, alcance:parseFloat(v('tr-alcance'))||0, cliques:cli,
-    pageviews:parseFloat(v('tr-pageviews'))||0, checkouts:parseFloat(v('tr-checkouts'))||0,
-    roas:inv>0?parseFloat((rec/inv).toFixed(4)):0,
-    cpa:comp>0?parseFloat((inv/comp).toFixed(4)):0,
-    ctr:imp>0?parseFloat(((cli/imp)*100).toFixed(4)):0,
-    cpm:imp>0?parseFloat(((inv/imp)*1000).toFixed(4)):0,
-    cpc:cli>0?parseFloat((inv/cli).toFixed(4)):0,
-    resultado:parseFloat((rec-inv).toFixed(2)),
+  if(!v('tr-data')||!v('tr-campanha')||!v('tr-investimento')) return alert('Preencha: Data, Campanha e Valor Usado');
+  const inv  = parseFloat(v('tr-investimento'))||0;
+  const rec  = parseFloat(v('tr-receita'))||0;
+  const comp = parseFloat(v('tr-compras-modal'))||0;
+  const imp  = parseFloat(v('tr-impressoes'))||0;
+  const alc  = parseFloat(v('tr-alcance'))||0;
+  const cli  = parseFloat(v('tr-cliques-link'))||0;
+  const pv   = parseFloat(v('tr-pageviews'))||0;
+  const res  = parseFloat(v('tr-resultados'))||0;
+  const obj = {
+    data:v('tr-data'), dataCriacao:v('tr-data-criacao')||'',
+    plataforma:v('tr-plataforma'), campanha:v('tr-campanha'),
+    conjunto:v('tr-conjunto')||'', anuncio:v('tr-anuncio')||'',
+    investimento:inv, receita:rec,
+    acoes:parseFloat(v('tr-acoes'))||0, resultados:res, compras:comp,
+    alcance:alc, impressoes:imp,
+    visitasPerfil:parseFloat(v('tr-visitas-perfil'))||0,
+    cliquesLink:cli, cliquesTotal:parseFloat(v('tr-cliques-total'))||0,
+    pageviews:pv, checkouts:parseFloat(v('tr-checkouts'))||0,
+    // calculados
+    roas:         inv>0?parseFloat((rec/inv).toFixed(4)):0,
+    resultado:    parseFloat((rec-inv).toFixed(2)),
+    custoResult:  res>0&&inv>0?parseFloat((inv/res).toFixed(4)):0,
+    cpa:          comp>0&&inv>0?parseFloat((inv/comp).toFixed(4)):0,
+    frequencia:   alc>0&&imp>0?parseFloat((imp/alc).toFixed(4)):0,
+    cpm:          imp>0&&inv>0?parseFloat(((inv/imp)*1000).toFixed(4)):0,
+    cpc:          cli>0&&inv>0?parseFloat((inv/cli).toFixed(4)):0,
+    ctr:          imp>0&&cli>0?parseFloat(((cli/imp)*100).toFixed(4)):0,
+    connectRate:  cli>0&&pv>0?parseFloat(((pv/cli)*100).toFixed(4)):0,
+    txConversao:  pv>0&&comp>0?parseFloat(((comp/pv)*100).toFixed(4)):0,
     obs:v('tr-obs')
   };
   const idx=v('tr-idx');
@@ -2697,29 +2758,43 @@ function renderTrafego() {
 
   // Tabela
   const tbody=document.querySelector('#tabela-trafego tbody');
-  if(!lista.length){tbody.innerHTML='<tr><td colspan="13"><div class="empty-state"><i class="bi bi-megaphone"></i>Nenhum registro no período. Clique em Novo para adicionar.</div></td></tr>';return;}
+  if(!lista.length){tbody.innerHTML='<tr><td colspan="25"><div class="empty-state"><i class="bi bi-megaphone"></i>Nenhum registro no período. Clique em Novo para adicionar.</div></td></tr>';return;}
   tbody.innerHTML=lista.map(r=>{
     const i=dados.trafegodiario.indexOf(r);
-    const ctrFmt=r.impressoes>0?((r.cliques/r.impressoes)*100).toFixed(2)+'%':'—';
-    const roasFmt=r.roas>0?r.roas.toFixed(2):'—';
-    const corRoasRow=r.roas>=2?'var(--cor-verde)':r.roas>=1?'var(--cor-acento)':'var(--cor-vermelho)';
-    const res=(r.receita||0)-(r.investimento||0);
-    const corResRow=res>=0?'var(--cor-verde)':'var(--cor-vermelho)';
-    const resAbsRow=Math.abs(res).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2});
-    const resFmtRow=(res>=0?'+ R$ ':'- R$ ')+resAbsRow;
+    // calculados em tela (fallback para registros antigos sem o campo calculado)
+    const inv=r.investimento||0, rec=r.receita||0;
+    const resultado=rec-inv;
+    const corRes=resultado>=0?'var(--cor-verde)':'var(--cor-vermelho)';
+    const resFmt=(resultado>=0?'+ R$ ':'- R$ ')+Math.abs(resultado).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2});
+    const roas=r.roas||0;
+    const corRoas=roas>=2?'var(--cor-verde)':roas>=1?'var(--cor-acento)':'var(--cor-vermelho)';
+    const fmt2=v=>v>0?v.toFixed(2):'—';
+    const fmtPct=v=>v>0?v.toFixed(2)+'%':'—';
+    const fmtN=v=>(v||0).toLocaleString('pt-BR');
     return `<tr>
       <td style="white-space:nowrap">${fmtData(r.data)}</td>
-      <td style="font-weight:600;color:#fff">${r.campanha||'—'}</td>
-      <td><span class="badge-canal" style="background:rgba(59,130,246,.15);color:#60A5FA">${r.plataforma||'Meta Ads'}</span></td>
-      <td style="color:var(--cor-acento);font-weight:600">${moeda(r.investimento)}</td>
-      <td>${(r.cliques||0).toLocaleString('pt-BR')}</td>
-      <td style="color:var(--cor-azul)">${ctrFmt}</td>
-      <td>${r.pageviews||0}</td>
-      <td>${r.checkouts||0}</td>
+      <td style="font-weight:600;color:#fff;white-space:nowrap;max-width:160px;overflow:hidden;text-overflow:ellipsis" title="${r.campanha||''}">${r.campanha||'—'}</td>
+      <td style="color:var(--cor-texto-suave);white-space:nowrap;max-width:130px;overflow:hidden;text-overflow:ellipsis" title="${r.conjunto||''}">${r.conjunto||'—'}</td>
+      <td style="color:var(--cor-texto-suave);white-space:nowrap;max-width:120px;overflow:hidden;text-overflow:ellipsis" title="${r.anuncio||''}">${r.anuncio||'—'}</td>
+      <td style="color:var(--cor-acento);font-weight:600">${moeda(inv)}</td>
+      <td style="font-weight:600">${fmtN(r.resultados)}</td>
+      <td>${r.custoResult>0?moeda(r.custoResult):'—'}</td>
+      <td>${fmtN(r.alcance)}</td>
+      <td>${fmtN(r.impressoes)}</td>
+      <td style="color:var(--cor-texto-suave)">${fmt2(r.frequencia)}</td>
+      <td style="color:var(--cor-texto-suave)">${r.cpm>0?'R$ '+r.cpm.toFixed(2):'—'}</td>
+      <td style="color:var(--cor-azul)">${fmtN(r.cliquesLink)}</td>
+      <td>${fmtN(r.cliquesTotal)}</td>
+      <td style="color:var(--cor-azul)">${r.cpc>0?'R$ '+r.cpc.toFixed(2):'—'}</td>
+      <td style="color:var(--cor-azul);font-weight:600">${fmtPct(r.ctr)}</td>
+      <td>${fmtN(r.pageviews)}</td>
+      <td style="color:var(--cor-verde)">${fmtPct(r.connectRate)}</td>
+      <td>${fmtN(r.checkouts)}</td>
+      <td style="color:var(--cor-verde)">${fmtPct(r.txConversao)}</td>
       <td style="font-weight:700">${r.compras||0}</td>
-      <td style="color:${corRoasRow};font-weight:700">${roasFmt}</td>
       <td>${r.cpa>0?moeda(r.cpa):'—'}</td>
-      <td style="color:${corResRow};font-weight:700;white-space:nowrap">${resFmtRow}</td>
+      <td style="color:${corRoas};font-weight:700">${roas>0?roas.toFixed(2):'—'}</td>
+      <td style="color:${corRes};font-weight:700;white-space:nowrap">${resFmt}</td>
       <td style="white-space:nowrap">
         <button class="btn-sm-action btn-edit" onclick="editarTrafego(${i})" title="Editar"><i class="bi bi-pencil-fill"></i></button>
         <button class="btn-sm-action btn-delete" onclick="excluirTrafego(${i})" title="Excluir"><i class="bi bi-trash-fill"></i></button>
