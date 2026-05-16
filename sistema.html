@@ -114,6 +114,18 @@ table.gestao tbody tr:last-child td{border-bottom:none}
 .dp-btn:hover,.dp-btn.ativo{background:rgba(124,58,237,.3);color:#fff;border-color:var(--cor-primaria)}
 body.modo-claro .dp-btn{background:rgba(124,58,237,.06);color:var(--cor-texto-suave)}
 body.modo-claro .dp-btn:hover,body.modo-claro .dp-btn.ativo{background:rgba(124,58,237,.2);color:var(--cor-primaria);border-color:var(--cor-primaria)}
+.tbl-sticky-l1{position:sticky;left:0;z-index:3;background:var(--cor-card)}
+.tbl-sticky-l2{position:sticky;left:90px;z-index:3;background:var(--cor-card)}
+.tbl-sticky-r{position:sticky;right:0;z-index:3;background:var(--cor-card)}
+.tbl-sticky-l1::after,.tbl-sticky-l2::after{content:'';position:absolute;top:0;right:-6px;bottom:0;width:6px;background:linear-gradient(to right,rgba(0,0,0,.18),transparent);pointer-events:none}
+.tbl-sticky-r::before{content:'';position:absolute;top:0;left:-6px;bottom:0;width:6px;background:linear-gradient(to left,rgba(0,0,0,.18),transparent);pointer-events:none}
+body.modo-claro .tbl-sticky-l1,body.modo-claro .tbl-sticky-l2,body.modo-claro .tbl-sticky-r{background:#fff}
+body.modo-claro table.gestao tbody tr:hover .tbl-sticky-l1,
+body.modo-claro table.gestao tbody tr:hover .tbl-sticky-l2,
+body.modo-claro table.gestao tbody tr:hover .tbl-sticky-r{background:#F3F0FF}
+table.gestao tbody tr:hover .tbl-sticky-l1,
+table.gestao tbody tr:hover .tbl-sticky-l2,
+table.gestao tbody tr:hover .tbl-sticky-r{background:#1f1545}
 </style>
 </head>
 <body>
@@ -363,12 +375,15 @@ body.modo-claro .dp-btn:hover,body.modo-claro .dp-btn.ativo{background:rgba(124,
         <div class="table-responsive">
           <table class="gestao" id="tabela-trafego">
             <thead><tr>
-              <th>Data</th><th>Campanha</th><th>Conjunto</th><th>Anúncio</th>
+              <th class="tbl-sticky-l1" style="min-width:90px">Data</th>
+              <th class="tbl-sticky-l2" style="min-width:160px">Campanha</th>
+              <th>Conjunto</th><th>Anúncio</th>
               <th>Valor Usado</th><th>Resultados</th><th>Custo/Result.</th>
               <th>Alcance</th><th>Impressões</th><th>Freq.</th><th>CPM</th>
               <th>Cliques Link</th><th>Cliques Total</th><th>CPC</th><th>CTR</th>
               <th>Page Views</th><th>Connect Rate</th><th>Checkouts</th><th>TX Conv.</th>
-              <th>Compras</th><th>CPA</th><th>ROAS</th><th>Resultado</th><th></th>
+              <th>Compras</th><th>CPA</th><th>ROAS</th><th>Resultado</th>
+              <th class="tbl-sticky-r" style="min-width:72px"></th>
             </tr></thead>
             <tbody></tbody>
           </table>
@@ -2772,8 +2787,8 @@ function renderTrafego() {
     const fmtPct=v=>v>0?v.toFixed(2)+'%':'—';
     const fmtN=v=>(v||0).toLocaleString('pt-BR');
     return `<tr>
-      <td style="white-space:nowrap">${fmtData(r.data)}</td>
-      <td style="font-weight:600;color:#fff;white-space:nowrap;max-width:160px;overflow:hidden;text-overflow:ellipsis" title="${r.campanha||''}">${r.campanha||'—'}</td>
+      <td class="tbl-sticky-l1" style="white-space:nowrap">${fmtData(r.data)}</td>
+      <td class="tbl-sticky-l2" style="font-weight:600;color:#fff;white-space:nowrap;max-width:160px;overflow:hidden;text-overflow:ellipsis" title="${r.campanha||''}">${r.campanha||'—'}</td>
       <td style="color:var(--cor-texto-suave);white-space:nowrap;max-width:130px;overflow:hidden;text-overflow:ellipsis" title="${r.conjunto||''}">${r.conjunto||'—'}</td>
       <td style="color:var(--cor-texto-suave);white-space:nowrap;max-width:120px;overflow:hidden;text-overflow:ellipsis" title="${r.anuncio||''}">${r.anuncio||'—'}</td>
       <td style="color:var(--cor-acento);font-weight:600">${moeda(inv)}</td>
@@ -2795,7 +2810,7 @@ function renderTrafego() {
       <td>${r.cpa>0?moeda(r.cpa):'—'}</td>
       <td style="color:${corRoas};font-weight:700">${roas>0?roas.toFixed(2):'—'}</td>
       <td style="color:${corRes};font-weight:700;white-space:nowrap">${resFmt}</td>
-      <td style="white-space:nowrap">
+      <td class="tbl-sticky-r" style="white-space:nowrap;text-align:center">
         <button class="btn-sm-action btn-edit" onclick="editarTrafego(${i})" title="Editar"><i class="bi bi-pencil-fill"></i></button>
         <button class="btn-sm-action btn-delete" onclick="excluirTrafego(${i})" title="Excluir"><i class="bi bi-trash-fill"></i></button>
       </td>
