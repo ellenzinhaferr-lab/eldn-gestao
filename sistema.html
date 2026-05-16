@@ -366,7 +366,7 @@ body.modo-claro .dp-btn:hover,body.modo-claro .dp-btn.ativo{background:rgba(124,
               <th>Data</th><th>Campanha</th><th>Plataforma</th>
               <th>Investido</th><th>Cliques</th><th>CTR</th>
               <th>PageViews</th><th>Checkouts</th><th>Compras</th>
-              <th>ROAS</th><th>CPA</th><th></th>
+              <th>ROAS</th><th>CPA</th><th>Resultado</th><th></th>
             </tr></thead>
             <tbody></tbody>
           </table>
@@ -686,6 +686,7 @@ body.modo-claro .dp-btn:hover,body.modo-claro .dp-btn.ativo{background:rgba(124,
     <div class="col-md-4"><label class="form-label">Compras (Purchases)</label><input class="form-control" id="tr-compras-modal" type="number" min="0" value="0" oninput="calcularTrafego()"></div>
     <div class="col-md-4"><label class="form-label">ROAS</label><input class="form-control" id="tr-roas-calc" readonly style="font-weight:700;color:var(--cor-verde)"></div>
     <div class="col-md-4"><label class="form-label">CPA (R$)</label><input class="form-control" id="tr-cpa-calc" readonly style="font-weight:700;color:var(--cor-acento)"></div>
+    <div class="col-md-4"><label class="form-label">Resultado do Dia (Receita − Investimento)</label><input class="form-control" id="tr-resultado-calc" readonly style="font-weight:700;font-size:15px"></div>
     <div class="col-12"><div style="font-size:11px;color:var(--cor-secundaria);font-weight:600;letter-spacing:1px;text-transform:uppercase;padding:4px 0 0;border-top:1px solid var(--cor-borda)">📊 Entrega do Anúncio</div></div>
     <div class="col-md-4"><label class="form-label">Impressões</label><input class="form-control" id="tr-impressoes" type="number" min="0" value="0" oninput="calcularTrafego()"></div>
     <div class="col-md-4"><label class="form-label">Alcance</label><input class="form-control" id="tr-alcance" type="number" min="0" value="0"></div>
@@ -2524,6 +2525,16 @@ function calcularTrafego() {
   document.getElementById('tr-ctr-calc').value = imp>0?((cli/imp)*100).toFixed(2)+'%':'';
   document.getElementById('tr-cpm-calc').value = imp>0?((inv/imp)*1000).toFixed(2):'';
   document.getElementById('tr-cpc-calc').value = cli>0?(inv/cli).toFixed(2):'';
+  const resultado = rec - inv;
+  const elRes = document.getElementById('tr-resultado-calc');
+  if(inv>0||rec>0) {
+    const absVal = Math.abs(resultado).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2});
+    elRes.value = (resultado>=0?'+ R$ ':'- R$ ') + absVal;
+    elRes.style.color = resultado>=0?'var(--cor-verde)':'var(--cor-vermelho)';
+  } else {
+    elRes.value='';
+    elRes.style.color='';
+  }
 }
 
 function abrirModalTrafego() {
@@ -2536,7 +2547,7 @@ function abrirModalTrafego() {
   document.getElementById('tr-receita').value='';
   document.getElementById('tr-plataforma').value='Meta Ads';
   ['tr-impressoes','tr-alcance','tr-cliques','tr-pageviews','tr-checkouts','tr-compras-modal'].forEach(id=>document.getElementById(id).value='0');
-  ['tr-roas-calc','tr-cpa-calc','tr-ctr-calc','tr-cpm-calc','tr-cpc-calc'].forEach(id=>document.getElementById(id).value='');
+  ['tr-roas-calc','tr-cpa-calc','tr-ctr-calc','tr-cpm-calc','tr-cpc-calc','tr-resultado-calc'].forEach(id=>{const el=document.getElementById(id);el.value='';el.style.color='';});
   new bootstrap.Modal(document.getElementById('modalTrafego')).show();
 }
 
@@ -2577,6 +2588,7 @@ async function salvarTrafego() {
     ctr:imp>0?parseFloat(((cli/imp)*100).toFixed(4)):0,
     cpm:imp>0?parseFloat(((inv/imp)*1000).toFixed(4)):0,
     cpc:cli>0?parseFloat((inv/cli).toFixed(4)):0,
+    resultado:parseFloat((rec-inv).toFixed(2)),
     obs:v('tr-obs')
   };
   const idx=v('tr-idx');
@@ -2605,14 +2617,19 @@ function renderTrafego() {
   const roas = totalInv>0?totalRec/totalInv:0;
   const cpa = totalComp>0?totalInv/totalComp:0;
   const ctr = totalImp>0?(totalCli/totalImp)*100:0;
+  const totalResultado = totalRec - totalInv;
   const corRoas = roas>=2?'var(--cor-verde)':roas>=1?'var(--cor-acento)':'var(--cor-vermelho)';
+  const corRes = totalResultado>=0?'var(--cor-verde)':'var(--cor-vermelho)';
+  const iconRes = totalResultado>=0?'▲':'▼';
+  const resAbsFmt = Math.abs(totalResultado).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2});
+  const resFmt = (totalResultado>=0?'+ R$ ':'- R$ ') + resAbsFmt;
   document.getElementById('kpi-trafego').innerHTML=`
     <div class="kpi-card"><div class="kpi-label">💰 Total Investido</div><div class="kpi-value" style="color:var(--cor-acento)">${moeda(totalInv)}</div><div class="kpi-sub">no período</div></div>
-    <div class="kpi-card"><div class="kpi-label">🛒 Compras</div><div class="kpi-value">${totalComp}</div><div class="kpi-sub">Purchases no período</div></div>
+    <div class="kpi-card"><div class="kpi-label">💵 Receita Gerada</div><div class="kpi-value" style="color:var(--cor-verde)">${moeda(totalRec)}</div><div class="kpi-sub">no período</div></div>
+    <div class="kpi-card" style="border-color:${corRes};background:${totalResultado>=0?'rgba(16,185,129,.06)':'rgba(239,68,68,.06)'}"><div class="kpi-label">${iconRes} Resultado (Receita − Investimento)</div><div class="kpi-value" style="color:${corRes}">${totalInv>0||totalRec>0?resFmt:'—'}</div><div class="kpi-sub">${totalResultado>=0?'Lucro no período':'Prejuízo no período'}</div></div>
     <div class="kpi-card"><div class="kpi-label">📈 ROAS</div><div class="kpi-value" style="color:${corRoas}">${totalInv>0?roas.toFixed(2):'—'}</div><div class="kpi-sub">Retorno sobre investimento</div></div>
     <div class="kpi-card"><div class="kpi-label">🎯 CPA</div><div class="kpi-value">${cpa>0?moeda(cpa):'—'}</div><div class="kpi-sub">Custo por compra</div></div>
-    <div class="kpi-card"><div class="kpi-label">🖱️ Cliques</div><div class="kpi-value">${totalCli.toLocaleString('pt-BR')}</div><div class="kpi-sub">CTR: ${ctr>0?ctr.toFixed(2)+'%':'—'}</div></div>
-    <div class="kpi-card"><div class="kpi-label">💵 Receita Gerada</div><div class="kpi-value" style="color:var(--cor-verde)">${moeda(totalRec)}</div><div class="kpi-sub">no período</div></div>
+    <div class="kpi-card"><div class="kpi-label">🛒 Compras / Cliques</div><div class="kpi-value">${totalComp} <span style="font-size:14px;color:var(--cor-texto-suave)">/ ${totalCli.toLocaleString('pt-BR')}</span></div><div class="kpi-sub">CTR: ${ctr>0?ctr.toFixed(2)+'%':'—'}</div></div>
   `;
 
   // Agrupa por dia
@@ -2680,12 +2697,16 @@ function renderTrafego() {
 
   // Tabela
   const tbody=document.querySelector('#tabela-trafego tbody');
-  if(!lista.length){tbody.innerHTML='<tr><td colspan="12"><div class="empty-state"><i class="bi bi-megaphone"></i>Nenhum registro no período. Clique em Novo para adicionar.</div></td></tr>';return;}
+  if(!lista.length){tbody.innerHTML='<tr><td colspan="13"><div class="empty-state"><i class="bi bi-megaphone"></i>Nenhum registro no período. Clique em Novo para adicionar.</div></td></tr>';return;}
   tbody.innerHTML=lista.map(r=>{
     const i=dados.trafegodiario.indexOf(r);
     const ctrFmt=r.impressoes>0?((r.cliques/r.impressoes)*100).toFixed(2)+'%':'—';
     const roasFmt=r.roas>0?r.roas.toFixed(2):'—';
     const corRoasRow=r.roas>=2?'var(--cor-verde)':r.roas>=1?'var(--cor-acento)':'var(--cor-vermelho)';
+    const res=(r.receita||0)-(r.investimento||0);
+    const corResRow=res>=0?'var(--cor-verde)':'var(--cor-vermelho)';
+    const resAbsRow=Math.abs(res).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2});
+    const resFmtRow=(res>=0?'+ R$ ':'- R$ ')+resAbsRow;
     return `<tr>
       <td style="white-space:nowrap">${fmtData(r.data)}</td>
       <td style="font-weight:600;color:#fff">${r.campanha||'—'}</td>
@@ -2698,6 +2719,7 @@ function renderTrafego() {
       <td style="font-weight:700">${r.compras||0}</td>
       <td style="color:${corRoasRow};font-weight:700">${roasFmt}</td>
       <td>${r.cpa>0?moeda(r.cpa):'—'}</td>
+      <td style="color:${corResRow};font-weight:700;white-space:nowrap">${resFmtRow}</td>
       <td style="white-space:nowrap">
         <button class="btn-sm-action btn-edit" onclick="editarTrafego(${i})" title="Editar"><i class="bi bi-pencil-fill"></i></button>
         <button class="btn-sm-action btn-delete" onclick="excluirTrafego(${i})" title="Excluir"><i class="bi bi-trash-fill"></i></button>
