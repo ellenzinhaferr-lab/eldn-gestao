@@ -56,6 +56,10 @@ body{background:var(--cor-fundo);color:var(--cor-texto);font-family:'Segoe UI',s
 .table-responsive{overflow-x:auto}
 table.gestao{width:100%;border-collapse:collapse;font-size:13px}
 table.gestao thead tr{background:rgba(124,58,237,.1)}
+table.gestao thead th{position:sticky;top:0;z-index:4;background:inherit}
+table.gestao thead th.tbl-sticky-l1{z-index:6}
+table.gestao thead th.tbl-sticky-l2{z-index:6}
+table.gestao thead th.tbl-sticky-r{z-index:6}
 table.gestao th{padding:10px 14px;text-align:left;font-size:11px;text-transform:uppercase;letter-spacing:.8px;color:var(--cor-texto-suave);white-space:nowrap;border-bottom:1px solid var(--cor-borda)}
 table.gestao td{padding:10px 14px;border-bottom:1px solid rgba(45,31,94,.5);color:var(--cor-texto);vertical-align:middle}
 table.gestao tbody tr:hover{background:rgba(124,58,237,.06)}
@@ -372,7 +376,7 @@ table.gestao tbody tr:hover .tbl-sticky-r{background:#1f1545}
             <button class="btn btn-primary btn-sm" onclick="abrirModalTrafego()"><i class="bi bi-plus-lg me-1"></i>Novo</button>
           </div>
         </div>
-        <div class="table-responsive">
+        <div class="table-responsive" style="max-height:calc(100vh - 280px);overflow-y:auto;overflow-x:auto">
           <table class="gestao" id="tabela-trafego">
             <thead><tr>
               <th class="tbl-sticky-l1" style="min-width:90px">Data</th>
