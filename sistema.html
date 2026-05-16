@@ -160,6 +160,7 @@ body.modo-claro .dp-btn:hover,body.modo-claro .dp-btn.ativo{background:rgba(124,
     <div class="nav-item"><button class="nav-link" onclick="showPage('estoque')"><i class="bi bi-archive-fill"></i> Estoque</button></div>
     <div class="nav-item"><button class="nav-link" onclick="showPage('canais')"><i class="bi bi-share-fill"></i> Canais</button></div>
     <div class="nav-item"><button class="nav-link" onclick="showPage('afiliados')"><i class="bi bi-person-check-fill"></i> Afiliados</button></div>
+    <div class="nav-item"><button class="nav-link" onclick="showPage('trafego')"><i class="bi bi-megaphone-fill"></i> Tráfego</button></div>
     <div class="nav-item"><button class="nav-link" onclick="showPage('relatorios')"><i class="bi bi-file-earmark-bar-graph-fill"></i> Relatórios</button></div>
     <div class="nav-item" style="margin-top:8px;border-top:1px solid var(--cor-borda);padding-top:8px;">
       <button class="nav-link" onclick="showPage('usuarios')"><i class="bi bi-shield-lock-fill"></i> Usuários</button>
@@ -306,6 +307,70 @@ body.modo-claro .dp-btn:hover,body.modo-claro .dp-btn.ativo{background:rgba(124,
       <div class="table-card">
         <div class="table-header"><h6>Afiliados & Comissões</h6><button class="btn btn-primary btn-sm" onclick="abrirModal('afiliado')"><i class="bi bi-plus-lg"></i> Novo</button></div>
         <div class="table-responsive"><table class="gestao" id="tabela-afiliados"><thead><tr><th class="th-sort" data-col="cod" onclick="sortBy('afiliados','cod',renderAfiliados)">Cód.</th><th class="th-sort" data-col="nome" onclick="sortBy('afiliados','nome',renderAfiliados)">Nome</th><th>Produtos</th><th class="th-sort" data-col="canal" onclick="sortBy('afiliados','canal',renderAfiliados)">Canal</th><th class="th-sort" data-col="comissao" onclick="sortBy('afiliados','comissao',renderAfiliados)">Comissão %</th><th>Total (R$)</th><th class="th-sort" data-col="forma" onclick="sortBy('afiliados','forma',renderAfiliados)">Forma Pgto</th><th></th></tr></thead><tbody></tbody></table></div>
+      </div>
+    </div>
+
+    <!-- TRÁFEGO -->
+    <div class="page" id="pg-trafego">
+      <!-- Filtro de período -->
+      <div style="background:var(--cor-card);border:1px solid var(--cor-borda);border-radius:14px;padding:14px 20px;margin-bottom:20px;display:flex;align-items:center;gap:12px;flex-wrap:wrap">
+        <span style="font-size:12px;color:var(--cor-texto-suave);white-space:nowrap;font-weight:600"><i class="bi bi-funnel me-1"></i>Período:</span>
+        <div style="display:flex;gap:6px;flex-wrap:wrap">
+          <button class="dp-btn" id="tr-dp-mes" onclick="aplicarPeriodoTrafego('mes')">Este Mês</button>
+          <button class="dp-btn" id="tr-dp-mesant" onclick="aplicarPeriodoTrafego('mesant')">Mês Ant.</button>
+          <button class="dp-btn" id="tr-dp-ano" onclick="aplicarPeriodoTrafego('ano')">Este Ano</button>
+          <button class="dp-btn" id="tr-dp-tudo" onclick="aplicarPeriodoTrafego('tudo')">Tudo</button>
+        </div>
+        <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+          <span style="font-size:12px;color:var(--cor-texto-suave)">De</span>
+          <input type="date" class="form-control" id="tr-filtro-de" style="width:150px;font-size:12px;padding:4px 8px">
+          <span style="font-size:12px;color:var(--cor-texto-suave)">Até</span>
+          <input type="date" class="form-control" id="tr-filtro-ate" style="width:150px;font-size:12px;padding:4px 8px">
+          <button class="btn btn-sm btn-primary" onclick="aplicarPeriodoTrafego('custom')" style="font-size:12px;padding:4px 12px"><i class="bi bi-search me-1"></i>Filtrar</button>
+        </div>
+      </div>
+      <!-- KPIs -->
+      <div class="kpi-grid" id="kpi-trafego"></div>
+      <!-- Gráficos linha 1 -->
+      <div class="row g-3 mb-3">
+        <div class="col-lg-8">
+          <div class="chart-card">
+            <h6><i class="bi bi-bar-chart-fill me-2" style="color:var(--cor-secundaria)"></i>Investimento × Receita por Dia</h6>
+            <canvas id="chartTrInvestimento" height="90"></canvas>
+          </div>
+        </div>
+        <div class="col-lg-4">
+          <div class="chart-card">
+            <h6><i class="bi bi-trophy-fill me-2" style="color:var(--cor-acento)"></i>Compras por Campanha</h6>
+            <canvas id="chartTrCampanha" height="90"></canvas>
+          </div>
+        </div>
+      </div>
+      <!-- Gráfico ROAS/CPA -->
+      <div class="chart-card mb-3">
+        <h6><i class="bi bi-graph-up-arrow me-2" style="color:var(--cor-verde)"></i>ROAS e CPA ao longo do tempo</h6>
+        <canvas id="chartTrRoas" height="60"></canvas>
+      </div>
+      <!-- Tabela -->
+      <div class="table-card">
+        <div class="table-header">
+          <h6><i class="bi bi-megaphone me-2" style="color:var(--cor-secundaria)"></i>Registros Diários</h6>
+          <div style="display:flex;gap:8px">
+            <input type="text" class="input-search" placeholder="Buscar campanha..." oninput="filtrarTabela('tabela-trafego',this.value)">
+            <button class="btn btn-primary btn-sm" onclick="abrirModalTrafego()"><i class="bi bi-plus-lg me-1"></i>Novo</button>
+          </div>
+        </div>
+        <div class="table-responsive">
+          <table class="gestao" id="tabela-trafego">
+            <thead><tr>
+              <th>Data</th><th>Campanha</th><th>Plataforma</th>
+              <th>Investido</th><th>Cliques</th><th>CTR</th>
+              <th>PageViews</th><th>Checkouts</th><th>Compras</th>
+              <th>ROAS</th><th>CPA</th><th></th>
+            </tr></thead>
+            <tbody></tbody>
+          </table>
+        </div>
       </div>
     </div>
 
@@ -609,6 +674,33 @@ body.modo-claro .dp-btn:hover,body.modo-claro .dp-btn.ativo{background:rgba(124,
   <div class="modal-footer"><button class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancelar</button><button class="btn btn-primary" onclick="salvarAfiliado()">Salvar</button></div>
 </div></div></div>
 
+<div class="modal fade" id="modalTrafego" tabindex="-1"><div class="modal-dialog modal-lg"><div class="modal-content">
+  <div class="modal-header"><h5 class="modal-title" id="modalTrafegoTitulo">Novo Registro de Tráfego</h5><button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button></div>
+  <div class="modal-body"><input type="hidden" id="tr-idx"><div class="row g-3">
+    <div class="col-md-4"><label class="form-label">Data *</label><input class="form-control" id="tr-data" type="date"></div>
+    <div class="col-md-5"><label class="form-label">Campanha *</label><input class="form-control" id="tr-campanha" placeholder="Ex: Livro Físico Maio 2026"></div>
+    <div class="col-md-3"><label class="form-label">Plataforma</label><select class="form-select" id="tr-plataforma"><option>Meta Ads</option><option>Google Ads</option><option>TikTok Ads</option><option>Outro</option></select></div>
+    <div class="col-12"><div style="font-size:11px;color:var(--cor-secundaria);font-weight:600;letter-spacing:1px;text-transform:uppercase;padding:4px 0 0;border-top:1px solid var(--cor-borda)">💰 Investimento &amp; Resultado</div></div>
+    <div class="col-md-4"><label class="form-label">Investimento (R$) *</label><input class="form-control" id="tr-investimento" type="number" step="0.01" oninput="calcularTrafego()"></div>
+    <div class="col-md-4"><label class="form-label">Receita gerada (R$)</label><input class="form-control" id="tr-receita" type="number" step="0.01" oninput="calcularTrafego()"></div>
+    <div class="col-md-4"><label class="form-label">Compras (Purchases)</label><input class="form-control" id="tr-compras-modal" type="number" min="0" value="0" oninput="calcularTrafego()"></div>
+    <div class="col-md-4"><label class="form-label">ROAS</label><input class="form-control" id="tr-roas-calc" readonly style="font-weight:700;color:var(--cor-verde)"></div>
+    <div class="col-md-4"><label class="form-label">CPA (R$)</label><input class="form-control" id="tr-cpa-calc" readonly style="font-weight:700;color:var(--cor-acento)"></div>
+    <div class="col-12"><div style="font-size:11px;color:var(--cor-secundaria);font-weight:600;letter-spacing:1px;text-transform:uppercase;padding:4px 0 0;border-top:1px solid var(--cor-borda)">📊 Entrega do Anúncio</div></div>
+    <div class="col-md-4"><label class="form-label">Impressões</label><input class="form-control" id="tr-impressoes" type="number" min="0" value="0" oninput="calcularTrafego()"></div>
+    <div class="col-md-4"><label class="form-label">Alcance</label><input class="form-control" id="tr-alcance" type="number" min="0" value="0"></div>
+    <div class="col-md-4"><label class="form-label">Cliques</label><input class="form-control" id="tr-cliques" type="number" min="0" value="0" oninput="calcularTrafego()"></div>
+    <div class="col-md-4"><label class="form-label">CTR (%)</label><input class="form-control" id="tr-ctr-calc" readonly style="color:var(--cor-azul);font-weight:700"></div>
+    <div class="col-md-4"><label class="form-label">CPM (R$)</label><input class="form-control" id="tr-cpm-calc" readonly style="color:var(--cor-texto-suave)"></div>
+    <div class="col-md-4"><label class="form-label">CPC (R$)</label><input class="form-control" id="tr-cpc-calc" readonly style="color:var(--cor-texto-suave)"></div>
+    <div class="col-12"><div style="font-size:11px;color:var(--cor-secundaria);font-weight:600;letter-spacing:1px;text-transform:uppercase;padding:4px 0 0;border-top:1px solid var(--cor-borda)">🔁 Funil de Conversão</div></div>
+    <div class="col-md-4"><label class="form-label">Visualizações de Página</label><input class="form-control" id="tr-pageviews" type="number" min="0" value="0"></div>
+    <div class="col-md-4"><label class="form-label">Checkouts Iniciados</label><input class="form-control" id="tr-checkouts" type="number" min="0" value="0"></div>
+    <div class="col-12"><label class="form-label">Observações</label><textarea class="form-control" id="tr-obs" rows="2"></textarea></div>
+  </div></div>
+  <div class="modal-footer"><button class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancelar</button><button class="btn btn-primary" onclick="salvarTrafego()"><i class="bi bi-check-lg me-1"></i>Salvar</button></div>
+</div></div></div>
+
 <div class="modal fade" id="modalCanal" tabindex="-1"><div class="modal-dialog modal-sm"><div class="modal-content">
   <div class="modal-header"><h5 class="modal-title">Novo Canal</h5><button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button></div>
   <div class="modal-body"><input type="hidden" id="cc-idx">
@@ -721,7 +813,7 @@ const dadosPadrao = {
 // ============================================================
 // STATE
 // ============================================================
-let dados = { config:{canais:[]}, clientes:[], pedidos:[], financeiro:[], compras:[], produtos:[], estoqueMovimentos:[], afiliados:[] };
+let dados = { config:{canais:[]}, clientes:[], pedidos:[], financeiro:[], compras:[], produtos:[], estoqueMovimentos:[], afiliados:[], trafegodiario:[] };
 let currentPage = 'dashboard';
 let appReady = false;
 const unsubscribers = [];
@@ -788,7 +880,7 @@ async function seedIfEmpty() {
 // LISTENERS FIRESTORE
 // ============================================================
 function setupListeners() {
-  const cols = ['clientes','pedidos','financeiro','compras','produtos','estoqueMovimentos','afiliados'];
+  const cols = ['clientes','pedidos','financeiro','compras','produtos','estoqueMovimentos','afiliados','trafegodiario'];
   const loaded = new Set();
 
   unsubscribers.push(db.collection('config').doc('main').onSnapshot(doc => {
@@ -892,7 +984,7 @@ function nextNumPedido() { if (!dados.pedidos.length) return 'PED-01'; const num
 // ============================================================
 // NAVEGAÇÃO
 // ============================================================
-const pageTitles = { dashboard:['Dashboard','Visão geral da operação'], clientes:['Clientes','Cadastro e gestão de clientes'], pedidos:['Pedidos','Pedidos diários — todos os canais'], financeiro:['Financeiro','Lançamentos de entradas e saídas'], fluxo:['Fluxo de Caixa','Resumo mensal automático'], compras:['Compras','Compras e fornecedores'], produtos:['Produtos','Cadastro de produtos e preços'], estoque:['Estoque','Controle automático de estoque'], canais:['Canais','Desempenho por canal de venda'], afiliados:['Afiliados','Gestão de afiliados e comissões'], usuarios:['Usuários','Gerenciar acessos ao sistema'], config:['Configurações','Taxas de canais e dados do sistema'], relatorios:['Relatórios','Geração de relatórios por período'] };
+const pageTitles = { dashboard:['Dashboard','Visão geral da operação'], clientes:['Clientes','Cadastro e gestão de clientes'], pedidos:['Pedidos','Pedidos diários — todos os canais'], financeiro:['Financeiro','Lançamentos de entradas e saídas'], fluxo:['Fluxo de Caixa','Resumo mensal automático'], compras:['Compras','Compras e fornecedores'], produtos:['Produtos','Cadastro de produtos e preços'], estoque:['Estoque','Controle automático de estoque'], canais:['Canais','Desempenho por canal de venda'], afiliados:['Afiliados','Gestão de afiliados e comissões'], trafego:['Tráfego Pago','Acompanhamento diário de campanhas'], usuarios:['Usuários','Gerenciar acessos ao sistema'], config:['Configurações','Taxas de canais e dados do sistema'], relatorios:['Relatórios','Geração de relatórios por período'] };
 
 function showPage(id) {
   currentPage = id;
@@ -906,7 +998,7 @@ function showPage(id) {
   renderPage(id);
 }
 
-function renderPage(id) { const fn={dashboard:renderDashboard,clientes:renderClientes,pedidos:renderPedidos,financeiro:renderFinanceiro,fluxo:renderFluxo,compras:renderCompras,produtos:renderProdutos,estoque:renderEstoque,canais:renderCanais,afiliados:renderAfiliados,usuarios:renderUsuarios,config:renderConfig,relatorios:renderRelatorios}; if(fn[id]) fn[id](); }
+function renderPage(id) { const fn={dashboard:renderDashboard,clientes:renderClientes,pedidos:renderPedidos,financeiro:renderFinanceiro,fluxo:renderFluxo,compras:renderCompras,produtos:renderProdutos,estoque:renderEstoque,canais:renderCanais,afiliados:renderAfiliados,trafego:renderTrafego,usuarios:renderUsuarios,config:renderConfig,relatorios:renderRelatorios}; if(fn[id]) fn[id](); }
 
 // ============================================================
 // DASHBOARD
@@ -2336,7 +2428,7 @@ function importarBackup() {
     try{ bk=JSON.parse(await file.text()); } catch(err){ return alert('Arquivo inválido. Selecione um backup JSON gerado pelo sistema.'); }
     const meta=bk._backup?.geradoEm||'data desconhecida';
     if(!confirm(`Importar backup de ${meta}?\n\nOs registros do backup serão ADICIONADOS ao sistema.\n\nPara restauração completa, use "Limpar Dados" antes de importar.`)) return;
-    const cols=['clientes','pedidos','financeiro','compras','estoqueMovimentos','produtos','afiliados'];
+    const cols=['clientes','pedidos','financeiro','compras','estoqueMovimentos','produtos','afiliados','trafegodiario'];
     let total=0;
     for(const col of cols){
       if(bk[col]&&Array.isArray(bk[col])){
@@ -2368,7 +2460,7 @@ setInterval(()=>{
 async function confirmarLimpar() {
   if(!confirm('ATENÇÃO: Apagará TODOS os dados permanentemente. Continuar?')) return;
   if(!confirm('Tem certeza absoluta?')) return;
-  const cols=['clientes','pedidos','financeiro','compras','estoqueMovimentos','produtos','afiliados'];
+  const cols=['clientes','pedidos','financeiro','compras','estoqueMovimentos','produtos','afiliados','trafegodiario'];
   for(const col of cols){ const snap=await db.collection(col).get(); const batch=db.batch(); snap.docs.forEach(d=>batch.delete(d.ref)); await batch.commit(); }
   await db.collection('config').doc('main').delete();
   alert('Dados apagados.');
@@ -2377,6 +2469,243 @@ async function confirmarLimpar() {
 // ============================================================
 // INIT
 // ============================================================
+// ============================================================
+// TRÁFEGO PAGO
+// ============================================================
+let trFiltro = {de:'', ate:'', modo:'mes'};
+let chartTrInvestimento, chartTrCampanha, chartTrRoas;
+
+function _initTrFiltro() {
+  const hoje = new Date();
+  const y = hoje.getFullYear();
+  const m = String(hoje.getMonth()+1).padStart(2,'0');
+  const d = String(hoje.getDate()).padStart(2,'0');
+  trFiltro = {de:`${y}-${m}-01`, ate:`${y}-${m}-${d}`, modo:'mes'};
+  document.getElementById('tr-filtro-de').value = trFiltro.de;
+  document.getElementById('tr-filtro-ate').value = trFiltro.ate;
+  document.getElementById('tr-dp-mes').classList.add('ativo');
+}
+
+function aplicarPeriodoTrafego(modo) {
+  const hoje = new Date();
+  const y = hoje.getFullYear(), mo = hoje.getMonth(), d = hoje.getDate();
+  const pad = n => String(n).padStart(2,'0');
+  document.querySelectorAll('[id^="tr-dp-"]').forEach(b=>b.classList.remove('ativo'));
+  if (modo==='mes') {
+    trFiltro = {de:`${y}-${pad(mo+1)}-01`, ate:`${y}-${pad(mo+1)}-${pad(d)}`, modo:'mes'};
+    document.getElementById('tr-dp-mes').classList.add('ativo');
+  } else if (modo==='mesant') {
+    const pm = mo===0?11:mo-1, py = mo===0?y-1:y;
+    const fim = new Date(y,mo,0);
+    trFiltro = {de:`${py}-${pad(pm+1)}-01`, ate:`${py}-${pad(pm+1)}-${pad(fim.getDate())}`, modo:'mesant'};
+    document.getElementById('tr-dp-mesant').classList.add('ativo');
+  } else if (modo==='ano') {
+    trFiltro = {de:`${y}-01-01`, ate:`${y}-${pad(mo+1)}-${pad(d)}`, modo:'ano'};
+    document.getElementById('tr-dp-ano').classList.add('ativo');
+  } else if (modo==='tudo') {
+    trFiltro = {de:'2000-01-01', ate:'2099-12-31', modo:'tudo'};
+    document.getElementById('tr-dp-tudo').classList.add('ativo');
+  } else if (modo==='custom') {
+    trFiltro = {de:document.getElementById('tr-filtro-de').value, ate:document.getElementById('tr-filtro-ate').value, modo:'custom'};
+  }
+  document.getElementById('tr-filtro-de').value = trFiltro.de;
+  document.getElementById('tr-filtro-ate').value = trFiltro.ate;
+  renderTrafego();
+}
+
+function calcularTrafego() {
+  const inv = parseFloat(document.getElementById('tr-investimento').value)||0;
+  const rec = parseFloat(document.getElementById('tr-receita').value)||0;
+  const comp = parseFloat(document.getElementById('tr-compras-modal').value)||0;
+  const imp = parseFloat(document.getElementById('tr-impressoes').value)||0;
+  const cli = parseFloat(document.getElementById('tr-cliques').value)||0;
+  document.getElementById('tr-roas-calc').value = inv>0?(rec/inv).toFixed(2):'';
+  document.getElementById('tr-cpa-calc').value = comp>0?(inv/comp).toFixed(2):'';
+  document.getElementById('tr-ctr-calc').value = imp>0?((cli/imp)*100).toFixed(2)+'%':'';
+  document.getElementById('tr-cpm-calc').value = imp>0?((inv/imp)*1000).toFixed(2):'';
+  document.getElementById('tr-cpc-calc').value = cli>0?(inv/cli).toFixed(2):'';
+}
+
+function abrirModalTrafego() {
+  document.getElementById('tr-idx').value='';
+  document.getElementById('modalTrafegoTitulo').textContent='Novo Registro de Tráfego';
+  document.getElementById('tr-data').value=new Date().toISOString().split('T')[0];
+  document.getElementById('tr-campanha').value='';
+  document.getElementById('tr-obs').value='';
+  document.getElementById('tr-investimento').value='';
+  document.getElementById('tr-receita').value='';
+  document.getElementById('tr-plataforma').value='Meta Ads';
+  ['tr-impressoes','tr-alcance','tr-cliques','tr-pageviews','tr-checkouts','tr-compras-modal'].forEach(id=>document.getElementById(id).value='0');
+  ['tr-roas-calc','tr-cpa-calc','tr-ctr-calc','tr-cpm-calc','tr-cpc-calc'].forEach(id=>document.getElementById(id).value='');
+  new bootstrap.Modal(document.getElementById('modalTrafego')).show();
+}
+
+function editarTrafego(i) {
+  const r = dados.trafegodiario[i];
+  document.getElementById('tr-idx').value=i;
+  document.getElementById('modalTrafegoTitulo').textContent='Editar Registro';
+  document.getElementById('tr-data').value=r.data;
+  document.getElementById('tr-campanha').value=r.campanha||'';
+  document.getElementById('tr-plataforma').value=r.plataforma||'Meta Ads';
+  document.getElementById('tr-investimento').value=r.investimento||'';
+  document.getElementById('tr-receita').value=r.receita||'';
+  document.getElementById('tr-compras-modal').value=r.compras||0;
+  document.getElementById('tr-impressoes').value=r.impressoes||0;
+  document.getElementById('tr-alcance').value=r.alcance||0;
+  document.getElementById('tr-cliques').value=r.cliques||0;
+  document.getElementById('tr-pageviews').value=r.pageviews||0;
+  document.getElementById('tr-checkouts').value=r.checkouts||0;
+  document.getElementById('tr-obs').value=r.obs||'';
+  calcularTrafego();
+  new bootstrap.Modal(document.getElementById('modalTrafego')).show();
+}
+
+async function salvarTrafego() {
+  if(!v('tr-data')||!v('tr-campanha')||!v('tr-investimento')) return alert('Preencha: Data, Campanha e Investimento');
+  const inv=parseFloat(v('tr-investimento'))||0;
+  const rec=parseFloat(v('tr-receita'))||0;
+  const comp=parseFloat(v('tr-compras-modal'))||0;
+  const imp=parseFloat(v('tr-impressoes'))||0;
+  const cli=parseFloat(v('tr-cliques'))||0;
+  const obj={
+    data:v('tr-data'), campanha:v('tr-campanha'), plataforma:v('tr-plataforma'),
+    investimento:inv, receita:rec, compras:comp,
+    impressoes:imp, alcance:parseFloat(v('tr-alcance'))||0, cliques:cli,
+    pageviews:parseFloat(v('tr-pageviews'))||0, checkouts:parseFloat(v('tr-checkouts'))||0,
+    roas:inv>0?parseFloat((rec/inv).toFixed(4)):0,
+    cpa:comp>0?parseFloat((inv/comp).toFixed(4)):0,
+    ctr:imp>0?parseFloat(((cli/imp)*100).toFixed(4)):0,
+    cpm:imp>0?parseFloat(((inv/imp)*1000).toFixed(4)):0,
+    cpc:cli>0?parseFloat((inv/cli).toFixed(4)):0,
+    obs:v('tr-obs')
+  };
+  const idx=v('tr-idx');
+  if(idx==='') await db.collection('trafegodiario').add(obj);
+  else await db.collection('trafegodiario').doc(dados.trafegodiario[parseInt(idx)]._docId).set(obj);
+  bootstrap.Modal.getInstance(document.getElementById('modalTrafego')).hide();
+}
+
+async function excluirTrafego(i) {
+  if(!confirm('Excluir este registro de tráfego?')) return;
+  await db.collection('trafegodiario').doc(dados.trafegodiario[i]._docId).delete();
+}
+
+function renderTrafego() {
+  if(!document.getElementById('pg-trafego').classList.contains('active')) return;
+  if(!trFiltro.de) _initTrFiltro();
+  const {de, ate} = trFiltro;
+  const lista = [...dados.trafegodiario].filter(r=>r.data>=de&&r.data<=ate).sort((a,b)=>b.data.localeCompare(a.data));
+
+  // KPIs
+  const totalInv = lista.reduce((s,r)=>s+(r.investimento||0),0);
+  const totalRec = lista.reduce((s,r)=>s+(r.receita||0),0);
+  const totalComp = lista.reduce((s,r)=>s+(r.compras||0),0);
+  const totalCli = lista.reduce((s,r)=>s+(r.cliques||0),0);
+  const totalImp = lista.reduce((s,r)=>s+(r.impressoes||0),0);
+  const roas = totalInv>0?totalRec/totalInv:0;
+  const cpa = totalComp>0?totalInv/totalComp:0;
+  const ctr = totalImp>0?(totalCli/totalImp)*100:0;
+  const corRoas = roas>=2?'var(--cor-verde)':roas>=1?'var(--cor-acento)':'var(--cor-vermelho)';
+  document.getElementById('kpi-trafego').innerHTML=`
+    <div class="kpi-card"><div class="kpi-label">💰 Total Investido</div><div class="kpi-value" style="color:var(--cor-acento)">${moeda(totalInv)}</div><div class="kpi-sub">no período</div></div>
+    <div class="kpi-card"><div class="kpi-label">🛒 Compras</div><div class="kpi-value">${totalComp}</div><div class="kpi-sub">Purchases no período</div></div>
+    <div class="kpi-card"><div class="kpi-label">📈 ROAS</div><div class="kpi-value" style="color:${corRoas}">${totalInv>0?roas.toFixed(2):'—'}</div><div class="kpi-sub">Retorno sobre investimento</div></div>
+    <div class="kpi-card"><div class="kpi-label">🎯 CPA</div><div class="kpi-value">${cpa>0?moeda(cpa):'—'}</div><div class="kpi-sub">Custo por compra</div></div>
+    <div class="kpi-card"><div class="kpi-label">🖱️ Cliques</div><div class="kpi-value">${totalCli.toLocaleString('pt-BR')}</div><div class="kpi-sub">CTR: ${ctr>0?ctr.toFixed(2)+'%':'—'}</div></div>
+    <div class="kpi-card"><div class="kpi-label">💵 Receita Gerada</div><div class="kpi-value" style="color:var(--cor-verde)">${moeda(totalRec)}</div><div class="kpi-sub">no período</div></div>
+  `;
+
+  // Agrupa por dia
+  const diasMap={};
+  lista.forEach(r=>{
+    if(!diasMap[r.data]) diasMap[r.data]={inv:0,rec:0,comp:0};
+    diasMap[r.data].inv+=r.investimento||0;
+    diasMap[r.data].rec+=r.receita||0;
+    diasMap[r.data].comp+=r.compras||0;
+  });
+  const dias=Object.keys(diasMap).sort();
+
+  // Gráfico investimento × receita por dia
+  if(chartTrInvestimento) chartTrInvestimento.destroy();
+  if(document.getElementById('chartTrInvestimento')) {
+    chartTrInvestimento=new Chart(document.getElementById('chartTrInvestimento'),{
+      type:'bar',
+      data:{labels:dias.map(d=>fmtData(d)),datasets:[
+        {label:'Investimento',data:dias.map(d=>diasMap[d].inv),backgroundColor:'rgba(124,58,237,0.7)',borderRadius:4},
+        {label:'Receita',data:dias.map(d=>diasMap[d].rec),backgroundColor:'rgba(16,185,129,0.5)',borderRadius:4}
+      ]},
+      options:{plugins:{legend:{labels:{color:'#9D8EC4'}}},scales:{
+        x:{ticks:{color:'#9D8EC4',maxRotation:45},grid:{color:'rgba(45,31,94,.5)'}},
+        y:{ticks:{color:'#9D8EC4',callback:vl=>'R$ '+Number(vl).toLocaleString('pt-BR')},grid:{color:'rgba(45,31,94,.5)'}}
+      }}
+    });
+  }
+
+  // Gráfico ROAS e CPA ao longo do tempo
+  if(chartTrRoas) chartTrRoas.destroy();
+  if(document.getElementById('chartTrRoas')) {
+    chartTrRoas=new Chart(document.getElementById('chartTrRoas'),{
+      type:'line',
+      data:{labels:dias.map(d=>fmtData(d)),datasets:[
+        {label:'ROAS',data:dias.map(d=>diasMap[d].inv>0?parseFloat((diasMap[d].rec/diasMap[d].inv).toFixed(2)):null),borderColor:'#10B981',backgroundColor:'rgba(16,185,129,0.1)',tension:.3,spanGaps:true,yAxisID:'y'},
+        {label:'CPA (R$)',data:dias.map(d=>diasMap[d].comp>0?parseFloat((diasMap[d].inv/diasMap[d].comp).toFixed(2)):null),borderColor:'#F59E0B',backgroundColor:'rgba(245,158,11,0.1)',tension:.3,spanGaps:true,yAxisID:'y2'}
+      ]},
+      options:{plugins:{legend:{labels:{color:'#9D8EC4'}}},scales:{
+        x:{ticks:{color:'#9D8EC4',maxRotation:45},grid:{color:'rgba(45,31,94,.5)'}},
+        y:{ticks:{color:'#10B981'},grid:{color:'rgba(45,31,94,.3)'},title:{display:true,text:'ROAS',color:'#10B981'}},
+        y2:{ticks:{color:'#F59E0B',callback:vl=>'R$ '+vl},position:'right',grid:{display:false},title:{display:true,text:'CPA (R$)',color:'#F59E0B'}}
+      }}
+    });
+  }
+
+  // Gráfico resultado por campanha
+  const campMap={};
+  lista.forEach(r=>{
+    if(!campMap[r.campanha]) campMap[r.campanha]={comp:0,inv:0};
+    campMap[r.campanha].comp+=r.compras||0;
+    campMap[r.campanha].inv+=r.investimento||0;
+  });
+  const camps=Object.keys(campMap).sort((a,b)=>campMap[b].comp-campMap[a].comp);
+  if(chartTrCampanha) chartTrCampanha.destroy();
+  if(document.getElementById('chartTrCampanha')) {
+    chartTrCampanha=new Chart(document.getElementById('chartTrCampanha'),{
+      type:'bar',
+      data:{labels:camps,datasets:[{label:'Compras',data:camps.map(c=>campMap[c].comp),backgroundColor:'rgba(124,58,237,0.8)',borderRadius:4}]},
+      options:{indexAxis:'y',plugins:{legend:{labels:{color:'#9D8EC4'}}},scales:{
+        x:{ticks:{color:'#9D8EC4'},grid:{color:'rgba(45,31,94,.5)'}},
+        y:{ticks:{color:'#9D8EC4',font:{size:11}},grid:{color:'rgba(45,31,94,.5)'}}
+      }}
+    });
+  }
+
+  // Tabela
+  const tbody=document.querySelector('#tabela-trafego tbody');
+  if(!lista.length){tbody.innerHTML='<tr><td colspan="12"><div class="empty-state"><i class="bi bi-megaphone"></i>Nenhum registro no período. Clique em Novo para adicionar.</div></td></tr>';return;}
+  tbody.innerHTML=lista.map(r=>{
+    const i=dados.trafegodiario.indexOf(r);
+    const ctrFmt=r.impressoes>0?((r.cliques/r.impressoes)*100).toFixed(2)+'%':'—';
+    const roasFmt=r.roas>0?r.roas.toFixed(2):'—';
+    const corRoasRow=r.roas>=2?'var(--cor-verde)':r.roas>=1?'var(--cor-acento)':'var(--cor-vermelho)';
+    return `<tr>
+      <td style="white-space:nowrap">${fmtData(r.data)}</td>
+      <td style="font-weight:600;color:#fff">${r.campanha||'—'}</td>
+      <td><span class="badge-canal" style="background:rgba(59,130,246,.15);color:#60A5FA">${r.plataforma||'Meta Ads'}</span></td>
+      <td style="color:var(--cor-acento);font-weight:600">${moeda(r.investimento)}</td>
+      <td>${(r.cliques||0).toLocaleString('pt-BR')}</td>
+      <td style="color:var(--cor-azul)">${ctrFmt}</td>
+      <td>${r.pageviews||0}</td>
+      <td>${r.checkouts||0}</td>
+      <td style="font-weight:700">${r.compras||0}</td>
+      <td style="color:${corRoasRow};font-weight:700">${roasFmt}</td>
+      <td>${r.cpa>0?moeda(r.cpa):'—'}</td>
+      <td style="white-space:nowrap">
+        <button class="btn-sm-action btn-edit" onclick="editarTrafego(${i})" title="Editar"><i class="bi bi-pencil-fill"></i></button>
+        <button class="btn-sm-action btn-delete" onclick="excluirTrafego(${i})" title="Excluir"><i class="bi bi-trash-fill"></i></button>
+      </td>
+    </tr>`;
+  }).join('');
+}
+
 function toggleModo() {
   const claro=document.body.classList.toggle('modo-claro');
   localStorage.setItem('tema-eldn', claro?'claro':'escuro');
