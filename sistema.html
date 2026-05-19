@@ -257,7 +257,7 @@ table.gestao tbody tr:hover .tbl-sticky-r{background:#1f1545}
     <div class="page" id="pg-pedidos">
       <div class="table-card">
         <div class="table-header"><h6>Pedidos Diários</h6><div style="display:flex;gap:8px;"><input type="text" class="input-search" placeholder="Buscar pedido..." oninput="filtrarTabela('tabela-pedidos',this.value)"><button class="btn btn-primary btn-sm" onclick="abrirModal('pedido')"><i class="bi bi-plus-lg"></i> Novo</button></div></div>
-        <div class="table-responsive"><table class="gestao" id="tabela-pedidos"><thead><tr><th class="th-sort" data-col="data" onclick="sortBy('pedidos','data',renderPedidos)">Data</th><th class="th-sort" data-col="num" onclick="sortBy('pedidos','num',renderPedidos)">Nº Pedido</th><th class="th-sort" data-col="cliente" onclick="sortBy('pedidos','cliente',renderPedidos)">Cliente</th><th class="th-sort" data-col="valor" onclick="sortBy('pedidos','valor',renderPedidos)">Total</th><th class="th-sort" data-col="status" onclick="sortBy('pedidos','status',renderPedidos)">Status</th><th></th></tr></thead><tbody></tbody></table></div>
+        <div class="table-responsive"><table class="gestao" id="tabela-pedidos"><thead><tr><th class="th-sort" data-col="data" onclick="sortBy('pedidos','data',renderPedidos)">Data</th><th class="th-sort" data-col="num" onclick="sortBy('pedidos','num',renderPedidos)">Nº Pedido</th><th class="th-sort" data-col="cliente" onclick="sortBy('pedidos','cliente',renderPedidos)">Cliente</th><th class="th-sort" data-col="valor" onclick="sortBy('pedidos','valor',renderPedidos)">Total</th><th>Tipo</th><th class="th-sort" data-col="status" onclick="sortBy('pedidos','status',renderPedidos)">Status</th><th></th></tr></thead><tbody></tbody></table></div>
       </div>
     </div>
 
@@ -1021,6 +1021,8 @@ function badgeCanal(c) { const m={'Instagram':'badge-instagram','Amazon':'badge-
 function badgeCategoria(c) { const m={'Livro Físico':'badge-livro','Livro Digital':'badge-digital','Kit':'badge-kit'}; return `<span class="badge-canal ${m[c]||'badge-livro'}">${c}</span>`; }
 function badgeTipo(t) { return t==='Entrada'?`<span class="badge-canal badge-entrada">↑ Entrada</span>`:`<span class="badge-canal badge-saida">↓ Saída</span>`; }
 function badgeStatus(s) { const m={'Entregue':'#10B981','Enviado':'#3B82F6','Em separação':'#F59E0B','Pendente':'#9D8EC4','Cancelado':'#EF4444','Devolvido':'#EF4444'}; return `<span style="color:${m[s]||'#9D8EC4'};font-size:12px;font-weight:600;">${s}</span>`; }
+function isPedidoDigital(p) { const itens=getPedidoItens(p); if(!itens.length) return false; return itens.every(it=>{ const prod=dados.produtos.find(x=>x.sku===it.sku); return prod&&prod.digital; }); }
+function badgeTipoPedido(p) { const d=isPedidoDigital(p); return d?`<span class="badge-canal badge-digital"><i class="bi bi-file-earmark-fill me-1"></i>Digital</span>`:`<span class="badge-canal badge-livro"><i class="bi bi-box-seam-fill me-1"></i>Físico</span>`; }
 function nomeCliente(id) { const c=dados.clientes.find(x=>x.id===id); return c?c.nome:'—'; }
 function v(id) { return document.getElementById(id).value; }
 function limpaCampos(ids) { ids.forEach(id=>{ const el=document.getElementById(id); if(el) el.value=''; }); }
@@ -1496,8 +1498,10 @@ function renderPedidos() {
   document.querySelector('#tabela-pedidos tbody').innerHTML=lista.length?lista.map(p=>{
     const ri=dados.pedidos.indexOf(p);
     const bruto=getPedidoTotal(p);
-    return `<tr><td>${fmtData(p.data)}</td><td style="font-weight:600;color:#fff">${p.num}</td><td>${nomeCliente(p.clienteId)}</td><td style="font-weight:600;color:var(--cor-verde)">${moeda(bruto)}</td><td>${badgeStatus(p.status)}</td><td style="white-space:nowrap"><button class="btn-sm-action" style="color:#60A5FA" onclick="verPedido(${ri})" title="Visualizar"><i class="bi bi-eye-fill"></i></button><button class="btn-sm-action btn-edit" onclick="editarPedido(${ri})" title="Editar"><i class="bi bi-pencil-fill"></i></button><button class="btn-sm-action btn-delete" onclick="deletar('pedidos',${ri})" title="Excluir"><i class="bi bi-trash-fill"></i></button></td></tr>`;
-  }).join(''):'<tr><td colspan="6"><div class="empty-state"><i class="bi bi-box-seam"></i>Nenhum pedido ainda</div></td></tr>';
+    const digital=isPedidoDigital(p);
+    const rowStyle=digital?'background:rgba(59,130,246,.07);border-left:3px solid rgba(59,130,246,.5);':'';
+    return `<tr style="${rowStyle}"><td>${fmtData(p.data)}</td><td style="font-weight:600;color:#fff">${p.num}</td><td>${nomeCliente(p.clienteId)}</td><td style="font-weight:600;color:var(--cor-verde)">${moeda(bruto)}</td><td>${badgeTipoPedido(p)}</td><td>${badgeStatus(p.status)}</td><td style="white-space:nowrap"><button class="btn-sm-action" style="color:#60A5FA" onclick="verPedido(${ri})" title="Visualizar"><i class="bi bi-eye-fill"></i></button><button class="btn-sm-action btn-edit" onclick="editarPedido(${ri})" title="Editar"><i class="bi bi-pencil-fill"></i></button><button class="btn-sm-action btn-delete" onclick="deletar('pedidos',${ri})" title="Excluir"><i class="bi bi-trash-fill"></i></button></td></tr>`;
+  }).join(''):'<tr><td colspan="7"><div class="empty-state"><i class="bi bi-box-seam"></i>Nenhum pedido ainda</div></td></tr>';
   atualizarThSort('pedidos',s.col,s.dir);
 }
 function editarPedido(i) {
