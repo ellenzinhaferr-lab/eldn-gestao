@@ -1374,13 +1374,15 @@ function preencherSelectsPedido() {
   document.getElementById('p-status').value='Pendente';
   _itemCount=0;
   document.getElementById('itens-body').innerHTML='';
-  // Pré-seleciona canal e forma de pagamento do pedido mais recente
+  // Pré-seleciona canal, forma de pagamento e itens do pedido mais recente
   const lastPed=[...dados.pedidos].sort((a,b)=>b.data.localeCompare(a.data))[0];
   if(lastPed){
     if(lastPed.canal) document.getElementById('p-canal').value=lastPed.canal;
     if(lastPed.pagto) document.getElementById('p-pagto').value=lastPed.pagto;
-  }
-  adicionarItem();
+    const lastItens=getPedidoItens(lastPed);
+    if(lastItens.length) lastItens.forEach(it=>adicionarItem(it));
+    else adicionarItem();
+  } else adicionarItem();
 }
 function adicionarItem(item={}) {
   const i=_itemCount++;
