@@ -51,8 +51,7 @@ body{background:var(--cor-fundo);color:var(--cor-texto);font-family:'Segoe UI',s
 .kpi-label{font-size:12px;color:var(--cor-texto-suave);text-transform:uppercase;letter-spacing:1px;margin-bottom:8px}
 .kpi-value{font-size:24px;font-weight:700;color:#fff}
 .kpi-sub{font-size:12px;color:var(--cor-texto-suave);margin-top:4px}
-.table-card{background:var(--cor-card);border:1px solid var(--cor-borda);border-radius:14px;overflow:hidden}
-#pg-pedidos .table-card{overflow:clip}
+.table-card{background:var(--cor-card);border:1px solid var(--cor-borda);border-radius:14px;overflow:clip}
 .table-header{display:flex;align-items:center;justify-content:space-between;padding:16px 20px;border-bottom:1px solid var(--cor-borda)}
 .table-header h6{margin:0;font-size:14px;font-weight:600;color:#fff}
 .table-responsive{overflow-x:auto}
@@ -1038,6 +1037,25 @@ function nextNumPedido() { if (!dados.pedidos.length) return 'PED-01'; const num
 // ============================================================
 const pageTitles = { dashboard:['Dashboard','Visão geral da operação'], clientes:['Clientes','Cadastro e gestão de clientes'], pedidos:['Pedidos','Pedidos diários — todos os canais'], financeiro:['Financeiro','Lançamentos de entradas e saídas'], fluxo:['Fluxo de Caixa','Resumo mensal automático'], compras:['Compras','Compras e fornecedores'], produtos:['Produtos','Cadastro de produtos e preços'], estoque:['Estoque','Controle automático de estoque'], canais:['Canais','Desempenho por canal de venda'], afiliados:['Afiliados','Gestão de afiliados e comissões'], trafego:['Tráfego Pago','Acompanhamento diário de campanhas'], usuarios:['Usuários','Gerenciar acessos ao sistema'], config:['Configurações','Taxas de canais e dados do sistema'], relatorios:['Relatórios','Geração de relatórios por período'] };
 
+function fixarStickyHeaders(pgId) {
+  setTimeout(function(){
+    var tb=document.querySelector('.topbar');
+    if(!tb) return;
+    var topH=tb.offsetHeight;
+    var pg=document.getElementById('pg-'+pgId);
+    if(!pg) return;
+    pg.querySelectorAll('.table-card').forEach(function(card){
+      var hd=card.querySelector('.table-header');
+      if(!hd) return;
+      hd.style.position='sticky';hd.style.top=topH+'px';hd.style.zIndex='20';hd.style.background='var(--cor-card)';
+      var resp=card.querySelector('.table-responsive');
+      if(resp&&resp.style.overflowY) return;
+      var t2=topH+hd.offsetHeight;
+      card.querySelectorAll('.gestao thead th').forEach(function(th){th.style.top=t2+'px';});
+    });
+  },0);
+}
+
 function showPage(id) {
   currentPage = id;
   document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
@@ -1048,6 +1066,7 @@ function showPage(id) {
   document.getElementById('page-title').textContent = titulo;
   document.getElementById('page-sub').textContent = sub;
   renderPage(id);
+  fixarStickyHeaders(id);
 }
 
 function renderPage(id) { const fn={dashboard:renderDashboard,clientes:renderClientes,pedidos:renderPedidos,financeiro:renderFinanceiro,fluxo:renderFluxo,compras:renderCompras,produtos:renderProdutos,estoque:renderEstoque,canais:renderCanais,afiliados:renderAfiliados,trafego:renderTrafego,usuarios:renderUsuarios,config:renderConfig,relatorios:renderRelatorios}; if(fn[id]) fn[id](); }
@@ -1513,15 +1532,6 @@ function renderPedidos() {
     return `<tr style="${rowStyle}"><td>${fmtData(p.data)}</td><td style="font-weight:600;color:#fff">${p.num}</td><td>${nomeCliente(p.clienteId)}</td><td style="font-weight:600;color:var(--cor-verde)">${moeda(bruto)}</td><td>${badgeTipoPedido(p)}</td><td>${badgeStatus(p.status)}</td><td style="white-space:nowrap"><button class="btn-sm-action" style="color:#60A5FA" onclick="verPedido(${ri})" title="Visualizar"><i class="bi bi-eye-fill"></i></button><button class="btn-sm-action btn-edit" onclick="editarPedido(${ri})" title="Editar"><i class="bi bi-pencil-fill"></i></button><button class="btn-sm-action btn-delete" onclick="deletar('pedidos',${ri})" title="Excluir"><i class="bi bi-trash-fill"></i></button></td></tr>`;
   }).join(''):'<tr><td colspan="7"><div class="empty-state"><i class="bi bi-box-seam"></i>Nenhum pedido ainda</div></td></tr>';
   atualizarThSort('pedidos',s.col,s.dir);
-  setTimeout(function(){
-    var tb=document.querySelector('.topbar');
-    var hd=document.querySelector('#pg-pedidos .table-header');
-    if(!tb||!hd) return;
-    var t=tb.offsetHeight;
-    hd.style.position='sticky';hd.style.top=t+'px';hd.style.zIndex='20';hd.style.background='var(--cor-card)';
-    var t2=t+hd.offsetHeight;
-    document.querySelectorAll('#pg-pedidos .gestao thead th').forEach(function(el){el.style.top=t2+'px';});
-  },0);
 }
 function editarPedido(i) {
   preencherSelectsPedido();
