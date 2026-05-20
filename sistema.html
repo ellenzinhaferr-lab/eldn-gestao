@@ -57,7 +57,7 @@ body{background:var(--cor-fundo);color:var(--cor-texto);font-family:'Segoe UI',s
 .table-responsive{overflow-x:auto}
 table.gestao{width:100%;border-collapse:collapse;font-size:13px}
 table.gestao thead tr{background:rgba(124,58,237,.1)}
-table.gestao thead th{position:sticky;top:0;z-index:4;background:inherit}
+table.gestao thead th{z-index:4;background:inherit}
 table.gestao thead th.tbl-sticky-l1{z-index:6}
 table.gestao thead th.tbl-sticky-l2{z-index:6}
 table.gestao thead th.tbl-sticky-r{z-index:6}
@@ -1048,10 +1048,6 @@ function fixarStickyHeaders(pgId) {
       var hd=card.querySelector('.table-header');
       if(!hd) return;
       hd.style.position='sticky';hd.style.top=topH+'px';hd.style.zIndex='20';hd.style.background='var(--cor-card)';
-      var resp=card.querySelector('.table-responsive');
-      if(resp&&resp.style.overflowY) return;
-      var t2=topH+hd.offsetHeight;
-      card.querySelectorAll('.gestao thead th').forEach(function(th){th.style.top=t2+'px';});
     });
   },0);
 }
