@@ -1179,7 +1179,10 @@ function renderDashboard() {
 
   const totalVendas=ativos.reduce((s,p)=>s+getPedidoTotal(p),0);
   const receitaLiq=ativos.reduce((s,p)=>s+(p.liquido!=null?p.liquido:getPedidoTotal(p)),0);
-  const ticketMedio=ativos.length?totalVendas/ativos.length:0;
+  const ativosDigital=ativos.filter(p=>isPedidoDigital(p));
+  const ativosFisico=ativos.filter(p=>!isPedidoDigital(p));
+  const ticketDigital=ativosDigital.length?ativosDigital.reduce((s,p)=>s+getPedidoTotal(p),0)/ativosDigital.length:0;
+  const ticketFisico=ativosFisico.length?ativosFisico.reduce((s,p)=>s+getPedidoTotal(p),0)/ativosFisico.length:0;
   const totalEnt=finFiltro.filter(f=>f.tipo==='Entrada').reduce((s,f)=>s+f.valor,0);
   const totalSai=finFiltro.filter(f=>f.tipo==='Saída').reduce((s,f)=>s+f.valor,0);
   // Globais (não filtrados)
@@ -1193,7 +1196,8 @@ function renderDashboard() {
     sec('📦 Vendas no Período',[
       {label:'Receita Bruta',value:moeda(totalVendas),sub:`${ativos.length} pedido(s) ativo(s)`,cor:'#10B981',icon:'💰'},
       {label:'Receita Líquida',value:moeda(receitaLiq),sub:'após taxas de canal e pagamento',cor:'#F59E0B',icon:'💵'},
-      {label:'Ticket Médio',value:moeda(ticketMedio),sub:'por pedido ativo',cor:'#A78BFA',icon:'🎯'},
+      {label:'Ticket Médio Digital',value:ticketDigital?moeda(ticketDigital):'—',sub:`${ativosDigital.length} pedido(s) digital(is)`,cor:'#60A5FA',icon:'📱'},
+      {label:'Ticket Médio Físico',value:ticketFisico?moeda(ticketFisico):'—',sub:`${ativosFisico.length} pedido(s) físico(s)`,cor:'#A78BFA',icon:'📦'},
       {label:'Pedidos',value:pedsFiltro.length,sub:'total (incluindo cancelados)',cor:'#EC4899',icon:'📋'},
     ])+
     sec('🏦 Financeiro no Período',[
