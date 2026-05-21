@@ -1536,6 +1536,8 @@ function calcularValorPedido() {
     if(dispEl) dispEl.textContent='R$ '+royalties.toFixed(2).replace('.',',');
     const infoEl=document.getElementById('p-pagto-info');
     if(infoEl) infoEl.innerHTML='<span style="color:#60A5FA;font-size:12px"><i class="bi bi-info-circle me-1"></i>Canal de Royalties — informe o valor já convertido de USD para R$ (cotação do dia). Sem taxas.</span>';
+    const recInfoElR=document.getElementById('p-recebimento-info');
+    if(recInfoElR) recInfoElR.innerHTML='';
     return;
   }
 
@@ -1589,7 +1591,7 @@ function renderPedidos() {
     else if(recDate) { const overdue=recDate<hoje; recCell=`<span style="color:${overdue?'#EF4444':'#F59E0B'};font-size:11px;font-weight:600"><i class="bi bi-clock me-1"></i>${fmtData(recDate)}</span>`; }
     const btnRec=(recStatus!=='Recebido'&&recDate)?`<button class="btn-sm-action" style="color:#10B981" onclick="marcarRecebido(${ri})" title="Marcar como Recebido"><i class="bi bi-check-circle"></i></button>`:'';
     return `<tr style="${rowStyle}"><td>${fmtData(p.data)}</td><td style="font-weight:600;color:#fff">${p.num}</td><td>${nomeCliente(p.clienteId)}</td><td style="font-weight:600;color:var(--cor-verde)">${moeda(bruto)}</td><td>${badgeTipoPedido(p)}</td><td>${badgeStatus(p.status)}</td><td style="white-space:nowrap">${recCell}</td><td style="white-space:nowrap">${btnRec}<button class="btn-sm-action" style="color:#60A5FA" onclick="verPedido(${ri})" title="Visualizar"><i class="bi bi-eye-fill"></i></button><button class="btn-sm-action btn-edit" onclick="editarPedido(${ri})" title="Editar"><i class="bi bi-pencil-fill"></i></button><button class="btn-sm-action btn-delete" onclick="deletar('pedidos',${ri})" title="Excluir"><i class="bi bi-trash-fill"></i></button></td></tr>`;
-  }).join(''):'<tr><td colspan="7"><div class="empty-state"><i class="bi bi-box-seam"></i>Nenhum pedido ainda</div></td></tr>';
+  }).join(''):'<tr><td colspan="8"><div class="empty-state"><i class="bi bi-box-seam"></i>Nenhum pedido ainda</div></td></tr>';
   atualizarThSort('pedidos',s.col,s.dir);
 }
 function editarPedido(i) {
