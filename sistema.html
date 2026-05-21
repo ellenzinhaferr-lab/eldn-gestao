@@ -1558,7 +1558,7 @@ function calcularValorPedido() {
       const qtd2=parseFloat(document.getElementById('item-qtd-'+ii)?.value)||0;
       const preco2=parseFloat((document.getElementById('item-preco-'+ii)?.value||'0').replace(',','.'))||0;
       const sub2=qtd2*preco2;
-      if(sub2>0) taxaCanal+=sub2*(canal.taxa||0)+(canal.taxaFixa||0);
+      if(sub2>0) taxaCanal+=sub2*(canal.taxa||0)+(canal.taxaFixa||0)*qtd2;
     });
     if(frete>0) taxaCanal+=frete*(canal.taxa||0);
   } else {
