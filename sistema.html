@@ -259,7 +259,7 @@ table.gestao tbody tr:hover .tbl-sticky-r{background:#1f1545}
     <div class="page" id="pg-pedidos">
       <div class="table-card">
         <div class="table-header"><h6>Pedidos Diários</h6><div style="display:flex;gap:8px;"><input type="text" class="input-search" placeholder="Buscar pedido..." oninput="filtrarTabela('tabela-pedidos',this.value)"><button class="btn btn-primary btn-sm" onclick="abrirModal('pedido')"><i class="bi bi-plus-lg"></i> Novo</button></div></div>
-        <div class="table-responsive"><table class="gestao" id="tabela-pedidos"><thead><tr><th class="th-sort" data-col="data" onclick="sortBy('pedidos','data',renderPedidos)">Data</th><th class="th-sort" data-col="num" onclick="sortBy('pedidos','num',renderPedidos)">Nº Pedido</th><th class="th-sort" data-col="cliente" onclick="sortBy('pedidos','cliente',renderPedidos)">Cliente</th><th class="th-sort" data-col="valor" onclick="sortBy('pedidos','valor',renderPedidos)">Total</th><th>Tipo</th><th class="th-sort" data-col="status" onclick="sortBy('pedidos','status',renderPedidos)">Status</th><th></th></tr></thead><tbody></tbody></table></div>
+        <div class="table-responsive"><table class="gestao" id="tabela-pedidos"><thead><tr><th class="th-sort" data-col="data" onclick="sortBy('pedidos','data',renderPedidos)">Data</th><th class="th-sort" data-col="num" onclick="sortBy('pedidos','num',renderPedidos)">Nº Pedido</th><th class="th-sort" data-col="cliente" onclick="sortBy('pedidos','cliente',renderPedidos)">Cliente</th><th class="th-sort" data-col="valor" onclick="sortBy('pedidos','valor',renderPedidos)">Total</th><th>Tipo</th><th class="th-sort" data-col="status" onclick="sortBy('pedidos','status',renderPedidos)">Status</th><th>Recebimento</th><th></th></tr></thead><tbody></tbody></table></div>
       </div>
     </div>
 
@@ -267,17 +267,34 @@ table.gestao tbody tr:hover .tbl-sticky-r{background:#1f1545}
     <div class="page" id="pg-financeiro">
       <div class="kpi-grid" id="kpi-financeiro"></div>
       <div class="table-card">
-        <div class="table-header"><h6>Lançamentos Financeiros</h6><div style="display:flex;gap:8px;"><input type="text" class="input-search" placeholder="Buscar..." oninput="filtrarTabela('tabela-financeiro',this.value)"><button class="btn btn-primary btn-sm" onclick="abrirModal('financeiro')"><i class="bi bi-plus-lg"></i> Novo</button></div></div>
-        <div class="table-responsive"><table class="gestao" id="tabela-financeiro"><thead><tr><th class="th-sort" data-col="data" onclick="sortBy('financeiro','data',renderFinanceiro)">Data</th><th class="th-sort" data-col="tipo" onclick="sortBy('financeiro','tipo',renderFinanceiro)">Tipo</th><th class="th-sort" data-col="desc" onclick="sortBy('financeiro','desc',renderFinanceiro)">Descrição</th><th class="th-sort" data-col="categoria" onclick="sortBy('financeiro','categoria',renderFinanceiro)">Categoria</th><th class="th-sort" data-col="valor" onclick="sortBy('financeiro','valor',renderFinanceiro)">Valor</th><th class="th-sort" data-col="forma" onclick="sortBy('financeiro','forma',renderFinanceiro)">Forma Pgto</th><th></th></tr></thead><tbody></tbody></table></div>
+        <div class="table-header" style="flex-wrap:wrap;gap:8px;">
+          <h6>Lançamentos Financeiros</h6>
+          <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+            <div style="display:flex;border:1px solid var(--cor-borda);border-radius:8px;overflow:hidden">
+              <button id="fin-tab-todos" class="btn btn-sm" style="border-radius:0;border:none;background:rgba(124,58,237,.25);color:#fff;font-size:12px;padding:5px 12px" onclick="setFinTab('todos')">Todos</button>
+              <button id="fin-tab-realizados" class="btn btn-sm" style="border-radius:0;border:none;background:none;color:var(--cor-texto-suave);font-size:12px;padding:5px 12px" onclick="setFinTab('realizados')">Realizados</button>
+              <button id="fin-tab-previstos" class="btn btn-sm" style="border-radius:0;border:none;background:none;color:var(--cor-texto-suave);font-size:12px;padding:5px 12px" onclick="setFinTab('previstos')">Previstos</button>
+            </div>
+            <input type="text" class="input-search" placeholder="Buscar..." oninput="filtrarTabela('tabela-financeiro',this.value)">
+            <button class="btn btn-primary btn-sm" onclick="abrirModal('financeiro')"><i class="bi bi-plus-lg"></i> Novo</button>
+          </div>
+        </div>
+        <div class="table-responsive"><table class="gestao" id="tabela-financeiro"><thead><tr><th class="th-sort" data-col="data" onclick="sortBy('financeiro','data',renderFinanceiro)">Data</th><th>Situação</th><th>Vencimento</th><th class="th-sort" data-col="tipo" onclick="sortBy('financeiro','tipo',renderFinanceiro)">Tipo</th><th class="th-sort" data-col="desc" onclick="sortBy('financeiro','desc',renderFinanceiro)">Descrição</th><th class="th-sort" data-col="categoria" onclick="sortBy('financeiro','categoria',renderFinanceiro)">Categoria</th><th class="th-sort" data-col="valor" onclick="sortBy('financeiro','valor',renderFinanceiro)">Valor</th><th>Forma Pgto</th><th></th></tr></thead><tbody></tbody></table></div>
       </div>
     </div>
 
     <!-- FLUXO DE CAIXA -->
     <div class="page" id="pg-fluxo">
       <div class="chart-card mb-3"><h6><i class="bi bi-bar-chart-fill me-2" style="color:var(--cor-secundaria)"></i>Entradas × Saídas por Mês</h6><canvas id="chartFluxo" height="70"></canvas></div>
-      <div class="table-card">
-        <div class="table-header"><h6>Resumo Mensal</h6></div>
-        <div class="table-responsive"><table class="gestao" id="tabela-fluxo"><thead><tr><th>Mês</th><th>Entradas</th><th>Saídas</th><th>Resultado</th></tr></thead><tbody></tbody></table></div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
+        <div class="table-card">
+          <div class="table-header"><h6>Resumo Mensal</h6></div>
+          <div class="table-responsive"><table class="gestao" id="tabela-fluxo"><thead><tr><th>Mês</th><th>Entradas</th><th>Saídas</th><th>Resultado</th></tr></thead><tbody></tbody></table></div>
+        </div>
+        <div class="table-card">
+          <div class="table-header"><h6><i class="bi bi-calendar-event me-2" style="color:#F59E0B"></i>Previsão — Próximos 30 dias</h6></div>
+          <div class="table-responsive"><table class="gestao" id="tabela-previsao"><thead><tr><th>Data</th><th>Descrição</th><th>Tipo</th><th>Valor</th></tr></thead><tbody></tbody></table></div>
+        </div>
       </div>
     </div>
 
@@ -528,7 +545,7 @@ table.gestao tbody tr:hover .tbl-sticky-r{background:#1f1545}
 
     <!-- IDENTIFICAÇÃO -->
     <div class="row g-3 mb-3">
-      <div class="col-md-4"><label class="form-label">Data *</label><input class="form-control" id="p-data" type="date"></div>
+      <div class="col-md-4"><label class="form-label">Data *</label><input class="form-control" id="p-data" type="date" onchange="calcularValorPedido()"></div>
       <div class="col-md-4"><label class="form-label">Nº Pedido *</label><input class="form-control" id="p-num" placeholder="PED-01"></div>
       <div class="col-md-4"><label class="form-label">Canal de Venda</label><select class="form-select" id="p-canal" onchange="calcularValorPedido()"></select></div>
     </div>
@@ -579,6 +596,7 @@ table.gestao tbody tr:hover .tbl-sticky-r{background:#1f1545}
             <span id="p-liquido-display" style="font-size:26px;font-weight:800;color:#10B981;letter-spacing:-0.5px">R$ 0,00</span>
           </div>
           <input type="hidden" id="p-liquido">
+          <div id="p-recebimento-info" style="margin-top:6px;font-size:12px"></div>
         </div>
       </div>
     </div>
@@ -757,6 +775,7 @@ table.gestao tbody tr:hover .tbl-sticky-r{background:#1f1545}
     <div class="mb-3"><label class="form-label">Nome do Canal *</label><input class="form-control" id="cc-nome"></div>
     <div class="mb-3"><label class="form-label">Taxa % (ex: 0.14 = 14%)</label><input class="form-control" id="cc-taxa" type="number" step="0.01" value="0"></div>
     <div class="mb-3"><label class="form-label">Taxa Fixa (R$) — ex: Hotmart cobra R$ 1,00</label><input class="form-control" id="cc-taxafixa" type="number" step="0.01" value="0"></div>
+    <div class="mb-3"><label class="form-label">Prazo de Recebimento (dias) <small style="color:var(--cor-texto-suave)">— Ex: Kiwify = 2 dias, Amazon = 30 dias, PIX direto = 0</small></label><input class="form-control" id="cc-prazo" type="number" min="0" value="0"></div>
     <div class="form-check">
       <input class="form-check-input" type="checkbox" id="cc-incluipagto">
       <label class="form-check-label" for="cc-incluipagto" style="font-size:13px">Canal já processa o pagamento<br><span style="color:var(--cor-texto-suave);font-size:11px">Não aplica taxa de forma de pagamento (Hotmart, Kiwify, Amazon...)</span></label>
@@ -866,6 +885,7 @@ const dadosPadrao = {
 let dados = { config:{canais:[]}, clientes:[], pedidos:[], financeiro:[], compras:[], produtos:[], estoqueMovimentos:[], afiliados:[], trafegodiario:[] };
 let currentPage = 'dashboard';
 let appReady = false;
+let finTab = 'todos';
 const unsubscribers = [];
 let dashFiltro = {de:'', ate:'', modo:'mes'};
 
@@ -978,6 +998,11 @@ function setupListeners() {
       if(marketplaces.includes(c.nome) && c.incluiPagamento === undefined) {
         c.incluiPagamento = true; migrou = true;
       }
+    });
+    // Prazos de recebimento padrão por canal
+    const prazoesPadrao={'Hotmart':2,'Kiwify':2,'Cakto':2,'Amazon':30,'Amazon KDP':30,'Shopee':30,'Mercado Livre':30,'TikTok Shop':7,'Elo7':14};
+    dados.config.canais.forEach(c=>{
+      if(c.prazoRecebimento===undefined&&prazoesPadrao[c.nome]!==undefined){c.prazoRecebimento=prazoesPadrao[c.nome];migrou=true;}
     });
     if(migrou) db.collection('config').doc('main').set(dados.config);
     if (appReady) renderCurrentPage();
@@ -1174,7 +1199,8 @@ function renderDashboard() {
     sec('🏦 Financeiro no Período',[
       {label:'Entradas',value:moeda(totalEnt),sub:'lançamentos no período',cor:'#10B981',icon:'📈'},
       {label:'Saídas',value:moeda(totalSai),sub:'despesas no período',cor:'#EF4444',icon:'📉'},
-      {label:'Clientes',value:totalClientes,sub:'cadastrados no total',cor:'#3B82F6',icon:'👥'},
+      {label:'A Receber',value:moeda(dados.pedidos.filter(p=>p.statusRecebimento==='A receber'&&p.status!=='Cancelado'&&p.status!=='Devolvido').reduce((s,p)=>s+(p.liquido!=null?p.liquido:getPedidoTotal(p)),0)),sub:'pedidos aguardando recebimento',cor:'#3B82F6',icon:'⏳'},
+      {label:'Clientes',value:totalClientes,sub:'cadastrados no total',cor:'#A78BFA',icon:'👥'},
       {label:'Saldo Real',value:moeda(saldoReal),sub:'acumulado total',cor:saldoReal>=0?'#10B981':'#EF4444',icon:'🏦'},
     ]);
 
@@ -1222,6 +1248,32 @@ function renderDashboard() {
 // ============================================================
 // HELPERS — PEDIDO (suporte a itens múltiplos + formato legado)
 // ============================================================
+function calcDataRecebimento(dataPedido, nomeCanal) {
+  const canal=(dados.config.canais||[]).find(c=>c.nome===nomeCanal)||{};
+  const prazo=canal.prazoRecebimento||0;
+  if(!prazo||!dataPedido) return '';
+  const d=new Date(dataPedido+'T12:00:00');
+  d.setDate(d.getDate()+prazo);
+  return d.toISOString().split('T')[0];
+}
+async function marcarRecebido(i) {
+  const p=dados.pedidos[i];
+  if(!p||!p._docId) return;
+  if(!confirm(`Confirmar recebimento do pedido ${p.num}?`)) return;
+  const hoje=new Date().toISOString().split('T')[0];
+  await db.collection('pedidos').doc(p._docId).update({statusRecebimento:'Recebido',dataRecebimento:hoje});
+}
+function setFinTab(tab) {
+  finTab=tab;
+  ['todos','realizados','previstos'].forEach(t=>{
+    const btn=document.getElementById('fin-tab-'+t);
+    if(!btn) return;
+    const ativo=t===tab;
+    btn.style.background=ativo?'rgba(124,58,237,.25)':'none';
+    btn.style.color=ativo?'#fff':'var(--cor-texto-suave)';
+  });
+  renderFinanceiro();
+}
 function getPedidoItens(p) {
   if(p.itens&&p.itens.length) return p.itens;
   return [{sku:p.sku||'',desc:p.desc||'',qtd:p.qtd||0,preco:p.preco||0}];
@@ -1510,6 +1562,9 @@ function calcularValorPedido() {
     if(taxaCanal===0&&taxaPagto===0&&!canal.incluiPagamento) linhas.push('Nenhuma taxa para este canal e forma de pagamento');
     infoEl.innerHTML=linhas.join('<br>');
   }
+  const dataRec=calcDataRecebimento(v('p-data'),nomCanal);
+  const recInfoEl=document.getElementById('p-recebimento-info');
+  if(recInfoEl) recInfoEl.innerHTML=dataRec?`<i class="bi bi-calendar-check me-1" style="color:#3B82F6"></i>Recebimento previsto: <strong style="color:#3B82F6">${fmtData(dataRec)}</strong>`:(canal.prazoRecebimento===0?'<span style="color:#10B981;font-size:11px"><i class="bi bi-check-circle me-1"></i>Recebimento imediato</span>':'');
 }
 function renderPedidos() {
   const s=sortState.pedidos;
@@ -1526,7 +1581,14 @@ function renderPedidos() {
     const bruto=getPedidoTotal(p);
     const digital=isPedidoDigital(p);
     const rowStyle=digital?'background:rgba(59,130,246,.07);border-left:3px solid rgba(59,130,246,.5);':'';
-    return `<tr style="${rowStyle}"><td>${fmtData(p.data)}</td><td style="font-weight:600;color:#fff">${p.num}</td><td>${nomeCliente(p.clienteId)}</td><td style="font-weight:600;color:var(--cor-verde)">${moeda(bruto)}</td><td>${badgeTipoPedido(p)}</td><td>${badgeStatus(p.status)}</td><td style="white-space:nowrap"><button class="btn-sm-action" style="color:#60A5FA" onclick="verPedido(${ri})" title="Visualizar"><i class="bi bi-eye-fill"></i></button><button class="btn-sm-action btn-edit" onclick="editarPedido(${ri})" title="Editar"><i class="bi bi-pencil-fill"></i></button><button class="btn-sm-action btn-delete" onclick="deletar('pedidos',${ri})" title="Excluir"><i class="bi bi-trash-fill"></i></button></td></tr>`;
+    const recStatus=p.statusRecebimento;
+    const recDate=p.dataRecebimento;
+    const hoje=new Date().toISOString().split('T')[0];
+    let recCell='<span style="color:var(--cor-texto-suave);font-size:11px">—</span>';
+    if(recStatus==='Recebido') recCell=`<span style="color:#10B981;font-size:11px;font-weight:600"><i class="bi bi-check-circle-fill me-1"></i>Recebido</span>`;
+    else if(recDate) { const overdue=recDate<hoje; recCell=`<span style="color:${overdue?'#EF4444':'#F59E0B'};font-size:11px;font-weight:600"><i class="bi bi-clock me-1"></i>${fmtData(recDate)}</span>`; }
+    const btnRec=(recStatus!=='Recebido'&&recDate)?`<button class="btn-sm-action" style="color:#10B981" onclick="marcarRecebido(${ri})" title="Marcar como Recebido"><i class="bi bi-check-circle"></i></button>`:'';
+    return `<tr style="${rowStyle}"><td>${fmtData(p.data)}</td><td style="font-weight:600;color:#fff">${p.num}</td><td>${nomeCliente(p.clienteId)}</td><td style="font-weight:600;color:var(--cor-verde)">${moeda(bruto)}</td><td>${badgeTipoPedido(p)}</td><td>${badgeStatus(p.status)}</td><td style="white-space:nowrap">${recCell}</td><td style="white-space:nowrap">${btnRec}<button class="btn-sm-action" style="color:#60A5FA" onclick="verPedido(${ri})" title="Visualizar"><i class="bi bi-eye-fill"></i></button><button class="btn-sm-action btn-edit" onclick="editarPedido(${ri})" title="Editar"><i class="bi bi-pencil-fill"></i></button><button class="btn-sm-action btn-delete" onclick="deletar('pedidos',${ri})" title="Excluir"><i class="bi bi-trash-fill"></i></button></td></tr>`;
   }).join(''):'<tr><td colspan="7"><div class="empty-state"><i class="bi bi-box-seam"></i>Nenhum pedido ainda</div></td></tr>';
   atualizarThSort('pedidos',s.col,s.dir);
 }
@@ -1573,7 +1635,11 @@ async function salvarPedido() {
   if(!itens.length) return alert('Adicione pelo menos um item ao pedido');
   const idx=v('p-idx');
   const statusSalvo=v('p-status');
-  const obj={data:v('p-data'),num,canal:v('p-canal'),clienteId:parseInt(v('p-cliente'))||null,endereco:v('p-endereco'),itens,frete:parseFloat(v('p-frete'))||0,pagto:v('p-pagto'),liquido:parseFloat(v('p-liquido'))||0,status:statusSalvo,rastreio:v('p-rastreio'),linkRastreio:v('p-link-rastreio'),obs:v('p-obs')};
+  const canalRec=(dados.config.canais||[]).find(c=>c.nome===v('p-canal'))||{prazoRecebimento:0};
+  const dataRecebimento=calcDataRecebimento(v('p-data'),v('p-canal'));
+  const existingRec=idx!==''?dados.pedidos[parseInt(idx)]?.statusRecebimento:null;
+  const statusRecebimento=existingRec==='Recebido'?'Recebido':((canalRec.prazoRecebimento||0)>0?'A receber':'Recebido');
+  const obj={data:v('p-data'),num,canal:v('p-canal'),clienteId:parseInt(v('p-cliente'))||null,endereco:v('p-endereco'),itens,frete:parseFloat(v('p-frete'))||0,pagto:v('p-pagto'),liquido:parseFloat(v('p-liquido'))||0,status:statusSalvo,dataRecebimento,statusRecebimento,rastreio:v('p-rastreio'),linkRastreio:v('p-link-rastreio'),obs:v('p-obs')};
   if(idx==='') await db.collection('pedidos').add(obj);
   else await db.collection('pedidos').doc(dados.pedidos[parseInt(idx)]._docId).set(obj);
   bootstrap.Modal.getInstance(document.getElementById('modalPedido')).hide();
@@ -1628,6 +1694,7 @@ function verPedido(i) {
       <tbody>${itens.map(it=>`<tr><td style="padding:6px 8px;font-family:monospace;color:var(--cor-secundaria);font-size:12px">${it.sku||'—'}</td><td style="padding:6px 8px;color:#fff">${it.desc||'—'}</td><td style="padding:6px 8px;text-align:center">${it.qtd}</td><td style="padding:6px 8px;text-align:right">${moeda(it.preco)}</td><td style="padding:6px 8px;text-align:right;font-weight:600;color:var(--cor-verde)">${moeda(it.qtd*it.preco)}</td></tr>`).join('')}</tbody>
     </table>
     <div style="border-top:1px solid var(--cor-borda);padding-top:12px;margin-bottom:10px"><small style="color:var(--cor-secundaria);font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:1.2px"><i class="bi bi-cash-stack me-1"></i>Valores</small></div>
+    ${p.dataRecebimento||p.statusRecebimento?`<div style="display:flex;align-items:center;gap:10px;margin-bottom:12px;padding:8px 12px;background:rgba(59,130,246,.07);border-radius:8px;border:1px solid rgba(59,130,246,.2)"><i class="bi bi-calendar-check" style="color:#3B82F6;font-size:16px"></i><div style="font-size:13px"><span style="color:var(--cor-texto-suave)">Recebimento: </span><strong style="color:${p.statusRecebimento==='Recebido'?'#10B981':'#3B82F6'}">${p.statusRecebimento==='Recebido'?'✓ Recebido':(p.dataRecebimento?fmtData(p.dataRecebimento)+' — A receber':'A receber')}</strong></div></div>`:''}
     <div style="display:flex;flex-direction:column;gap:6px;font-size:13px;max-width:360px">
       <div style="display:flex;justify-content:space-between"><span style="color:var(--cor-texto-suave)">Subtotal itens</span><span>${moeda(bruto-(p.frete||0))}</span></div>
       <div style="display:flex;justify-content:space-between"><span style="color:var(--cor-texto-suave)">Frete</span><span>${moeda(p.frete||0)}</span></div>
@@ -1754,14 +1821,34 @@ function imprimirPedido(i) {
 // ============================================================
 function renderFinanceiro() {
   const k=calcKPIs();
-  document.getElementById('kpi-financeiro').innerHTML=[{label:'Total Entradas',value:moeda(k.totalEntradas),sub:'lançamentos manuais',cor:'#10B981'},{label:'Total Saídas',value:moeda(k.totalSaidas),sub:'despesas lançadas',cor:'#EF4444'},{label:'Receita Pedidos',value:moeda(k.totalVendas),sub:'automático de pedidos',cor:'#A78BFA'}].map(k=>`<div class="kpi-card"><div class="kpi-label">${k.label}</div><div class="kpi-value" style="color:${k.cor}">${k.value}</div><div class="kpi-sub">${k.sub}</div></div>`).join('');
+  const totalPrevisto=dados.financeiro.filter(f=>f.situacao==='Prevista'&&f.tipo==='Saída').reduce((s,f)=>s+f.valor,0);
+  const totalPrevEnt=dados.financeiro.filter(f=>f.situacao==='Prevista'&&f.tipo==='Entrada').reduce((s,f)=>s+f.valor,0);
+  const aReceber=dados.pedidos.filter(p=>p.statusRecebimento==='A receber'&&p.status!=='Cancelado'&&p.status!=='Devolvido').reduce((s,p)=>s+(p.liquido!=null?p.liquido:getPedidoTotal(p)),0);
+  document.getElementById('kpi-financeiro').innerHTML=[
+    {label:'Entradas Realizadas',value:moeda(k.totalEntradas),sub:'lançamentos realizados',cor:'#10B981'},
+    {label:'Saídas Realizadas',value:moeda(k.totalSaidas),sub:'despesas realizadas',cor:'#EF4444'},
+    {label:'Despesas Previstas',value:moeda(totalPrevisto),sub:'a pagar (aguardando)',cor:'#F59E0B'},
+    {label:'A Receber (Pedidos)',value:moeda(aReceber),sub:'pagamentos pendentes de pedidos',cor:'#3B82F6'},
+  ].map(k=>`<div class="kpi-card"><div class="kpi-label">${k.label}</div><div class="kpi-value" style="color:${k.cor}">${k.value}</div><div class="kpi-sub">${k.sub}</div></div>`).join('');
   const s=sortState.financeiro;
-  const lista=[...dados.financeiro].sort((a,b)=>{
+  let lista=[...dados.financeiro];
+  if(finTab==='realizados') lista=lista.filter(f=>!f.situacao||f.situacao==='Realizada');
+  else if(finTab==='previstos') lista=lista.filter(f=>f.situacao==='Prevista');
+  lista=lista.sort((a,b)=>{
     const va=s.col==='valor'?a.valor:((a[s.col]||'').toString().toLowerCase());
     const vb=s.col==='valor'?b.valor:((b[s.col]||'').toString().toLowerCase());
     return compararSort(va,vb,s.dir);
   });
-  document.querySelector('#tabela-financeiro tbody').innerHTML=lista.length?lista.map(f=>{const ri=dados.financeiro.indexOf(f);return `<tr><td>${fmtData(f.data)}</td><td>${badgeTipo(f.tipo)}</td><td style="font-weight:600;color:#fff">${f.desc}</td><td style="color:var(--cor-texto-suave)">${f.categoria}</td><td style="font-weight:700;color:${f.tipo==='Entrada'?'#10B981':'#EF4444'}">${moeda(f.valor)}</td><td>${f.forma}</td><td style="white-space:nowrap"><button class="btn-sm-action btn-edit" onclick="editarFinanceiro(${ri})"><i class="bi bi-pencil-fill"></i></button><button class="btn-sm-action btn-delete" onclick="deletar('financeiro',${ri})"><i class="bi bi-trash-fill"></i></button></td></tr>`}).join(''):'<tr><td colspan="7"><div class="empty-state"><i class="bi bi-cash-stack"></i>Nenhum lançamento ainda</div></td></tr>';
+  const hoje=new Date().toISOString().split('T')[0];
+  document.querySelector('#tabela-financeiro tbody').innerHTML=lista.length?lista.map(f=>{
+    const ri=dados.financeiro.indexOf(f);
+    const isPrev=f.situacao==='Prevista';
+    const rowStyle=isPrev?'background:rgba(245,158,11,.04)':'';
+    const badgeSit=isPrev?`<span style="background:rgba(245,158,11,.15);color:#F59E0B;padding:2px 8px;border-radius:12px;font-size:11px;font-weight:600">Prevista</span>`:`<span style="background:rgba(16,185,129,.12);color:#10B981;padding:2px 8px;border-radius:12px;font-size:11px;font-weight:600">Realizada</span>`;
+    const overdue=isPrev&&f.tipo==='Saída'&&f.vencimento&&f.vencimento<hoje;
+    const vencCell=f.vencimento?`<span style="${overdue?'color:#EF4444;font-weight:700':''}">${fmtData(f.vencimento)}${overdue?' ⚠️':''}</span>`:'—';
+    return `<tr style="${rowStyle}"><td>${fmtData(f.data)}</td><td>${badgeSit}</td><td>${vencCell}</td><td>${badgeTipo(f.tipo)}</td><td style="font-weight:600;color:#fff">${f.desc}</td><td style="color:var(--cor-texto-suave)">${f.categoria}</td><td style="font-weight:700;color:${f.tipo==='Entrada'?'#10B981':'#EF4444'}">${moeda(f.valor)}</td><td>${f.forma||'—'}</td><td style="white-space:nowrap"><button class="btn-sm-action btn-edit" onclick="editarFinanceiro(${ri})"><i class="bi bi-pencil-fill"></i></button><button class="btn-sm-action btn-delete" onclick="deletar('financeiro',${ri})"><i class="bi bi-trash-fill"></i></button></td></tr>`;
+  }).join(''):'<tr><td colspan="9"><div class="empty-state"><i class="bi bi-cash-stack"></i>Nenhum lançamento</div></td></tr>';
   atualizarThSort('financeiro',s.col,s.dir);
 }
 function editarFinanceiro(i) {
@@ -1803,8 +1890,22 @@ function renderFluxo() {
   if(chartFluxoChart) chartFluxoChart.destroy();
   chartFluxoChart=new Chart(document.getElementById('chartFluxo'),{type:'bar',data:{labels:meses,datasets:[{label:'Entradas',data:ent,backgroundColor:'rgba(16,185,129,0.7)',borderRadius:4},{label:'Saídas',data:sai,backgroundColor:'rgba(239,68,68,0.7)',borderRadius:4}]},options:{plugins:{legend:{labels:{color:'#9D8EC4'}}},scales:{x:{ticks:{color:'#9D8EC4'},grid:{color:'rgba(45,31,94,.5)'}},y:{ticks:{color:'#9D8EC4',callback:v=>'R$ '+v.toLocaleString('pt-BR')},grid:{color:'rgba(45,31,94,.5)'}}}}});
   const rows=[];
-  for(let i=0;i<12;i++){if(ent[i]||sai[i]){const res=ent[i]-sai[i];rows.push(`<tr><td style="font-weight:600;color:#fff">${meses[i]}/2026</td><td style="color:#10B981;font-weight:600">${moeda(ent[i])}</td><td style="color:#EF4444;font-weight:600">${moeda(sai[i])}</td><td style="font-weight:700;color:${res>=0?'#10B981':'#EF4444'}">${moeda(res)}</td></tr>`);}}
+  const anoAtual=new Date().getFullYear();
+  for(let i=0;i<12;i++){if(ent[i]||sai[i]){const res=ent[i]-sai[i];rows.push(`<tr><td style="font-weight:600;color:#fff">${meses[i]}/${anoAtual}</td><td style="color:#10B981;font-weight:600">${moeda(ent[i])}</td><td style="color:#EF4444;font-weight:600">${moeda(sai[i])}</td><td style="font-weight:700;color:${res>=0?'#10B981':'#EF4444'}">${moeda(res)}</td></tr>`);}}
   document.querySelector('#tabela-fluxo tbody').innerHTML=rows.length?rows.join(''):'<tr><td colspan="4"><div class="empty-state"><i class="bi bi-bar-chart"></i>Nenhum dado ainda</div></td></tr>';
+  // Previsão próximos 30 dias
+  const hoje=new Date().toISOString().split('T')[0];
+  const d30=new Date(); d30.setDate(d30.getDate()+30);
+  const ate30=d30.toISOString().split('T')[0];
+  const previsoes=[];
+  dados.pedidos.filter(p=>p.statusRecebimento==='A receber'&&p.dataRecebimento&&p.dataRecebimento>=hoje&&p.dataRecebimento<=ate30&&p.status!=='Cancelado'&&p.status!=='Devolvido').forEach(p=>{
+    previsoes.push({data:p.dataRecebimento,desc:`${p.num} — ${nomeCliente(p.clienteId)}`,tipo:'Entrada',valor:p.liquido!=null?p.liquido:getPedidoTotal(p)});
+  });
+  dados.financeiro.filter(f=>f.situacao==='Prevista'&&f.vencimento&&f.vencimento>=hoje&&f.vencimento<=ate30).forEach(f=>{
+    previsoes.push({data:f.vencimento,desc:f.desc,tipo:f.tipo,valor:f.valor});
+  });
+  previsoes.sort((a,b)=>a.data.localeCompare(b.data));
+  document.querySelector('#tabela-previsao tbody').innerHTML=previsoes.length?previsoes.map(p=>`<tr><td style="white-space:nowrap">${fmtData(p.data)}</td><td style="color:#fff;font-weight:600;max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${p.desc}</td><td>${badgeTipo(p.tipo)}</td><td style="font-weight:700;color:${p.tipo==='Entrada'?'#10B981':'#EF4444'}">${moeda(p.valor)}</td></tr>`).join(''):'<tr><td colspan="4"><div class="empty-state"><i class="bi bi-calendar-check"></i>Nada previsto nos próximos 30 dias</div></td></tr>';
 }
 
 // ============================================================
@@ -2162,6 +2263,7 @@ function editarCanal(i) {
   document.getElementById('cc-nome').value=c.nome;
   document.getElementById('cc-taxa').value=c.taxa;
   document.getElementById('cc-taxafixa').value=c.taxaFixa||0;
+  document.getElementById('cc-prazo').value=c.prazoRecebimento||0;
   document.getElementById('cc-incluipagto').checked=!!c.incluiPagamento;
   document.getElementById('cc-isroyalties').checked=!!c.isRoyalties;
   new bootstrap.Modal(document.getElementById('modalCanal')).show();
@@ -2169,7 +2271,7 @@ function editarCanal(i) {
 async function salvarCanal() {
   const nome=v('cc-nome').trim(); if(!nome) return alert('Nome é obrigatório');
   const idx=v('cc-idx');
-  const obj={nome,taxa:parseFloat(v('cc-taxa'))||0,taxaFixa:parseFloat(v('cc-taxafixa'))||0,incluiPagamento:document.getElementById('cc-incluipagto').checked,isRoyalties:document.getElementById('cc-isroyalties').checked};
+  const obj={nome,taxa:parseFloat(v('cc-taxa'))||0,taxaFixa:parseFloat(v('cc-taxafixa'))||0,prazoRecebimento:parseInt(v('cc-prazo'))||0,incluiPagamento:document.getElementById('cc-incluipagto').checked,isRoyalties:document.getElementById('cc-isroyalties').checked};
   if(!dados.config.canais) dados.config.canais=[];
   if(idx==='') dados.config.canais.push(obj);
   else dados.config.canais[parseInt(idx)]=obj;
@@ -2178,7 +2280,7 @@ async function salvarCanal() {
   document.getElementById('cc-idx').value='';
   document.getElementById('cc-incluipagto').checked=false;
   document.getElementById('cc-isroyalties').checked=false;
-  limpaCampos(['cc-nome','cc-taxa','cc-taxafixa']);
+  limpaCampos(['cc-nome','cc-taxa','cc-taxafixa','cc-prazo']);
 }
 function editarFormaPagto(i) {
   const f=(dados.config.formasPagto||[])[i];
