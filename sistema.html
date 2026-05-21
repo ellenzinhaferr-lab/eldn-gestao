@@ -622,15 +622,15 @@ table.gestao tbody tr:hover .tbl-sticky-r{background:#1f1545}
   <div class="modal-footer"><button class="btn btn-outline-secondary" data-bs-dismiss="modal">Fechar</button><button class="btn btn-success" id="btn-imprimir-do-ver" onclick=""><i class="bi bi-printer-fill me-1"></i>Imprimir PDF</button><button class="btn btn-primary" id="btn-editar-do-ver" onclick=""><i class="bi bi-pencil-fill me-1"></i>Editar</button></div>
 </div></div></div>
 
-<div class="modal fade" id="modalReceberPagamento" tabindex="-1"><div class="modal-dialog"><div class="modal-content">
+<div class="modal fade" id="modalReceberPagamento" tabindex="-1"><div class="modal-dialog modal-lg"><div class="modal-content">
   <div class="modal-header"><h5 class="modal-title"><i class="bi bi-cash-coin me-2"></i>Registrar Recebimento</h5><button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button></div>
   <div class="modal-body">
     <div class="row g-3 mb-3">
       <div class="col-md-6"><label class="form-label">Canal</label><select class="form-select" id="rec-canal" onchange="limparPreviewRecebimento()"></select></div>
-      <div class="col-md-6"><label class="form-label">Valor Recebido (R$)</label><input class="form-control" id="rec-valor" type="text" inputmode="numeric" placeholder="0,00" oninput="mascaraMoeda(this);limparPreviewRecebimento()"></div>
+      <div class="col-md-6"><label class="form-label">Valor Recebido (R$) <small style="color:var(--cor-texto-suave);font-weight:400">— opcional</small></label><input class="form-control" id="rec-valor" type="text" inputmode="numeric" placeholder="Deixe em branco para ver todos" oninput="mascaraMoeda(this);limparPreviewRecebimento()"></div>
     </div>
     <button class="btn btn-outline-primary w-100" onclick="calcularRecebimento()"><i class="bi bi-search me-1"></i>Calcular pedidos</button>
-    <div id="rec-preview" style="margin-top:14px"></div>
+    <div id="rec-preview" style="margin-top:14px;max-height:55vh;overflow-y:auto"></div>
   </div>
   <div class="modal-footer"><button class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancelar</button><button class="btn btn-success" id="btn-confirmar-recebimento" onclick="confirmarRecebimento()" disabled><i class="bi bi-check-circle me-1"></i>Confirmar Recebimento</button></div>
 </div></div></div>
@@ -1289,7 +1289,7 @@ function abrirModalRecebimento() {
   document.getElementById('rec-preview').innerHTML='';
   document.getElementById('btn-confirmar-recebimento').disabled=true;
   const canais=(dados.config.canais||[]).filter(c=>!c.isRoyalties);
-  document.getElementById('rec-canal').innerHTML=canais.map(c=>`<option>${escHtml(c.nome)}</option>`).join('');
+  document.getElementById('rec-canal').innerHTML='<option value="">— Todos os canais —</option>'+canais.map(c=>`<option>${escHtml(c.nome)}</option>`).join('');
   new bootstrap.Modal(document.getElementById('modalReceberPagamento')).show();
 }
 function limparPreviewRecebimento() {
@@ -1300,23 +1300,36 @@ function limparPreviewRecebimento() {
 function calcularRecebimento() {
   const canal=document.getElementById('rec-canal').value;
   const limite=parseFloat((document.getElementById('rec-valor').value||'0').replace(',','.'))||0;
-  if(!canal||limite<=0){document.getElementById('rec-preview').innerHTML='<div style="color:#EF4444;font-size:12px;margin-top:8px">Preencha o canal e o valor recebido.</div>';return;}
   const pedidos=dados.pedidos
-    .filter(p=>p.canal===canal&&p.statusRecebimento==='A receber'&&p.status!=='Cancelado'&&p.status!=='Devolvido')
+    .filter(p=>(canal===''||p.canal===canal)&&p.statusRecebimento==='A receber'&&p.status!=='Cancelado'&&p.status!=='Devolvido')
     .sort((a,b)=>(a.data||'').localeCompare(b.data||''));
-  let acumulado=0;
   _recebimentoParaMarcar=[];
-  for(const p of pedidos){
-    const liq=p.liquido!=null?p.liquido:getPedidoTotal(p);
-    if(acumulado+liq<=limite+50){_recebimentoParaMarcar.push({p,liq});acumulado+=liq;}
+  let acumulado=0;
+  if(limite<=0){
+    pedidos.forEach(p=>{const liq=p.liquido!=null?p.liquido:getPedidoTotal(p);_recebimentoParaMarcar.push({p,liq});acumulado+=liq;});
+  } else {
+    for(const p of pedidos){const liq=p.liquido!=null?p.liquido:getPedidoTotal(p);if(acumulado+liq<=limite+50){_recebimentoParaMarcar.push({p,liq});acumulado+=liq;}}
   }
   if(!_recebimentoParaMarcar.length){
-    document.getElementById('rec-preview').innerHTML='<div style="color:#F59E0B;font-size:12px;margin-top:8px">Nenhum pedido "A receber" encontrado para este canal e valor.</div>';
+    document.getElementById('rec-preview').innerHTML='<div style="color:#F59E0B;font-size:12px;margin-top:8px">Nenhum pedido "A receber" encontrado.</div>';
     document.getElementById('btn-confirmar-recebimento').disabled=true;
     return;
   }
-  const rows=_recebimentoParaMarcar.map(({p,liq})=>`<tr><td style="font-size:12px;padding:5px 8px">${escHtml(p.num)}</td><td style="font-size:12px;padding:5px 8px">${fmtData(p.data)}</td><td style="font-size:12px;padding:5px 8px">${escHtml(nomeCliente(p.clienteId))}</td><td style="font-size:12px;padding:5px 8px;text-align:right;font-weight:600;color:#10B981">${moeda(liq)}</td></tr>`).join('');
-  document.getElementById('rec-preview').innerHTML=`<div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:#A78BFA;margin-bottom:8px">${_recebimentoParaMarcar.length} pedido(s) · Total: ${moeda(acumulado)}</div><table style="width:100%;border-collapse:collapse"><thead><tr><th style="font-size:10px;text-transform:uppercase;padding:5px 8px;border-bottom:1px solid var(--cor-borda)">Pedido</th><th style="font-size:10px;text-transform:uppercase;padding:5px 8px;border-bottom:1px solid var(--cor-borda)">Data</th><th style="font-size:10px;text-transform:uppercase;padding:5px 8px;border-bottom:1px solid var(--cor-borda)">Cliente</th><th style="font-size:10px;text-transform:uppercase;padding:5px 8px;border-bottom:1px solid var(--cor-borda);text-align:right">Líquido</th></tr></thead><tbody>${rows}</tbody></table>`;
+  const thStyle='font-size:10px;text-transform:uppercase;padding:4px 8px;border-bottom:1px solid var(--cor-borda)';
+  let bodyHtml='';
+  if(canal===''){
+    const porCanal={};
+    _recebimentoParaMarcar.forEach(({p,liq})=>{if(!porCanal[p.canal])porCanal[p.canal]=[];porCanal[p.canal].push({p,liq});});
+    for(const [cn,items] of Object.entries(porCanal)){
+      const tot=items.reduce((s,x)=>s+x.liq,0);
+      const rows=items.map(({p,liq})=>`<tr><td style="font-size:12px;padding:4px 8px">${escHtml(p.num)}</td><td style="font-size:12px;padding:4px 8px">${fmtData(p.data)}</td><td style="font-size:12px;padding:4px 8px">${escHtml(nomeCliente(p.clienteId))}</td><td style="font-size:12px;padding:4px 8px;text-align:right;font-weight:600;color:#10B981">${moeda(liq)}</td></tr>`).join('');
+      bodyHtml+=`<div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.8px;color:#A78BFA;margin:12px 0 5px;display:flex;justify-content:space-between"><span>${escHtml(cn)}</span><span style="color:#10B981">${moeda(tot)}</span></div><table style="width:100%;border-collapse:collapse;margin-bottom:8px"><thead><tr><th style="${thStyle}">Pedido</th><th style="${thStyle}">Data</th><th style="${thStyle}">Cliente</th><th style="${thStyle};text-align:right">Líquido</th></tr></thead><tbody>${rows}</tbody></table>`;
+    }
+  } else {
+    const rows=_recebimentoParaMarcar.map(({p,liq})=>`<tr><td style="font-size:12px;padding:5px 8px">${escHtml(p.num)}</td><td style="font-size:12px;padding:5px 8px">${fmtData(p.data)}</td><td style="font-size:12px;padding:5px 8px">${escHtml(nomeCliente(p.clienteId))}</td><td style="font-size:12px;padding:5px 8px;text-align:right;font-weight:600;color:#10B981">${moeda(liq)}</td></tr>`).join('');
+    bodyHtml=`<table style="width:100%;border-collapse:collapse"><thead><tr><th style="${thStyle}">Pedido</th><th style="${thStyle}">Data</th><th style="${thStyle}">Cliente</th><th style="${thStyle};text-align:right">Líquido</th></tr></thead><tbody>${rows}</tbody></table>`;
+  }
+  document.getElementById('rec-preview').innerHTML=`<div style="font-size:12px;color:var(--cor-texto-suave);margin-bottom:4px">${_recebimentoParaMarcar.length} pedido(s) · Total a receber: <strong style="color:#10B981">${moeda(acumulado)}</strong></div>${bodyHtml}`;
   document.getElementById('btn-confirmar-recebimento').disabled=false;
 }
 async function confirmarRecebimento() {
