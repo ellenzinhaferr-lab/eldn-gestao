@@ -1282,6 +1282,12 @@ async function marcarRecebido(i) {
   const hoje=new Date().toISOString().split('T')[0];
   await db.collection('pedidos').doc(p._docId).update({statusRecebimento:'Recebido',dataRecebimento:hoje});
 }
+async function desmarcarRecebido(i) {
+  const p=dados.pedidos[i];
+  if(!p||!p._docId) return;
+  if(!confirm(`Desfazer recebimento do pedido ${p.num}?`)) return;
+  await db.collection('pedidos').doc(p._docId).update({statusRecebimento:'A receber',dataRecebimento:p.dataRecebimento||''});
+}
 let _recebimentoParaMarcar=[];
 function abrirModalRecebimento() {
   _recebimentoParaMarcar=[];
@@ -1680,7 +1686,7 @@ function renderPedidos() {
     let recCell='<span style="color:var(--cor-texto-suave);font-size:11px">—</span>';
     if(recStatus==='Recebido') recCell=`<span style="color:#10B981;font-size:11px;font-weight:600"><i class="bi bi-check-circle-fill me-1"></i>Recebido</span>`;
     else if(recDate) { const overdue=recDate<hoje; recCell=`<span style="color:${overdue?'#EF4444':'#F59E0B'};font-size:11px;font-weight:600"><i class="bi bi-clock me-1"></i>${fmtData(recDate)}</span>`; }
-    const btnRec=(recStatus!=='Recebido'&&recDate)?`<button class="btn-sm-action" style="color:#10B981" onclick="marcarRecebido(${ri})" title="Marcar como Recebido"><i class="bi bi-check-circle"></i></button>`:'';
+    const btnRec=recStatus!=='Recebido'?`<button class="btn-sm-action" style="color:#10B981" onclick="marcarRecebido(${ri})" title="Marcar como Recebido"><i class="bi bi-check-circle"></i></button>`:`<button class="btn-sm-action" style="color:#F59E0B;opacity:.7" onclick="desmarcarRecebido(${ri})" title="Desfazer recebimento"><i class="bi bi-arrow-counterclockwise"></i></button>`;
     return `<tr style="${rowStyle}"><td>${fmtData(p.data)}</td><td style="font-weight:600;color:#fff">${p.num}</td><td>${nomeCliente(p.clienteId)}</td><td style="font-weight:600;color:var(--cor-verde)">${moeda(bruto)}</td><td>${badgeTipoPedido(p)}</td><td>${badgeStatus(p.status)}</td><td style="white-space:nowrap">${recCell}</td><td style="white-space:nowrap">${btnRec}<button class="btn-sm-action" style="color:#60A5FA" onclick="verPedido(${ri})" title="Visualizar"><i class="bi bi-eye-fill"></i></button><button class="btn-sm-action btn-edit" onclick="editarPedido(${ri})" title="Editar"><i class="bi bi-pencil-fill"></i></button><button class="btn-sm-action btn-delete" onclick="deletar('pedidos',${ri})" title="Excluir"><i class="bi bi-trash-fill"></i></button></td></tr>`;
   }).join(''):'<tr><td colspan="8"><div class="empty-state"><i class="bi bi-box-seam"></i>Nenhum pedido ainda</div></td></tr>';
   atualizarThSort('pedidos',s.col,s.dir);
