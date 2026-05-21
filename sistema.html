@@ -581,7 +581,7 @@ table.gestao tbody tr:hover .tbl-sticky-r{background:#1f1545}
     <!-- VALORES E PAGAMENTO -->
     <div style="border-top:1px solid var(--cor-borda);padding-top:10px;margin-bottom:12px"><small style="color:var(--cor-secundaria);font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:1.2px"><i class="bi bi-cash-stack me-1"></i>Valores e Pagamento</small></div>
     <div class="row g-3 mb-3">
-      <div class="col-md-3" id="col-frete"><label class="form-label">Frete (R$)</label><input class="form-control" id="p-frete" type="number" step="0.01" value="0" oninput="calcularValorPedido()"></div>
+      <div class="col-md-3" id="col-frete"><label class="form-label">Frete (R$)</label><input class="form-control" id="p-frete" type="text" inputmode="numeric" value="0,00" oninput="mascaraMoeda(this);calcularValorPedido()"></div>
       <div class="col-md-3"><label class="form-label" id="lbl-total">Total Vendido (R$)</label><input class="form-control" id="p-total" readonly style="font-weight:700;color:var(--cor-verde)"></div>
       <div class="col-md-6" id="col-pagto">
         <label class="form-label">Forma de Pagamento</label>
@@ -1053,6 +1053,8 @@ function badgeTipoPedido(p) { const d=isPedidoDigital(p); return d?`<span class=
 function nomeCliente(id) { const c=dados.clientes.find(x=>x.id===id); return c?c.nome:'—'; }
 function v(id) { return document.getElementById(id).value; }
 function limpaCampos(ids) { ids.forEach(id=>{ const el=document.getElementById(id); if(el) el.value=''; }); }
+function mascaraMoeda(el) { let n=el.value.replace(/\D/g,''); if(!n){el.value='';return;} el.value=(parseInt(n)/100).toFixed(2).replace('.',','); }
+function pFloat(id) { const el=document.getElementById(id); if(!el) return 0; return parseFloat((el.value||'0').replace(',','.').replace(/[^\d.]/g,''))||0; }
 function mascaraCEP(el) { let x=el.value.replace(/\D/g,''); if(x.length>5) x=x.slice(0,5)+'-'+x.slice(5,8); el.value=x; }
 async function buscarCEP() { const cep=v('c-cep').replace(/\D/g,''); if(cep.length!==8) return; try { const r=await fetch(`https://viacep.com.br/ws/${cep}/json/`); const d=await r.json(); if(!d.erro){ document.getElementById('c-logradouro').value=d.logradouro||''; document.getElementById('c-bairro').value=d.bairro||''; document.getElementById('c-cidade').value=d.localidade||''; document.getElementById('c-estado').value=d.uf||''; document.getElementById('c-numero').focus(); } } catch(e){} }
 function filtrarTabela(id, termo) { const t=document.getElementById(id); const rows=t.querySelectorAll('tbody tr'); const low=termo.toLowerCase(); rows.forEach(r=>{ r.style.display=r.textContent.toLowerCase().includes(low)?'':'none'; }); }
@@ -1439,7 +1441,7 @@ function preencherSelectsPedido() {
   document.getElementById('p-cliente-busca').value='';
   document.getElementById('p-data').value=new Date().toISOString().split('T')[0];
   document.getElementById('p-num').value=nextNumPedido();
-  document.getElementById('p-frete').value='0';
+  document.getElementById('p-frete').value='0,00';
   document.getElementById('p-rastreio').value='';
   document.getElementById('p-link-rastreio').value='';
   document.getElementById('resultado-rastreio-modal').style.display='none';
@@ -1448,23 +1450,17 @@ function preencherSelectsPedido() {
   document.getElementById('p-status').value='Pendente';
   _itemCount=0;
   document.getElementById('itens-body').innerHTML='';
-  // Pré-seleciona canal, forma de pagamento e itens do pedido mais recente
-  const lastPed=[...dados.pedidos].sort((a,b)=>b.data.localeCompare(a.data))[0];
-  if(lastPed){
-    if(lastPed.canal) document.getElementById('p-canal').value=lastPed.canal;
-    if(lastPed.pagto) document.getElementById('p-pagto').value=lastPed.pagto;
-    const lastItens=getPedidoItens(lastPed);
-    if(lastItens.length) lastItens.forEach(it=>adicionarItem(it));
-    else adicionarItem();
-  } else adicionarItem();
+  adicionarItem();
 }
 function adicionarItem(item={}) {
   const i=_itemCount++;
-  const skuOpts=dados.produtos.map(p=>`<option value="${p.sku}"${item.sku===p.sku?' selected':''}>${p.sku}</option>`).join('');
+  const dlOpts=dados.produtos.map(p=>`<option value="${p.sku}">${p.nome}</option>`).join('');
+  const skuVal=escHtml(item.sku||'');
+  const precoFmt=item.preco?(parseFloat(item.preco).toFixed(2).replace('.',',')):'';
   const tr=document.createElement('tr');
   tr.dataset.i=i;
   tr.style.borderBottom='1px solid rgba(45,31,94,.4)';
-  tr.innerHTML=`<td style="padding:5px 6px"><select class="form-select form-select-sm" id="item-sku-${i}" onchange="preencherItemPedido(${i})"><option value="">— Selecione —</option>${skuOpts}</select></td><td style="padding:5px 6px"><input class="form-control form-control-sm" id="item-desc-${i}" value="${escHtml(item.desc||'')}" placeholder="Descrição"></td><td style="padding:5px 6px"><input class="form-control form-control-sm" id="item-qtd-${i}" type="number" min="1" value="${item.qtd||1}" style="width:65px" oninput="calcularValorPedido()"></td><td style="padding:5px 6px"><input class="form-control form-control-sm" id="item-preco-${i}" type="number" step="0.01" value="${item.preco||''}" style="width:105px" oninput="calcularValorPedido()"></td><td style="padding:5px 6px"><input class="form-control form-control-sm" id="item-sub-${i}" readonly style="width:100px;text-align:right;font-weight:600;color:var(--cor-verde)"></td><td style="padding:5px 4px"><button type="button" class="btn-sm-action btn-delete" onclick="removerItem(this)" title="Remover item"><i class="bi bi-x-lg"></i></button></td>`;
+  tr.innerHTML=`<td style="padding:5px 6px"><input class="form-control form-control-sm" id="item-sku-${i}" list="dl-prod-${i}" value="${skuVal}" placeholder="SKU ou nome do produto..." oninput="preencherItemPedido(${i})" autocomplete="off" style="min-width:160px"><datalist id="dl-prod-${i}">${dlOpts}</datalist></td><td style="padding:5px 6px"><input class="form-control form-control-sm" id="item-desc-${i}" value="${escHtml(item.desc||'')}" placeholder="Descrição"></td><td style="padding:5px 6px"><input class="form-control form-control-sm" id="item-qtd-${i}" type="number" min="1" value="${item.qtd||1}" style="width:65px" oninput="calcularValorPedido()"></td><td style="padding:5px 6px"><input class="form-control form-control-sm" id="item-preco-${i}" type="text" inputmode="numeric" value="${precoFmt}" style="width:105px" placeholder="0,00" oninput="mascaraMoeda(this);calcularValorPedido()"></td><td style="padding:5px 6px"><input class="form-control form-control-sm" id="item-sub-${i}" readonly style="width:100px;text-align:right;font-weight:600;color:var(--cor-verde)"></td><td style="padding:5px 4px"><button type="button" class="btn-sm-action btn-delete" onclick="removerItem(this)" title="Remover item"><i class="bi bi-x-lg"></i></button></td>`;
   document.getElementById('itens-body').appendChild(tr);
   calcularValorPedido();
 }
@@ -1476,11 +1472,13 @@ function removerItem(btn) {
   calcularValorPedido();
 }
 function preencherItemPedido(i) {
-  const sku=document.getElementById('item-sku-'+i)?.value;
-  const prod=dados.produtos.find(p=>p.sku===sku);
+  const termo=(document.getElementById('item-sku-'+i)?.value||'').trim();
+  const prod=dados.produtos.find(p=>p.sku===termo)||dados.produtos.find(p=>p.nome.toLowerCase()===termo.toLowerCase());
   if(prod) {
+    document.getElementById('item-sku-'+i).value=prod.sku;
     document.getElementById('item-desc-'+i).value=prod.nome;
-    document.getElementById('item-preco-'+i).value=prod.preco||'';
+    const precoNum=parseFloat(prod.preco)||0;
+    document.getElementById('item-preco-'+i).value=precoNum?precoNum.toFixed(2).replace('.',','):'';
   }
   calcularValorPedido();
 }
@@ -1524,10 +1522,10 @@ function calcularValorPedido() {
   document.querySelectorAll('#itens-body tr').forEach(tr=>{
     const i=tr.dataset.i;
     const qtd=parseFloat(document.getElementById('item-qtd-'+i)?.value)||0;
-    const preco=parseFloat(document.getElementById('item-preco-'+i)?.value)||0;
+    const preco=parseFloat((document.getElementById('item-preco-'+i)?.value||'0').replace(',','.'))||0;
     const sub=qtd*preco;
     const el=document.getElementById('item-sub-'+i);
-    if(el) el.value=sub.toFixed(2);
+    if(el) el.value=sub.toFixed(2).replace('.',',');
     subtotal+=sub;
   });
 
@@ -1545,14 +1543,27 @@ function calcularValorPedido() {
     return;
   }
 
-  const frete=parseFloat(v('p-frete'))||0;
+  const frete=parseFloat((v('p-frete')||'0').replace(',','.'))||0;
   const total=subtotal+frete;
-  document.getElementById('p-total').value=total.toFixed(2);
+  document.getElementById('p-total').value=total.toFixed(2).replace('.',',');
   const nomPagto=v('p-pagto');
   const pagto=canal.incluiPagamento ? {taxa:0,taxaFixa:0} : ((dados.config.formasPagto||[]).find(f=>f.nome===nomPagto)||{taxa:0,taxaFixa:0});
   const pagtoSelectEl=document.getElementById('p-pagto');
   if(pagtoSelectEl) { pagtoSelectEl.disabled=!!canal.incluiPagamento; pagtoSelectEl.style.opacity=canal.incluiPagamento?'0.5':'1'; }
-  const taxaCanal=total*(canal.taxa||0)+(canal.taxaFixa||0);
+  // Taxa fixa cobrada por item/transação (ex: Hotmart R$1,00 por transação, não por pedido)
+  let taxaCanal=0;
+  if((canal.taxaFixa||0)>0){
+    document.querySelectorAll('#itens-body tr').forEach(tr=>{
+      const ii=tr.dataset.i;
+      const qtd2=parseFloat(document.getElementById('item-qtd-'+ii)?.value)||0;
+      const preco2=parseFloat((document.getElementById('item-preco-'+ii)?.value||'0').replace(',','.'))||0;
+      const sub2=qtd2*preco2;
+      if(sub2>0) taxaCanal+=sub2*(canal.taxa||0)+(canal.taxaFixa||0);
+    });
+    if(frete>0) taxaCanal+=frete*(canal.taxa||0);
+  } else {
+    taxaCanal=total*(canal.taxa||0);
+  }
   const taxaPagto=total*(pagto.taxa||0)+(pagto.taxaFixa||0);
   const liquido=total-taxaCanal-taxaPagto;
   document.getElementById('p-liquido').value=liquido.toFixed(2);
@@ -1613,8 +1624,8 @@ function editarPedido(i) {
   _itemCount=0;
   document.getElementById('itens-body').innerHTML='';
   getPedidoItens(p).forEach(it=>adicionarItem(it));
-  document.getElementById('p-frete').value=p.frete||0;
-  document.getElementById('p-total').value=getPedidoTotal(p).toFixed(2);
+  document.getElementById('p-frete').value=(parseFloat(p.frete)||0).toFixed(2).replace('.',',');
+  document.getElementById('p-total').value=getPedidoTotal(p).toFixed(2).replace('.',',');
   if(p.pagto) document.getElementById('p-pagto').value=p.pagto;
   document.getElementById('p-liquido').value=p.liquido!=null?p.liquido.toFixed(2):'';
   document.getElementById('p-status').value=p.status;
@@ -1645,7 +1656,7 @@ async function salvarPedido() {
   const dataRecebimento=calcDataRecebimento(v('p-data'),v('p-canal'));
   const existingRec=idx!==''?dados.pedidos[parseInt(idx)]?.statusRecebimento:null;
   const statusRecebimento=existingRec==='Recebido'?'Recebido':((canalRec.prazoRecebimento||0)>0?'A receber':'Recebido');
-  const obj={data:v('p-data'),num,canal:v('p-canal'),clienteId:parseInt(v('p-cliente'))||null,endereco:v('p-endereco'),itens,frete:parseFloat(v('p-frete'))||0,pagto:v('p-pagto'),liquido:parseFloat(v('p-liquido'))||0,status:statusSalvo,dataRecebimento,statusRecebimento,rastreio:v('p-rastreio'),linkRastreio:v('p-link-rastreio'),obs:v('p-obs')};
+  const obj={data:v('p-data'),num,canal:v('p-canal'),clienteId:parseInt(v('p-cliente'))||null,endereco:v('p-endereco'),itens,frete:parseFloat((v('p-frete')||'0').replace(',','.'))||0,pagto:v('p-pagto'),liquido:parseFloat((v('p-liquido')||'0').replace(',','.'))||0,status:statusSalvo,dataRecebimento,statusRecebimento,rastreio:v('p-rastreio'),linkRastreio:v('p-link-rastreio'),obs:v('p-obs')};
   if(idx==='') await db.collection('pedidos').add(obj);
   else await db.collection('pedidos').doc(dados.pedidos[parseInt(idx)]._docId).set(obj);
   bootstrap.Modal.getInstance(document.getElementById('modalPedido')).hide();
