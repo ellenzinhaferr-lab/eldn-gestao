@@ -765,10 +765,6 @@ table.gestao tbody tr:hover .tbl-sticky-r{background:#1f1545}
       <input class="form-check-input" type="checkbox" id="cc-isroyalties">
       <label class="form-check-label" for="cc-isroyalties" style="font-size:13px">Canal de Royalties (ex: Amazon KDP)<br><span style="color:var(--cor-texto-suave);font-size:11px">Sem frete e taxas — informe apenas os royalties recebidos em R$</span></label>
     </div>
-    <div class="form-check mt-2">
-      <input class="form-check-input" type="checkbox" id="cc-taxafixaporitem">
-      <label class="form-check-label" for="cc-taxafixaporitem" style="font-size:13px">Taxa fixa cobrada por produto<br><span style="color:var(--cor-texto-suave);font-size:11px">Aplica taxa fixa em cada item separadamente — pedidos com Order Bump (Hotmart, Kiwify, Cakto)</span></label>
-    </div>
   </div>
   <div class="modal-footer"><button class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancelar</button><button class="btn btn-primary" onclick="salvarCanal()">Salvar</button></div>
 </div></div></div>
@@ -983,11 +979,6 @@ function setupListeners() {
         c.incluiPagamento = true; migrou = true;
       }
     });
-    // Ativa taxa fixa por produto para plataformas digitais com Order Bump
-    ['Hotmart','Kiwify','Cakto'].forEach(nome=>{
-      const c=dados.config.canais.find(x=>x.nome===nome);
-      if(c&&!c.taxaFixaPorItem){c.taxaFixaPorItem=true;migrou=true;}
-    });
     if(migrou) db.collection('config').doc('main').set(dados.config);
     if (appReady) renderCurrentPage();
   }));
@@ -1020,9 +1011,7 @@ function migrarLiquidoPedidos() {
     if(bruto<=0||!p._docId) return;
     const pagtoConfig=(dados.config.formasPagto||[]).find(f=>f.nome===p.pagto)||{taxa:0,taxaFixa:0};
     const pagtoEfetivo=canal.incluiPagamento?{taxa:0,taxaFixa:0}:pagtoConfig;
-    const numItens=getPedidoItens(p).length||1;
-    const multFixa=canal.taxaFixaPorItem?numItens:1;
-    const taxaCanal=bruto*(canal.taxa||0)+(canal.taxaFixa||0)*multFixa;
+    const taxaCanal=bruto*(canal.taxa||0)+(canal.taxaFixa||0);
     const taxaPagto=bruto*(pagtoEfetivo.taxa||0)+(pagtoEfetivo.taxaFixa||0);
     const liquidoCorreto=parseFloat((bruto-taxaCanal-taxaPagto).toFixed(2));
     if(p.liquido==null||Math.abs(p.liquido-liquidoCorreto)>0.01) {
@@ -1505,9 +1494,7 @@ function calcularValorPedido() {
   const pagto=canal.incluiPagamento ? {taxa:0,taxaFixa:0} : ((dados.config.formasPagto||[]).find(f=>f.nome===nomPagto)||{taxa:0,taxaFixa:0});
   const pagtoSelectEl=document.getElementById('p-pagto');
   if(pagtoSelectEl) { pagtoSelectEl.disabled=!!canal.incluiPagamento; pagtoSelectEl.style.opacity=canal.incluiPagamento?'0.5':'1'; }
-  const numItens=document.querySelectorAll('#itens-body tr').length||1;
-  const multFixa=canal.taxaFixaPorItem?numItens:1;
-  const taxaCanal=total*(canal.taxa||0)+(canal.taxaFixa||0)*multFixa;
+  const taxaCanal=total*(canal.taxa||0)+(canal.taxaFixa||0);
   const taxaPagto=total*(pagto.taxa||0)+(pagto.taxaFixa||0);
   const liquido=total-taxaCanal-taxaPagto;
   document.getElementById('p-liquido').value=liquido.toFixed(2);
@@ -1517,9 +1504,7 @@ function calcularValorPedido() {
   if(infoEl){
     const linhas=[];
     linhas.push(`Total vendido: R$ ${total.toFixed(2).replace('.',',')}`);
-    if(taxaCanal>0){
-      const fixaInfo=canal.taxaFixa>0?` + R$ ${canal.taxaFixa.toFixed(2)}${canal.taxaFixaPorItem&&numItens>1?' × '+numItens+' produtos':''}`:''
-      linhas.push(`− Taxa ${nomCanal} (${(canal.taxa*100).toFixed(1)}%${fixaInfo}): R$ ${taxaCanal.toFixed(2).replace('.',',')}`);}
+    if(taxaCanal>0) linhas.push(`− Taxa ${nomCanal} (${(canal.taxa*100).toFixed(1)}%${canal.taxaFixa>0?' + R$ '+canal.taxaFixa.toFixed(2):''}): R$ ${taxaCanal.toFixed(2).replace('.',',')}`);
     if(canal.incluiPagamento) linhas.push('<span style="color:#10B981;font-size:11px">✓ Pagamento já incluso nas taxas do canal — sem taxa adicional de pagamento</span>');
     else if(taxaPagto>0) linhas.push(`− Taxa ${nomPagto} (${(pagto.taxa*100).toFixed(2)}%${pagto.taxaFixa>0?' + R$ '+pagto.taxaFixa.toFixed(2):''}): R$ ${taxaPagto.toFixed(2).replace('.',',')}`);
     if(taxaCanal===0&&taxaPagto===0&&!canal.incluiPagamento) linhas.push('Nenhuma taxa para este canal e forma de pagamento');
@@ -1610,9 +1595,7 @@ function verPedido(i) {
   const canal=(dados.config.canais||[]).find(c=>c.nome===p.canal)||{taxa:0,taxaFixa:0};
   const pagtoConfig=(dados.config.formasPagto||[]).find(f=>f.nome===p.pagto)||{taxa:0,taxaFixa:0};
   const pagtoEfetivo=canal.incluiPagamento?{taxa:0,taxaFixa:0}:pagtoConfig;
-  const numItens=itens.length||1;
-  const multFixa=canal.taxaFixaPorItem?numItens:1;
-  const taxaCanal=bruto*(canal.taxa||0)+(canal.taxaFixa||0)*multFixa;
+  const taxaCanal=bruto*(canal.taxa||0)+(canal.taxaFixa||0);
   const taxaPagto=bruto*(pagtoEfetivo.taxa||0)+(pagtoEfetivo.taxaFixa||0);
   const liq=p.liquido!=null?p.liquido:bruto-taxaCanal-taxaPagto;
   document.getElementById('modalVerPedidoTitulo').textContent=`Pedido ${p.num}`;
@@ -1715,9 +1698,7 @@ function imprimirPedido(i) {
   const canal=(dados.config.canais||[]).find(c=>c.nome===p.canal)||{taxa:0,taxaFixa:0};
   const pagtoConfig=(dados.config.formasPagto||[]).find(f=>f.nome===p.pagto)||{taxa:0,taxaFixa:0};
   const pagtoEfetivo=canal.incluiPagamento?{taxa:0,taxaFixa:0}:pagtoConfig;
-  const numItens=itens.length||1;
-  const multFixa=canal.taxaFixaPorItem?numItens:1;
-  const taxaCanal=bruto*(canal.taxa||0)+(canal.taxaFixa||0)*multFixa;
+  const taxaCanal=bruto*(canal.taxa||0)+(canal.taxaFixa||0);
   const taxaPagto=bruto*(pagtoEfetivo.taxa||0)+(pagtoEfetivo.taxaFixa||0);
   const liq=p.liquido!=null?p.liquido:bruto-taxaCanal-taxaPagto;
   const html=`<!DOCTYPE html><html lang="pt-BR"><head><meta charset="UTF-8"><title>Pedido ${escHtml(p.num)}</title><style>
@@ -2183,13 +2164,12 @@ function editarCanal(i) {
   document.getElementById('cc-taxafixa').value=c.taxaFixa||0;
   document.getElementById('cc-incluipagto').checked=!!c.incluiPagamento;
   document.getElementById('cc-isroyalties').checked=!!c.isRoyalties;
-  document.getElementById('cc-taxafixaporitem').checked=!!c.taxaFixaPorItem;
   new bootstrap.Modal(document.getElementById('modalCanal')).show();
 }
 async function salvarCanal() {
   const nome=v('cc-nome').trim(); if(!nome) return alert('Nome é obrigatório');
   const idx=v('cc-idx');
-  const obj={nome,taxa:parseFloat(v('cc-taxa'))||0,taxaFixa:parseFloat(v('cc-taxafixa'))||0,incluiPagamento:document.getElementById('cc-incluipagto').checked,isRoyalties:document.getElementById('cc-isroyalties').checked,taxaFixaPorItem:document.getElementById('cc-taxafixaporitem').checked};
+  const obj={nome,taxa:parseFloat(v('cc-taxa'))||0,taxaFixa:parseFloat(v('cc-taxafixa'))||0,incluiPagamento:document.getElementById('cc-incluipagto').checked,isRoyalties:document.getElementById('cc-isroyalties').checked};
   if(!dados.config.canais) dados.config.canais=[];
   if(idx==='') dados.config.canais.push(obj);
   else dados.config.canais[parseInt(idx)]=obj;
@@ -2198,7 +2178,6 @@ async function salvarCanal() {
   document.getElementById('cc-idx').value='';
   document.getElementById('cc-incluipagto').checked=false;
   document.getElementById('cc-isroyalties').checked=false;
-  document.getElementById('cc-taxafixaporitem').checked=false;
   limpaCampos(['cc-nome','cc-taxa','cc-taxafixa']);
 }
 function editarFormaPagto(i) {
