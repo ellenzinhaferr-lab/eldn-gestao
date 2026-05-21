@@ -613,7 +613,7 @@ table.gestao tbody tr:hover .tbl-sticky-r{background:#1f1545}
     </div>
 
   </div>
-  <div class="modal-footer"><button class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancelar</button><button class="btn btn-primary" onclick="salvarPedido()">Salvar Pedido</button></div>
+  <div class="modal-footer"><button class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancelar</button><button class="btn btn-outline-secondary" onclick="imprimirPedidoModal()"><i class="bi bi-printer me-1"></i>Imprimir</button><button class="btn btn-primary" onclick="salvarPedido()">Salvar Pedido</button></div>
 </div></div></div>
 
 <div class="modal fade" id="modalVerPedido" tabindex="-1"><div class="modal-dialog modal-lg"><div class="modal-content">
@@ -1774,17 +1774,7 @@ async function consultarRastreioView(codigo) {
     area.innerHTML='<div style="padding:10px;color:#EF4444;font-size:13px"><i class="bi bi-exclamation-triangle me-1"></i>Erro ao consultar. Verifique o código e tente novamente.</div>';
   }
 }
-function imprimirPedido(i) {
-  const p=dados.pedidos[i];
-  const itens=getPedidoItens(p);
-  const bruto=getPedidoTotal(p);
-  const cliente=dados.clientes.find(x=>x.id===p.clienteId);
-  const canal=(dados.config.canais||[]).find(c=>c.nome===p.canal)||{taxa:0,taxaFixa:0};
-  const pagtoConfig=(dados.config.formasPagto||[]).find(f=>f.nome===p.pagto)||{taxa:0,taxaFixa:0};
-  const pagtoEfetivo=canal.incluiPagamento?{taxa:0,taxaFixa:0}:pagtoConfig;
-  const taxaCanal=bruto*(canal.taxa||0)+(canal.taxaFixa||0);
-  const taxaPagto=bruto*(pagtoEfetivo.taxa||0)+(pagtoEfetivo.taxaFixa||0);
-  const liq=p.liquido!=null?p.liquido:bruto-taxaCanal-taxaPagto;
+function _imprimirPedidoHtml(p, cliente, itens, bruto, liq, taxaCanal, taxaPagto) {
   const html=`<!DOCTYPE html><html lang="pt-BR"><head><meta charset="UTF-8"><title>Pedido ${escHtml(p.num)}</title><style>
     *{box-sizing:border-box}body{font-family:'Segoe UI',Arial,sans-serif;margin:0;padding:28px;color:#1a1a1a;font-size:13px}
     .header{display:flex;justify-content:space-between;align-items:flex-start;border-bottom:2px solid #7C3AED;padding-bottom:14px;margin-bottom:18px}
@@ -1823,14 +1813,59 @@ function imprimirPedido(i) {
     <div class="tr tf"><span>Total Bruto</span><span>${moeda(bruto)}</span></div>
     ${taxaCanal>0?`<div class="tr" style="color:#888"><span>Taxa canal (${escHtml(p.canal)})</span><span>- ${moeda(taxaCanal)}</span></div>`:''}
     ${taxaPagto>0?`<div class="tr" style="color:#888"><span>Taxa pagto (${escHtml(p.pagto||'—')})</span><span>- ${moeda(taxaPagto)}</span></div>`:''}
-    <div class="tr tf" style="font-size:18px"><span>Valor Líquido</span><span style="color:#7C3AED">${moeda(liq)}</span></div>
-    <div style="font-size:11px;color:#888;margin-top:4px">Forma de pagamento: ${escHtml(p.pagto||'—')}</div>
+    <div class="tr" style="font-size:12px;color:#555;margin-top:6px;padding-top:6px;border-top:1px dashed #ccc"><span>Forma de pagamento</span><span>${escHtml(p.pagto||'—')}</span></div>
+    <div class="tr tf" style="font-size:18px"><span>Previsão de Recebimento</span><span style="color:#7C3AED">${moeda(liq)}</span></div>
   </div>
   ${p.obs?`<div class="obs"><strong>Observações:</strong> ${escHtml(p.obs)}</div>`:''}
   <script>window.onload=function(){window.print();window.close();};<\/script>
   </body></html>`;
   const win=window.open('','_blank','width=820,height=680');
   if(win){win.document.write(html);win.document.close();}
+}
+function imprimirPedido(i) {
+  const p=dados.pedidos[i];
+  const itens=getPedidoItens(p);
+  const bruto=getPedidoTotal(p);
+  const cliente=dados.clientes.find(x=>x.id===p.clienteId);
+  const canal=(dados.config.canais||[]).find(c=>c.nome===p.canal)||{taxa:0,taxaFixa:0};
+  const pagtoConfig=(dados.config.formasPagto||[]).find(f=>f.nome===p.pagto)||{taxa:0,taxaFixa:0};
+  const pagtoEfetivo=canal.incluiPagamento?{taxa:0,taxaFixa:0}:pagtoConfig;
+  let taxaCanal=0;
+  if((canal.taxaFixa||0)>0){
+    itens.forEach(it=>{const sub=it.qtd*it.preco;if(sub>0)taxaCanal+=sub*(canal.taxa||0)+(canal.taxaFixa||0)*it.qtd;});
+    if((p.frete||0)>0)taxaCanal+=(p.frete||0)*(canal.taxa||0);
+  }else{taxaCanal=bruto*(canal.taxa||0);}
+  const taxaPagto=bruto*(pagtoEfetivo.taxa||0)+(pagtoEfetivo.taxaFixa||0);
+  const liq=p.liquido!=null?p.liquido:bruto-taxaCanal-taxaPagto;
+  _imprimirPedidoHtml(p,cliente,itens,bruto,liq,taxaCanal,taxaPagto);
+}
+function imprimirPedidoModal() {
+  const clienteId=parseInt(v('p-cliente'))||null;
+  const cliente=dados.clientes.find(x=>x.id===clienteId);
+  const itens=[];
+  document.querySelectorAll('#itens-body tr').forEach(tr=>{
+    const idx=tr.dataset.i;
+    const sku=(document.getElementById('item-sku-'+idx)?.value||'').trim();
+    const desc=(document.getElementById('item-desc-'+idx)?.value||'').trim();
+    const qtd=parseFloat(document.getElementById('item-qtd-'+idx)?.value)||0;
+    const preco=parseFloat((document.getElementById('item-preco-'+idx)?.value||'0').replace(',','.'))||0;
+    if(qtd>0||sku)itens.push({sku,desc,qtd,preco});
+  });
+  const frete=parseFloat((v('p-frete')||'0').replace(',','.'))||0;
+  const bruto=itens.reduce((s,it)=>s+it.qtd*it.preco,0)+frete;
+  const liq=parseFloat((v('p-liquido')||'0').replace(',','.'))||0;
+  const canal=(dados.config.canais||[]).find(c=>c.nome===v('p-canal'))||{taxa:0,taxaFixa:0};
+  let taxaCanal=0;
+  if((canal.taxaFixa||0)>0){
+    itens.forEach(it=>{const sub=it.qtd*it.preco;if(sub>0)taxaCanal+=sub*(canal.taxa||0)+(canal.taxaFixa||0)*it.qtd;});
+    if(frete>0)taxaCanal+=frete*(canal.taxa||0);
+  }else{taxaCanal=bruto*(canal.taxa||0);}
+  const pagtoNome=v('p-pagto')||'—';
+  const pagtoConfig=(dados.config.formasPagto||[]).find(f=>f.nome===pagtoNome)||{taxa:0,taxaFixa:0};
+  const pagtoEfetivo=canal.incluiPagamento?{taxa:0,taxaFixa:0}:pagtoConfig;
+  const taxaPagto=bruto*(pagtoEfetivo.taxa||0)+(pagtoEfetivo.taxaFixa||0);
+  const p={num:v('p-num')||'Rascunho',data:v('p-data'),canal:v('p-canal'),status:v('p-status')||'',rastreio:v('p-rastreio')||'',linkRastreio:v('p-link-rastreio')||'',endereco:v('p-endereco')||'',frete,pagto:pagtoNome,obs:v('p-obs')||''};
+  _imprimirPedidoHtml(p,cliente,itens,bruto,liq,taxaCanal,taxaPagto);
 }
 
 // ============================================================
