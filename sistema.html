@@ -607,7 +607,7 @@ table.gestao tbody tr:hover .tbl-sticky-r{background:#1f1545}
       <div class="col-md-4"><label class="form-label">Status</label><select class="form-select" id="p-status"><option>Pendente</option><option>Em separação</option><option>Enviado</option><option>Entregue</option><option>Cancelado</option><option>Devolvido</option></select></div>
       <div class="col-md-5"><label class="form-label">Código de Rastreio</label><input class="form-control" id="p-rastreio" placeholder="Ex: BR123456789BR"></div>
       <div class="col-md-3 d-flex align-items-end"><button type="button" class="btn btn-outline-info w-100" onclick="consultarRastreioModal()"><i class="bi bi-search me-1"></i>Consultar</button></div>
-      <div class="col-12"><label class="form-label">Link de Rastreio <small style="color:var(--cor-texto-suave)">(opcional)</small></label><input class="form-control" id="p-link-rastreio" type="url" placeholder="https://rastreamento.correios.com.br/..."></div>
+      <div class="col-12"><label class="form-label">Link de Rastreio <small style="color:var(--cor-texto-suave)">(opcional — gerado automaticamente pelo Melhor Envio)</small></label><input class="form-control" id="p-link-rastreio" type="url" placeholder="https://melhorenvio.com.br/rastreio/..."></div>
       <div class="col-12" id="resultado-rastreio-modal" style="display:none"></div>
       <div class="col-12"><label class="form-label">Observações</label><textarea class="form-control" id="p-obs" rows="2"></textarea></div>
     </div>
@@ -1808,53 +1808,33 @@ function verPedido(i) {
   new bootstrap.Modal(document.getElementById('modalVerPedido')).show();
 }
 
-async function _buscarCorreios(codigo) {
-  const res=await fetch(`https://api.linketrack.com/track/json?user=teste&token=1abcd00b2731640422b22a281f7c8e726e63ac3f&codigo=${encodeURIComponent(codigo)}`);
-  if(!res.ok) throw new Error('Erro na consulta');
-  return await res.json();
+function _urlMelhorEnvio(codigo) {
+  return `https://melhorenvio.com.br/rastreio/${encodeURIComponent(codigo)}`;
 }
-function _renderEventos(data,onAtualizarStatus) {
-  if(!data.eventos||data.eventos.length===0) return '<div style="padding:10px;color:var(--cor-texto-suave);font-size:13px"><i class="bi bi-info-circle me-1"></i>Nenhum evento encontrado para este código.</div>';
-  const ultimo=data.eventos[0];
-  const statusMap={'entregue ao destinatário':'Entregue','postado':'Enviado','em trânsito':'Enviado','saiu para entrega':'Enviado'};
-  const novoStatus=Object.entries(statusMap).find(([k])=>ultimo.status.toLowerCase().includes(k))?.[1];
-  const eventos=data.eventos.slice(0,5);
-  return `<div style="background:rgba(6,182,212,.07);border:1px solid rgba(6,182,212,.2);border-radius:8px;padding:12px;font-size:13px">
-    <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:10px;flex-wrap:wrap">
-      <strong style="color:var(--cor-texto)">${escHtml(data.nome||data.categoria||'Correios')} — ${escHtml(data.codigo||'')}</strong>
-      ${novoStatus&&onAtualizarStatus?`<button class="btn btn-success btn-sm" onclick="${onAtualizarStatus}('${novoStatus}')"><i class="bi bi-check-circle me-1"></i>Atualizar para "${novoStatus}"</button>`:''}
+function _renderLinkRastreio(codigo) {
+  const url=_urlMelhorEnvio(codigo);
+  return `<div style="background:rgba(6,182,212,.07);border:1px solid rgba(6,182,212,.2);border-radius:8px;padding:12px;font-size:13px;display:flex;align-items:center;gap:12px;flex-wrap:wrap">
+    <i class="bi bi-truck" style="font-size:18px;color:#06B6D4"></i>
+    <div style="flex:1">
+      <div style="font-weight:600;color:var(--cor-texto);margin-bottom:4px">Rastreio via Melhor Envio</div>
+      <div style="font-size:12px;color:var(--cor-texto-suave);font-family:monospace">${escHtml(codigo)}</div>
     </div>
-    <div style="display:flex;flex-direction:column;gap:6px">
-      ${eventos.map((e,idx)=>`<div style="display:flex;gap:10px;opacity:${idx===0?1:0.65}">
-        <div style="min-width:90px;font-size:11px;color:var(--cor-texto-suave)">${escHtml(e.data)} ${escHtml(e.hora)}</div>
-        <div><div style="color:${idx===0?'#fff':'var(--cor-texto)'};font-weight:${idx===0?'600':'400'}">${escHtml(e.status)}</div>${e.local?`<div style="font-size:11px;color:var(--cor-texto-suave)">${escHtml(e.local)}</div>`:''}</div>
-      </div>`).join('')}
-    </div>
+    <a href="${escHtml(url)}" target="_blank" class="btn btn-info btn-sm" style="font-size:12px;white-space:nowrap"><i class="bi bi-box-arrow-up-right me-1"></i>Abrir rastreio</a>
   </div>`;
 }
-async function consultarRastreioModal() {
+function consultarRastreioModal() {
   const codigo=v('p-rastreio').trim();
   if(!codigo) return alert('Informe o código de rastreio primeiro');
   const area=document.getElementById('resultado-rastreio-modal');
   area.style.display='block';
-  area.innerHTML='<div style="text-align:center;padding:10px;color:var(--cor-texto-suave)"><i class="bi bi-arrow-clockwise"></i> Consultando...</div>';
-  try {
-    const data=await _buscarCorreios(codigo);
-    area.innerHTML=_renderEventos(data,'_aplicarStatusModal');
-  } catch(e) {
-    area.innerHTML='<div style="padding:10px;color:#EF4444;font-size:13px"><i class="bi bi-exclamation-triangle me-1"></i>Erro ao consultar. Verifique o código e tente novamente.</div>';
-  }
+  area.innerHTML=_renderLinkRastreio(codigo);
+  window.open(_urlMelhorEnvio(codigo),'_blank');
 }
 function _aplicarStatusModal(status) { document.getElementById('p-status').value=status; }
-async function consultarRastreioView(codigo) {
+function consultarRastreioView(codigo) {
   const area=document.getElementById('resultado-rastreio-view');
-  area.innerHTML='<div style="text-align:center;padding:10px;color:var(--cor-texto-suave)"><i class="bi bi-arrow-clockwise"></i> Consultando...</div>';
-  try {
-    const data=await _buscarCorreios(codigo);
-    area.innerHTML=_renderEventos(data,null);
-  } catch(e) {
-    area.innerHTML='<div style="padding:10px;color:#EF4444;font-size:13px"><i class="bi bi-exclamation-triangle me-1"></i>Erro ao consultar. Verifique o código e tente novamente.</div>';
-  }
+  area.innerHTML=_renderLinkRastreio(codigo);
+  window.open(_urlMelhorEnvio(codigo),'_blank');
 }
 function _imprimirPedidoHtml(p, cliente, itens, bruto, liq, taxaCanal, taxaPagto) {
   const html=`<!DOCTYPE html><html lang="pt-BR"><head><meta charset="UTF-8"><title>Pedido ${escHtml(p.num)}</title><style>
