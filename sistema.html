@@ -870,9 +870,21 @@ table.gestao tbody tr:hover .tbl-sticky-r{background:#1f1545}
     <input type="hidden" id="prosp-tipo">
     <div class="row g-3">
       <div class="col-md-6"><label class="form-label">Nome / Empresa *</label><input class="form-control" id="prosp-nome" placeholder="Nome do lead ou empresa"></div>
-      <div class="col-md-6" id="prosp-campo-responsavel" style="display:none"><label class="form-label">Responsável / Contato</label><input class="form-control" id="prosp-responsavel" placeholder="Nome da pessoa de contato"></div>
+      <div class="col-md-6" id="prosp-campo-responsavel" style="display:none"><label class="form-label">Pessoa de Contato</label><input class="form-control" id="prosp-responsavel" placeholder="Nome de quem você vai falar"></div>
       <div class="col-md-6"><label class="form-label">WhatsApp</label><input class="form-control" id="prosp-whatsapp" placeholder="11 9 9999-9999"></div>
       <div class="col-md-6"><label class="form-label">E-mail</label><input class="form-control" id="prosp-email" type="email"></div>
+      <div class="col-12" id="prosp-campo-site" style="display:none"><label class="form-label">Site da Empresa</label><input class="form-control" id="prosp-site" type="url" placeholder="https://www.livraria.com.br"></div>
+      <div class="col-12" id="prosp-campo-endereco" style="display:none">
+        <div style="border-top:1px solid var(--cor-borda);padding-top:12px;margin-top:4px;margin-bottom:8px"><small style="color:var(--cor-secundaria);font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:1px"><i class="bi bi-geo-alt-fill me-1"></i>Endereço (Logística)</small></div>
+        <div class="row g-3">
+          <div class="col-md-3"><label class="form-label">CEP</label><input class="form-control" id="prosp-cep" placeholder="00000-000" maxlength="9" oninput="mascaraCEP(this)" onblur="buscarCEPProsp()"></div>
+          <div class="col-md-7"><label class="form-label">Logradouro</label><input class="form-control" id="prosp-logradouro"></div>
+          <div class="col-md-2"><label class="form-label">Número</label><input class="form-control" id="prosp-numero"></div>
+          <div class="col-md-4"><label class="form-label">Bairro</label><input class="form-control" id="prosp-bairro"></div>
+          <div class="col-md-5"><label class="form-label">Cidade</label><input class="form-control" id="prosp-cidade"></div>
+          <div class="col-md-3"><label class="form-label">UF</label><input class="form-control" id="prosp-uf" maxlength="2" placeholder="SP"></div>
+        </div>
+      </div>
       <div class="col-md-6" id="prosp-campo-produto"><label class="form-label">Produto de Interesse</label>
         <select class="form-select" id="prosp-produto">
           <option value="">— Selecione —</option>
@@ -1170,6 +1182,7 @@ function mascaraMoeda(el) { let n=el.value.replace(/\D/g,''); if(!n){el.value=''
 function pFloat(id) { const el=document.getElementById(id); if(!el) return 0; return parseFloat((el.value||'0').replace(',','.').replace(/[^\d.]/g,''))||0; }
 function mascaraCEP(el) { let x=el.value.replace(/\D/g,''); if(x.length>5) x=x.slice(0,5)+'-'+x.slice(5,8); el.value=x; }
 async function buscarCEP() { const cep=v('c-cep').replace(/\D/g,''); if(cep.length!==8) return; try { const r=await fetch(`https://viacep.com.br/ws/${cep}/json/`); const d=await r.json(); if(!d.erro){ document.getElementById('c-logradouro').value=d.logradouro||''; document.getElementById('c-bairro').value=d.bairro||''; document.getElementById('c-cidade').value=d.localidade||''; document.getElementById('c-estado').value=d.uf||''; document.getElementById('c-numero').focus(); } } catch(e){} }
+async function buscarCEPProsp() { const cep=document.getElementById('prosp-cep').value.replace(/\D/g,''); if(cep.length!==8) return; try { const r=await fetch(`https://viacep.com.br/ws/${cep}/json/`); const d=await r.json(); if(!d.erro){ document.getElementById('prosp-logradouro').value=d.logradouro||''; document.getElementById('prosp-bairro').value=d.bairro||''; document.getElementById('prosp-cidade').value=d.localidade||''; document.getElementById('prosp-uf').value=d.uf||''; document.getElementById('prosp-numero').focus(); } } catch(e){} }
 function filtrarTabela(id, termo) { const t=document.getElementById(id); const rows=t.querySelectorAll('tbody tr'); const low=termo.toLowerCase(); rows.forEach(r=>{ r.style.display=r.textContent.toLowerCase().includes(low)?'':'none'; }); }
 function nextNumPedido() { if (!dados.pedidos.length) return 'PED-01'; const nums=dados.pedidos.map(p=>{const m=p.num.match(/PED-(\d+)/);return m?parseInt(m[1]):0;}); return `PED-${String(Math.max(...nums)+1).padStart(2,'0')}`; }
 
@@ -2571,7 +2584,7 @@ function renderProspeccao() {
   if(prospTab === 'carrinho') {
     thead.innerHTML = '<tr><th>Nome</th><th>WhatsApp</th><th>Produto</th><th>Origem</th><th>Status</th><th>Último Contato</th><th>Próx. Contato</th><th style="text-align:center">Tentativas</th><th>Obs</th><th></th></tr>';
   } else {
-    thead.innerHTML = '<tr><th>Empresa</th><th>Responsável</th><th>WhatsApp</th><th>Tipo</th><th>Status</th><th>Último Contato</th><th>Próx. Contato</th><th style="text-align:center">Tentativas</th><th>Obs</th><th></th></tr>';
+    thead.innerHTML = '<tr><th>Empresa</th><th>Contato</th><th>WhatsApp</th><th>Tipo</th><th>Cidade/UF</th><th>Status</th><th>Último Contato</th><th>Próx. Contato</th><th style="text-align:center">Tent.</th><th>Obs</th><th></th></tr>';
   }
 
   if(!lista.length) {
@@ -2585,9 +2598,11 @@ function renderProspeccao() {
       ? `<span style="color:${vencido?'#EF4444':'var(--cor-texto)'};font-weight:${vencido?'700':'400'}">${vencido?'⚠ ':''}${fmtData(p.proximoContato)}</span>`
       : '<span style="color:var(--cor-texto-suave)">—</span>';
     const tentativas = p.tentativas || 0;
+    const cidadeUf = p.cidade ? `${p.cidade}${p.uf?' / '+p.uf:''}` : (p.uf||'—');
+    const siteHtml = p.site ? `<a href="${p.site}" target="_blank" style="color:var(--cor-secundaria);font-size:11px" title="${p.site}"><i class="bi bi-box-arrow-up-right"></i></a> ` : '';
     const col2 = prospTab === 'carrinho'
       ? `<td>${p.contato||'—'}</td><td>${p.produto||'—'}</td><td><span style="color:var(--cor-texto-suave);font-size:12px">${p.origem||'—'}</span></td>`
-      : `<td><span style="color:var(--cor-texto-suave);font-size:12px">${p.responsavel||'—'}</span></td><td>${p.contato||'—'}</td><td><span style="color:var(--cor-texto-suave);font-size:12px">${p.tipoEmpresa||'—'}</span></td>`;
+      : `<td><span style="color:var(--cor-texto-suave);font-size:12px">${siteHtml}${p.responsavel||'—'}</span></td><td>${p.contato||'—'}</td><td><span style="color:var(--cor-texto-suave);font-size:12px">${p.tipoEmpresa||'—'}</span></td><td style="font-size:12px;color:var(--cor-texto-suave)">${cidadeUf}</td>`;
     return `<tr>
       <td style="font-weight:600">${p.nome||'—'}</td>
       ${col2}
@@ -2631,6 +2646,8 @@ function abrirModalProspeccao(docId) {
 
   const isCar = prospTab === 'carrinho';
   document.getElementById('prosp-campo-responsavel').style.display = isCar ? 'none' : '';
+  document.getElementById('prosp-campo-site').style.display = isCar ? 'none' : '';
+  document.getElementById('prosp-campo-endereco').style.display = isCar ? 'none' : '';
   document.getElementById('prosp-campo-produto').style.display = isCar ? '' : 'none';
   document.getElementById('prosp-campo-tipo-empresa').style.display = isCar ? 'none' : '';
   document.getElementById('prosp-campo-origem').style.display = isCar ? '' : 'none';
@@ -2643,6 +2660,13 @@ function abrirModalProspeccao(docId) {
     document.getElementById('prosp-responsavel').value = p.responsavel || '';
     document.getElementById('prosp-whatsapp').value = p.contato || '';
     document.getElementById('prosp-email').value = p.email || '';
+    document.getElementById('prosp-site').value = p.site || '';
+    document.getElementById('prosp-cep').value = p.cep || '';
+    document.getElementById('prosp-logradouro').value = p.logradouro || '';
+    document.getElementById('prosp-numero').value = p.numero || '';
+    document.getElementById('prosp-bairro').value = p.bairro || '';
+    document.getElementById('prosp-cidade').value = p.cidade || '';
+    document.getElementById('prosp-uf').value = p.uf || '';
     document.getElementById('prosp-produto').value = p.produto || '';
     document.getElementById('prosp-tipo-empresa').value = p.tipoEmpresa || '';
     document.getElementById('prosp-status').value = p.status || 'Novo';
@@ -2652,11 +2676,13 @@ function abrirModalProspeccao(docId) {
     const tipo = p.tipo || prospTab;
     const isCar2 = tipo === 'carrinho';
     document.getElementById('prosp-campo-responsavel').style.display = isCar2 ? 'none' : '';
+    document.getElementById('prosp-campo-site').style.display = isCar2 ? 'none' : '';
+    document.getElementById('prosp-campo-endereco').style.display = isCar2 ? 'none' : '';
     document.getElementById('prosp-campo-produto').style.display = isCar2 ? '' : 'none';
     document.getElementById('prosp-campo-tipo-empresa').style.display = isCar2 ? 'none' : '';
     document.getElementById('prosp-campo-origem').style.display = isCar2 ? '' : 'none';
   } else {
-    limpaCampos(['prosp-nome','prosp-responsavel','prosp-whatsapp','prosp-email','prosp-obs','prosp-proximo']);
+    limpaCampos(['prosp-nome','prosp-responsavel','prosp-whatsapp','prosp-email','prosp-obs','prosp-proximo','prosp-site','prosp-cep','prosp-logradouro','prosp-numero','prosp-bairro','prosp-cidade','prosp-uf']);
     document.getElementById('prosp-produto').value = '';
     document.getElementById('prosp-tipo-empresa').value = '';
     document.getElementById('prosp-status').value = 'Novo';
@@ -2677,6 +2703,13 @@ async function salvarProspeccao() {
     responsavel: document.getElementById('prosp-responsavel').value.trim(),
     contato: document.getElementById('prosp-whatsapp').value.trim(),
     email: document.getElementById('prosp-email').value.trim(),
+    site: document.getElementById('prosp-site').value.trim(),
+    cep: document.getElementById('prosp-cep').value.trim(),
+    logradouro: document.getElementById('prosp-logradouro').value.trim(),
+    numero: document.getElementById('prosp-numero').value.trim(),
+    bairro: document.getElementById('prosp-bairro').value.trim(),
+    cidade: document.getElementById('prosp-cidade').value.trim(),
+    uf: document.getElementById('prosp-uf').value.trim().toUpperCase(),
     produto: document.getElementById('prosp-produto').value,
     tipoEmpresa: document.getElementById('prosp-tipo-empresa').value,
     status: document.getElementById('prosp-status').value,
