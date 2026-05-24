@@ -179,6 +179,7 @@ table.gestao tbody tr:hover .tbl-sticky-r{background:#1f1545}
     <div class="nav-item"><button class="nav-link" onclick="showPage('canais')"><i class="bi bi-share-fill"></i> Canais</button></div>
     <div class="nav-item"><button class="nav-link" onclick="showPage('afiliados')"><i class="bi bi-person-check-fill"></i> Afiliados</button></div>
     <div class="nav-item"><button class="nav-link" onclick="showPage('trafego')"><i class="bi bi-megaphone-fill"></i> Tráfego</button></div>
+    <div class="nav-item"><button class="nav-link" onclick="showPage('prospeccao')"><i class="bi bi-funnel-fill"></i> Prospecção</button></div>
     <div class="nav-item"><button class="nav-link" onclick="showPage('relatorios')"><i class="bi bi-file-earmark-bar-graph-fill"></i> Relatórios</button></div>
     <div class="nav-item" style="margin-top:8px;border-top:1px solid var(--cor-borda);padding-top:8px;">
       <button class="nav-link" onclick="showPage('usuarios')"><i class="bi bi-shield-lock-fill"></i> Usuários</button>
@@ -409,6 +410,44 @@ table.gestao tbody tr:hover .tbl-sticky-r{background:#1f1545}
               <th class="tbl-sticky-r" style="min-width:72px"></th>
             </tr></thead>
             <tbody></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- PROSPECÇÃO -->
+    <div class="page" id="pg-prospeccao">
+      <!-- KPIs -->
+      <div class="kpi-grid" id="kpi-prospeccao"></div>
+      <!-- Tabs + filtro -->
+      <div style="background:var(--cor-card);border:1px solid var(--cor-borda);border-radius:14px;padding:14px 20px;margin-bottom:20px;display:flex;align-items:center;gap:16px;flex-wrap:wrap">
+        <div style="display:flex;border:1px solid var(--cor-borda);border-radius:8px;overflow:hidden">
+          <button id="prosp-tab-carrinho" class="btn btn-sm" style="border-radius:0;border:none;background:rgba(124,58,237,.25);color:#fff;font-size:13px;font-weight:600;padding:7px 18px" onclick="setProspTab('carrinho')"><i class="bi bi-cart-x-fill me-2"></i>Recuperação de Carrinho</button>
+          <button id="prosp-tab-parceiro" class="btn btn-sm" style="border-radius:0;border:none;background:none;color:var(--cor-texto-suave);font-size:13px;font-weight:600;padding:7px 18px" onclick="setProspTab('parceiro')"><i class="bi bi-shop-window me-2"></i>Livrarias &amp; Parceiros</button>
+        </div>
+        <div style="margin-left:auto;display:flex;gap:8px;align-items:center">
+          <select class="form-select form-select-sm" id="prosp-filtro-status" onchange="renderProspeccao()" style="width:180px;font-size:12px">
+            <option value="">Todos os status</option>
+            <option>Novo</option>
+            <option>Contatado</option>
+            <option>Proposta Enviada</option>
+            <option>Negociando</option>
+            <option>Fechado</option>
+            <option>Perdido</option>
+          </select>
+          <input type="text" class="input-search" placeholder="Buscar..." oninput="filtrarTabela('tabela-prospeccao',this.value)" style="width:180px">
+          <button class="btn btn-primary btn-sm" onclick="abrirModalProspeccao()"><i class="bi bi-plus-lg me-1"></i>Novo</button>
+        </div>
+      </div>
+      <!-- Tabela -->
+      <div class="table-card">
+        <div class="table-header">
+          <h6 id="prosp-titulo-tab"><i class="bi bi-cart-x-fill me-2" style="color:var(--cor-secundaria)"></i>Recuperação de Carrinho</h6>
+        </div>
+        <div class="table-responsive">
+          <table class="gestao" id="tabela-prospeccao">
+            <thead id="prosp-thead"></thead>
+            <tbody id="prosp-tbody"></tbody>
           </table>
         </div>
       </div>
@@ -824,6 +863,67 @@ table.gestao tbody tr:hover .tbl-sticky-r{background:#1f1545}
   <div class="modal-footer"><button class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancelar</button><button class="btn btn-primary" id="btn-salvar-usuario" onclick="salvarUsuario()">Criar Usuário</button></div>
 </div></div></div>
 
+<div class="modal fade" id="modalProspeccao" tabindex="-1"><div class="modal-dialog modal-lg"><div class="modal-content">
+  <div class="modal-header"><h5 class="modal-title" id="modalProspTitulo">Novo Lead</h5><button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button></div>
+  <div class="modal-body">
+    <input type="hidden" id="prosp-docid">
+    <input type="hidden" id="prosp-tipo">
+    <div class="row g-3">
+      <div class="col-md-6"><label class="form-label">Nome / Empresa *</label><input class="form-control" id="prosp-nome" placeholder="Nome do lead ou empresa"></div>
+      <div class="col-md-6" id="prosp-campo-responsavel" style="display:none"><label class="form-label">Responsável / Contato</label><input class="form-control" id="prosp-responsavel" placeholder="Nome da pessoa de contato"></div>
+      <div class="col-md-6"><label class="form-label">WhatsApp</label><input class="form-control" id="prosp-whatsapp" placeholder="11 9 9999-9999"></div>
+      <div class="col-md-6"><label class="form-label">E-mail</label><input class="form-control" id="prosp-email" type="email"></div>
+      <div class="col-md-6" id="prosp-campo-produto"><label class="form-label">Produto de Interesse</label>
+        <select class="form-select" id="prosp-produto">
+          <option value="">— Selecione —</option>
+          <option>Livro Físico — R$ 109,90</option>
+          <option>Kit Digital — R$ 47,00</option>
+          <option>Ambos</option>
+          <option>Não identificado</option>
+        </select>
+      </div>
+      <div class="col-md-6" id="prosp-campo-tipo-empresa" style="display:none"><label class="form-label">Tipo de Parceiro</label>
+        <select class="form-select" id="prosp-tipo-empresa">
+          <option value="">— Selecione —</option>
+          <option>Livraria</option>
+          <option>Papelaria</option>
+          <option>Igreja / Ministério</option>
+          <option>Loja Evangélica</option>
+          <option>Afiliado potencial</option>
+          <option>Outro</option>
+        </select>
+      </div>
+      <div class="col-md-4"><label class="form-label">Status *</label>
+        <select class="form-select" id="prosp-status">
+          <option>Novo</option>
+          <option>Contatado</option>
+          <option>Proposta Enviada</option>
+          <option>Negociando</option>
+          <option>Fechado</option>
+          <option>Perdido</option>
+        </select>
+      </div>
+      <div class="col-md-4"><label class="form-label">Próximo Contato</label><input class="form-control" id="prosp-proximo" type="date"></div>
+      <div class="col-md-4" id="prosp-campo-origem"><label class="form-label">Origem</label>
+        <select class="form-select" id="prosp-origem">
+          <option value="">— Selecione —</option>
+          <option>Instagram</option>
+          <option>WhatsApp</option>
+          <option>Site</option>
+          <option>Amazon</option>
+          <option>Indicação</option>
+          <option>Outro</option>
+        </select>
+      </div>
+      <div class="col-12"><label class="form-label">Observações / Histórico</label><textarea class="form-control" id="prosp-obs" rows="3" placeholder="Anote aqui o contexto, o que foi conversado, próximos passos..."></textarea></div>
+    </div>
+  </div>
+  <div class="modal-footer">
+    <button class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancelar</button>
+    <button class="btn btn-primary" onclick="salvarProspeccao()"><i class="bi bi-floppy-fill me-1"></i>Salvar</button>
+  </div>
+</div></div></div>
+
 <div id="toast-estoque" style="display:none" class="toast-estoque"></div>
 <div id="toast-backup" style="display:none" class="toast-estoque"></div>
 
@@ -895,7 +995,7 @@ const dadosPadrao = {
 // ============================================================
 // STATE
 // ============================================================
-let dados = { config:{canais:[]}, clientes:[], pedidos:[], financeiro:[], compras:[], produtos:[], estoqueMovimentos:[], afiliados:[], trafegodiario:[] };
+let dados = { config:{canais:[]}, clientes:[], pedidos:[], financeiro:[], compras:[], produtos:[], estoqueMovimentos:[], afiliados:[], trafegodiario:[], prospeccao:[] };
 let currentPage = 'dashboard';
 let appReady = false;
 let finTab = 'todos';
@@ -963,7 +1063,7 @@ async function seedIfEmpty() {
 // LISTENERS FIRESTORE
 // ============================================================
 function setupListeners() {
-  const cols = ['clientes','pedidos','financeiro','compras','produtos','estoqueMovimentos','afiliados','trafegodiario'];
+  const cols = ['clientes','pedidos','financeiro','compras','produtos','estoqueMovimentos','afiliados','trafegodiario','prospeccao'];
   const loaded = new Set();
 
   unsubscribers.push(db.collection('config').doc('main').onSnapshot(doc => {
@@ -1076,7 +1176,7 @@ function nextNumPedido() { if (!dados.pedidos.length) return 'PED-01'; const num
 // ============================================================
 // NAVEGAÇÃO
 // ============================================================
-const pageTitles = { dashboard:['Dashboard','Visão geral da operação'], clientes:['Clientes','Cadastro e gestão de clientes'], pedidos:['Pedidos','Pedidos diários — todos os canais'], financeiro:['Financeiro','Lançamentos de entradas e saídas'], fluxo:['Fluxo de Caixa','Resumo mensal automático'], compras:['Compras','Compras e fornecedores'], produtos:['Produtos','Cadastro de produtos e preços'], estoque:['Estoque','Controle automático de estoque'], canais:['Canais','Desempenho por canal de venda'], afiliados:['Afiliados','Gestão de afiliados e comissões'], trafego:['Tráfego Pago','Acompanhamento diário de campanhas'], usuarios:['Usuários','Gerenciar acessos ao sistema'], config:['Configurações','Taxas de canais e dados do sistema'], relatorios:['Relatórios','Geração de relatórios por período'] };
+const pageTitles = { dashboard:['Dashboard','Visão geral da operação'], clientes:['Clientes','Cadastro e gestão de clientes'], pedidos:['Pedidos','Pedidos diários — todos os canais'], financeiro:['Financeiro','Lançamentos de entradas e saídas'], fluxo:['Fluxo de Caixa','Resumo mensal automático'], compras:['Compras','Compras e fornecedores'], produtos:['Produtos','Cadastro de produtos e preços'], estoque:['Estoque','Controle automático de estoque'], canais:['Canais','Desempenho por canal de venda'], afiliados:['Afiliados','Gestão de afiliados e comissões'], trafego:['Tráfego Pago','Acompanhamento diário de campanhas'], prospeccao:['Prospecção','Pipeline de novos clientes e parceiros'], usuarios:['Usuários','Gerenciar acessos ao sistema'], config:['Configurações','Taxas de canais e dados do sistema'], relatorios:['Relatórios','Geração de relatórios por período'] };
 
 function fixarStickyHeaders(pgId) {
   setTimeout(function(){
@@ -1106,7 +1206,7 @@ function showPage(id) {
   fixarStickyHeaders(id);
 }
 
-function renderPage(id) { const fn={dashboard:renderDashboard,clientes:renderClientes,pedidos:renderPedidos,financeiro:renderFinanceiro,fluxo:renderFluxo,compras:renderCompras,produtos:renderProdutos,estoque:renderEstoque,canais:renderCanais,afiliados:renderAfiliados,trafego:renderTrafego,usuarios:renderUsuarios,config:renderConfig,relatorios:renderRelatorios}; if(fn[id]) fn[id](); }
+function renderPage(id) { const fn={dashboard:renderDashboard,clientes:renderClientes,pedidos:renderPedidos,financeiro:renderFinanceiro,fluxo:renderFluxo,compras:renderCompras,produtos:renderProdutos,estoque:renderEstoque,canais:renderCanais,afiliados:renderAfiliados,trafego:renderTrafego,prospeccao:renderProspeccao,usuarios:renderUsuarios,config:renderConfig,relatorios:renderRelatorios}; if(fn[id]) fn[id](); }
 
 // ============================================================
 // DASHBOARD
@@ -2415,6 +2515,223 @@ async function salvarFormaPagto() {
   bootstrap.Modal.getInstance(document.getElementById('modalFormaPagto')).hide();
   document.getElementById('fp-idx').value='';
   limpaCampos(['fp-nome','fp-taxa','fp-taxafixa']);
+}
+
+// ============================================================
+// PROSPECÇÃO
+// ============================================================
+let prospTab = 'carrinho';
+
+const PROSP_STATUS_COR = {
+  'Novo':'#9D8EC4',
+  'Contatado':'#3B82F6',
+  'Proposta Enviada':'#F59E0B',
+  'Negociando':'#8B5CF6',
+  'Fechado':'#10B981',
+  'Perdido':'#EF4444'
+};
+
+function badgeStatusProsp(s) {
+  const cor = PROSP_STATUS_COR[s] || '#9D8EC4';
+  return `<span style="color:${cor};font-size:12px;font-weight:600;">${s||'—'}</span>`;
+}
+
+function setProspTab(tab) {
+  prospTab = tab;
+  const btnC = document.getElementById('prosp-tab-carrinho');
+  const btnP = document.getElementById('prosp-tab-parceiro');
+  if(tab === 'carrinho') {
+    btnC.style.background = 'rgba(124,58,237,.25)'; btnC.style.color = '#fff';
+    btnP.style.background = 'none'; btnP.style.color = 'var(--cor-texto-suave)';
+    document.getElementById('prosp-titulo-tab').innerHTML = '<i class="bi bi-cart-x-fill me-2" style="color:var(--cor-secundaria)"></i>Recuperação de Carrinho';
+  } else {
+    btnP.style.background = 'rgba(124,58,237,.25)'; btnP.style.color = '#fff';
+    btnC.style.background = 'none'; btnC.style.color = 'var(--cor-texto-suave)';
+    document.getElementById('prosp-titulo-tab').innerHTML = '<i class="bi bi-shop-window me-2" style="color:var(--cor-acento)"></i>Livrarias &amp; Parceiros';
+  }
+  renderProspeccao();
+}
+
+function renderProspeccao() {
+  renderKpiProspeccao();
+  const hoje = new Date().toISOString().split('T')[0];
+  const filtroStatus = (document.getElementById('prosp-filtro-status')||{}).value || '';
+  let lista = dados.prospeccao.filter(p => p.tipo === prospTab);
+  if(filtroStatus) lista = lista.filter(p => p.status === filtroStatus);
+  lista.sort((a,b) => {
+    const va = a.proximoContato || a.dataEntrada || '';
+    const vb = b.proximoContato || b.dataEntrada || '';
+    return va < vb ? -1 : va > vb ? 1 : 0;
+  });
+
+  const thead = document.getElementById('prosp-thead');
+  const tbody = document.getElementById('prosp-tbody');
+  if(!thead || !tbody) return;
+
+  if(prospTab === 'carrinho') {
+    thead.innerHTML = '<tr><th>Nome</th><th>WhatsApp</th><th>Produto</th><th>Origem</th><th>Status</th><th>Último Contato</th><th>Próx. Contato</th><th style="text-align:center">Tentativas</th><th>Obs</th><th></th></tr>';
+  } else {
+    thead.innerHTML = '<tr><th>Empresa</th><th>Responsável</th><th>WhatsApp</th><th>Tipo</th><th>Status</th><th>Último Contato</th><th>Próx. Contato</th><th style="text-align:center">Tentativas</th><th>Obs</th><th></th></tr>';
+  }
+
+  if(!lista.length) {
+    tbody.innerHTML = `<tr><td colspan="10"><div class="empty-state"><i class="bi bi-funnel"></i>${prospTab==='carrinho'?'Nenhum lead de carrinho cadastrado':'Nenhum parceiro cadastrado'}.<br><small>Clique em "+ Novo" para adicionar.</small></div></td></tr>`;
+    return;
+  }
+
+  tbody.innerHTML = lista.map(p => {
+    const vencido = p.proximoContato && p.proximoContato < hoje && p.status !== 'Fechado' && p.status !== 'Perdido';
+    const proximoHtml = p.proximoContato
+      ? `<span style="color:${vencido?'#EF4444':'var(--cor-texto)'};font-weight:${vencido?'700':'400'}">${vencido?'⚠ ':''}${fmtData(p.proximoContato)}</span>`
+      : '<span style="color:var(--cor-texto-suave)">—</span>';
+    const tentativas = p.tentativas || 0;
+    const col2 = prospTab === 'carrinho'
+      ? `<td>${p.contato||'—'}</td><td>${p.produto||'—'}</td><td><span style="color:var(--cor-texto-suave);font-size:12px">${p.origem||'—'}</span></td>`
+      : `<td><span style="color:var(--cor-texto-suave);font-size:12px">${p.responsavel||'—'}</span></td><td>${p.contato||'—'}</td><td><span style="color:var(--cor-texto-suave);font-size:12px">${p.tipoEmpresa||'—'}</span></td>`;
+    return `<tr>
+      <td style="font-weight:600">${p.nome||'—'}</td>
+      ${col2}
+      <td>${badgeStatusProsp(p.status)}</td>
+      <td style="color:var(--cor-texto-suave);font-size:12px">${fmtData(p.ultimoContato)||'—'}</td>
+      <td>${proximoHtml}</td>
+      <td style="text-align:center"><span style="background:rgba(124,58,237,.15);color:var(--cor-secundaria);border-radius:20px;padding:2px 10px;font-size:12px;font-weight:600">${tentativas}</span></td>
+      <td style="max-width:140px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--cor-texto-suave);font-size:12px" title="${(p.obs||'').replace(/"/g,'&quot;')}">${p.obs||'—'}</td>
+      <td>
+        <div style="display:flex;gap:4px">
+          ${p.contato ? `<button class="btn-sm-action" title="Abrir WhatsApp" onclick="abrirWhatsAppProsp('${p._docId}')"><i class="bi bi-whatsapp" style="color:#25D366"></i></button>` : ''}
+          <button class="btn-sm-action btn-edit" title="Registrar contato feito" onclick="registrarContatoProsp('${p._docId}')"><i class="bi bi-check2-circle"></i></button>
+          <button class="btn-sm-action btn-edit" title="Editar" onclick="abrirModalProspeccao('${p._docId}')"><i class="bi bi-pencil-fill"></i></button>
+          <button class="btn-sm-action btn-delete" title="Excluir" onclick="deletarProspeccao('${p._docId}')"><i class="bi bi-trash-fill"></i></button>
+        </div>
+      </td>
+    </tr>`;
+  }).join('');
+}
+
+function renderKpiProspeccao() {
+  const hoje = new Date().toISOString().split('T')[0];
+  const iniMes = hoje.slice(0,7)+'-01';
+  const ativos = dados.prospeccao.filter(p => p.status !== 'Fechado' && p.status !== 'Perdido');
+  const vencidos = ativos.filter(p => p.proximoContato && p.proximoContato < hoje);
+  const fechadosMes = dados.prospeccao.filter(p => p.status === 'Fechado' && p.dataEntrada >= iniMes);
+  const totalCarrinho = dados.prospeccao.filter(p => p.tipo === 'carrinho' && p.status !== 'Perdido').length;
+  const totalParceiro = dados.prospeccao.filter(p => p.tipo === 'parceiro' && p.status !== 'Perdido').length;
+  document.getElementById('kpi-prospeccao').innerHTML = `
+    <div class="kpi-card"><div class="kpi-label">Carrinho Ativo</div><div class="kpi-value" style="color:var(--cor-secundaria)">${totalCarrinho}</div><div class="kpi-sub">leads em aberto</div></div>
+    <div class="kpi-card"><div class="kpi-label">Livrarias / Parceiros</div><div class="kpi-value" style="color:var(--cor-acento)">${totalParceiro}</div><div class="kpi-sub">em negociação</div></div>
+    <div class="kpi-card"><div class="kpi-label">Follow-up Vencido</div><div class="kpi-value" style="color:${vencidos.length?'#EF4444':'#10B981'}">${vencidos.length}</div><div class="kpi-sub">${vencidos.length ? 'contatar hoje!' : 'tudo em dia'}</div></div>
+    <div class="kpi-card"><div class="kpi-label">Fechados este mês</div><div class="kpi-value" style="color:#10B981">${fechadosMes.length}</div><div class="kpi-sub">conversões</div></div>`;
+}
+
+function abrirModalProspeccao(docId) {
+  const isEdicao = !!docId;
+  document.getElementById('modalProspTitulo').textContent = isEdicao ? 'Editar Cadastro' : (prospTab === 'carrinho' ? 'Novo Lead — Carrinho' : 'Novo Parceiro');
+  document.getElementById('prosp-docid').value = docId || '';
+  document.getElementById('prosp-tipo').value = prospTab;
+
+  const isCar = prospTab === 'carrinho';
+  document.getElementById('prosp-campo-responsavel').style.display = isCar ? 'none' : '';
+  document.getElementById('prosp-campo-produto').style.display = isCar ? '' : 'none';
+  document.getElementById('prosp-campo-tipo-empresa').style.display = isCar ? 'none' : '';
+  document.getElementById('prosp-campo-origem').style.display = isCar ? '' : 'none';
+
+  if(isEdicao) {
+    const p = dados.prospeccao.find(x => x._docId === docId);
+    if(!p) return;
+    document.getElementById('prosp-tipo').value = p.tipo || prospTab;
+    document.getElementById('prosp-nome').value = p.nome || '';
+    document.getElementById('prosp-responsavel').value = p.responsavel || '';
+    document.getElementById('prosp-whatsapp').value = p.contato || '';
+    document.getElementById('prosp-email').value = p.email || '';
+    document.getElementById('prosp-produto').value = p.produto || '';
+    document.getElementById('prosp-tipo-empresa').value = p.tipoEmpresa || '';
+    document.getElementById('prosp-status').value = p.status || 'Novo';
+    document.getElementById('prosp-proximo').value = p.proximoContato || '';
+    document.getElementById('prosp-origem').value = p.origem || '';
+    document.getElementById('prosp-obs').value = p.obs || '';
+    const tipo = p.tipo || prospTab;
+    const isCar2 = tipo === 'carrinho';
+    document.getElementById('prosp-campo-responsavel').style.display = isCar2 ? 'none' : '';
+    document.getElementById('prosp-campo-produto').style.display = isCar2 ? '' : 'none';
+    document.getElementById('prosp-campo-tipo-empresa').style.display = isCar2 ? 'none' : '';
+    document.getElementById('prosp-campo-origem').style.display = isCar2 ? '' : 'none';
+  } else {
+    limpaCampos(['prosp-nome','prosp-responsavel','prosp-whatsapp','prosp-email','prosp-obs','prosp-proximo']);
+    document.getElementById('prosp-produto').value = '';
+    document.getElementById('prosp-tipo-empresa').value = '';
+    document.getElementById('prosp-status').value = 'Novo';
+    document.getElementById('prosp-origem').value = '';
+  }
+
+  new bootstrap.Modal(document.getElementById('modalProspeccao')).show();
+}
+
+async function salvarProspeccao() {
+  const nome = document.getElementById('prosp-nome').value.trim();
+  if(!nome) { alert('Informe o nome ou empresa.'); return; }
+  const docId = document.getElementById('prosp-docid').value;
+  const tipo = document.getElementById('prosp-tipo').value || prospTab;
+  const dados_obj = {
+    tipo,
+    nome,
+    responsavel: document.getElementById('prosp-responsavel').value.trim(),
+    contato: document.getElementById('prosp-whatsapp').value.trim(),
+    email: document.getElementById('prosp-email').value.trim(),
+    produto: document.getElementById('prosp-produto').value,
+    tipoEmpresa: document.getElementById('prosp-tipo-empresa').value,
+    status: document.getElementById('prosp-status').value,
+    proximoContato: document.getElementById('prosp-proximo').value,
+    origem: document.getElementById('prosp-origem').value,
+    obs: document.getElementById('prosp-obs').value.trim(),
+  };
+  if(!docId) {
+    dados_obj.dataEntrada = new Date().toISOString().split('T')[0];
+    dados_obj.tentativas = 0;
+    dados_obj.ultimoContato = '';
+    await db.collection('prospeccao').add(dados_obj);
+  } else {
+    await db.collection('prospeccao').doc(docId).update(dados_obj);
+  }
+  bootstrap.Modal.getInstance(document.getElementById('modalProspeccao')).hide();
+}
+
+async function deletarProspeccao(docId) {
+  if(!confirm('Remover este cadastro do pipeline?')) return;
+  await db.collection('prospeccao').doc(docId).delete();
+}
+
+async function registrarContatoProsp(docId) {
+  const p = dados.prospeccao.find(x => x._docId === docId);
+  if(!p) return;
+  const hoje = new Date().toISOString().split('T')[0];
+  await db.collection('prospeccao').doc(docId).update({
+    ultimoContato: hoje,
+    tentativas: (p.tentativas || 0) + 1
+  });
+  showToast('Contato registrado ✓');
+}
+
+function abrirWhatsAppProsp(docId) {
+  const p = dados.prospeccao.find(x => x._docId === docId);
+  if(!p || !p.contato) return;
+  const fone = p.contato.replace(/\D/g,'');
+  let msg = '';
+  if(p.tipo === 'carrinho') {
+    const prod = p.produto ? ` o "${p.produto}"` : ' nosso devocional';
+    msg = `Olá ${p.nome}! Tudo bem? Vi que você se interessou por${prod} e queria saber se ficou alguma dúvida que posso te ajudar 💜 O Meu Lugar de Cura pode ser exatamente o que você precisa neste momento. Fico à disposição!`;
+  } else {
+    msg = `Olá ${p.responsavel || p.nome}! Tudo bem? Meu nome é Ellen Santana, sou autora do devocional "Meu Lugar de Cura". Gostaria de conversar sobre uma possível parceria com ${p.nome}. Tenho um material que pode agregar muito ao seu espaço 💜 Posso te contar mais?`;
+  }
+  const url = `https://wa.me/55${fone}?text=${encodeURIComponent(msg)}`;
+  window.open(url, '_blank');
+  registrarContatoProsp(docId);
+}
+
+function showToast(msg) {
+  const t = document.getElementById('toast-estoque');
+  t.innerHTML = `<i class="bi bi-check-circle-fill" style="color:#10B981"></i> ${msg}`;
+  t.style.display = 'flex';
+  setTimeout(() => { t.style.display = 'none'; }, 2500);
 }
 
 // ============================================================
