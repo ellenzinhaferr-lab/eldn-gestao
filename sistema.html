@@ -460,12 +460,14 @@ table.gestao tbody tr:hover .tbl-sticky-r{background:#1f1545}
         <div style="display:flex;gap:12px;flex-wrap:wrap;align-items:flex-end;margin-top:12px">
           <div>
             <label class="form-label">Tipo</label>
-            <select class="form-select" id="rel-tipo" style="width:210px" onchange="limparRelatorio()">
+            <select class="form-select" id="rel-tipo" style="width:210px" onchange="limparRelatorio();_toggleFiltroPlat()">
               <option value="vendas">Vendas (Pedidos)</option>
               <option value="compras">Compras</option>
               <option value="despesas">Despesas / Lançamentos</option>
+              <option value="trafego">Tráfego</option>
             </select>
           </div>
+          <div id="rel-filtro-plat" style="display:none"><label class="form-label">Plataforma</label><select class="form-select" id="rel-plataforma" style="width:160px"><option value="">Todas</option><option>Meta Ads</option><option>Google Ads</option><option>TikTok Ads</option><option>Outro</option></select></div>
           <div><label class="form-label">De</label><input type="date" class="form-control" id="rel-de" style="width:160px"></div>
           <div><label class="form-label">Até</label><input type="date" class="form-control" id="rel-ate" style="width:160px"></div>
           <div style="display:flex;gap:8px;padding-bottom:2px">
@@ -2782,6 +2784,11 @@ function renderRelatorios() {
   if(!ate.value) ate.value = hoje;
 }
 
+function _toggleFiltroPlat() {
+  const v = document.getElementById('rel-tipo').value;
+  document.getElementById('rel-filtro-plat').style.display = v==='trafego' ? '' : 'none';
+}
+
 function limparRelatorio() {
   _dadosRelatorio = [];
   document.getElementById('rel-kpis').style.display='none';
@@ -2798,6 +2805,7 @@ function gerarRelatorio() {
   _tipoRelatorio = tipo;
   if(tipo==='vendas') _gerarRelVendas(de,ate);
   else if(tipo==='compras') _gerarRelCompras(de,ate);
+  else if(tipo==='trafego') { const plat=document.getElementById('rel-plataforma').value; _gerarRelTrafego(de,ate,plat); }
   else _gerarRelDespesas(de,ate);
 }
 
@@ -2879,6 +2887,45 @@ function _gerarRelDespesas(de, ate) {
   _mostrarResultado('Relatório de Despesas / Lançamentos',de,ate);
 }
 
+function _gerarRelTrafego(de, ate, plat) {
+  let lista = dados.trafegodiario.filter(r=>r.data>=de&&r.data<=ate);
+  if(plat) lista = lista.filter(r=>(r.plataforma||'Meta Ads')===plat);
+  lista = lista.sort((a,b)=>a.data.localeCompare(b.data));
+  _dadosRelatorio = lista;
+  const totalInv = lista.reduce((s,r)=>s+(r.investimento||0),0);
+  const totalRec = lista.reduce((s,r)=>s+(r.receita||0),0);
+  const totalComp = lista.reduce((s,r)=>s+(r.compras||0),0);
+  const totalCliques = lista.reduce((s,r)=>s+(r.cliquesLink||0),0);
+  const totalImp = lista.reduce((s,r)=>s+(r.impressoes||0),0);
+  const resultado = totalRec - totalInv;
+  const roas = totalInv>0?totalRec/totalInv:0;
+  const cpa = totalComp>0?totalInv/totalComp:0;
+  const ctr = totalImp>0?(totalCliques/totalImp)*100:0;
+  const corRoas = roas>=2?'#10B981':roas>=1?'#F59E0B':'#EF4444';
+  const corRes = resultado>=0?'#10B981':'#EF4444';
+  document.getElementById('rel-kpis').innerHTML =
+    _kpiCardRel('Registros',lista.length,'no período','#A78BFA')+
+    _kpiCardRel('Total Investido',moeda(totalInv),'no período','#F59E0B')+
+    _kpiCardRel('Receita Gerada',moeda(totalRec),'no período','#10B981')+
+    _kpiCardRel('Resultado',moeda(resultado),'receita − investimento',corRes)+
+    _kpiCardRel('ROAS',totalInv>0?roas.toFixed(2):'—','retorno sobre invest.',corRoas)+
+    _kpiCardRel('CPA',cpa>0?moeda(cpa):'—','custo por compra','#3B82F6')+
+    _kpiCardRel('Compras',totalComp,'conversões','#A78BFA')+
+    _kpiCardRel('CTR',ctr>0?ctr.toFixed(2)+'%':'—','cliques / impressões','#9D8EC4');
+  document.getElementById('rel-thead').innerHTML=`<tr><th>Data</th><th>Plataforma</th><th>Campanha</th><th>Conjunto</th><th>Anúncio</th><th>Investimento</th><th>Receita</th><th>Resultado</th><th>ROAS</th><th>Compras</th><th>CPA</th><th>Cliques</th><th>Impressões</th><th>CTR</th><th>Observações</th></tr>`;
+  document.getElementById('rel-tbody').innerHTML = lista.length ? lista.map(r=>{
+    const inv=r.investimento||0, rec=r.receita||0, res=rec-inv;
+    const roas=r.roas||(inv>0?rec/inv:0);
+    const corR=res>=0?'var(--cor-verde)':'var(--cor-vermelho)';
+    const corRo=roas>=2?'var(--cor-verde)':roas>=1?'var(--cor-acento)':'var(--cor-vermelho)';
+    const fmt2=v=>v>0?v.toFixed(2):'—';
+    const fmtN=v=>(v||0).toLocaleString('pt-BR');
+    return `<tr><td style="white-space:nowrap">${fmtData(r.data)}</td><td style="color:var(--cor-texto-suave)">${r.plataforma||'Meta Ads'}</td><td style="font-weight:600;color:#fff;max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${r.campanha||''}">${r.campanha||'—'}</td><td style="color:var(--cor-texto-suave);max-width:140px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${r.conjunto||''}">${r.conjunto||'—'}</td><td style="color:var(--cor-texto-suave);max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${r.anuncio||''}">${r.anuncio||'—'}</td><td style="color:var(--cor-acento);font-weight:600">${moeda(inv)}</td><td style="color:var(--cor-verde);font-weight:600">${rec>0?moeda(rec):'—'}</td><td style="color:${corR};font-weight:700">${inv>0||rec>0?(res>=0?'+ ':'- ')+'R$ '+Math.abs(res).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2}):'—'}</td><td style="color:${corRo};font-weight:700">${inv>0?fmt2(roas):'—'}</td><td style="font-weight:600">${r.compras||0}</td><td>${r.cpa>0?moeda(r.cpa):cpa>0?moeda(inv/(r.compras||1)):'—'}</td><td>${fmtN(r.cliquesLink)}</td><td>${fmtN(r.impressoes)}</td><td>${r.ctr>0?r.ctr.toFixed(2)+'%':'—'}</td><td style="font-size:12px;color:var(--cor-texto-suave);max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${r.obs||'—'}</td></tr>`;
+  }).join('') : '<tr><td colspan="15"><div class="empty-state"><i class="bi bi-megaphone"></i>Nenhum registro no período</div></td></tr>';
+  const subtitulo = plat ? ` — ${plat}` : '';
+  _mostrarResultado('Relatório de Tráfego'+subtitulo, de, ate);
+}
+
 function exportarRelatorioExcel() {
   if(!_dadosRelatorio.length) return alert('Gere o relatório primeiro');
   const tipo=_tipoRelatorio;
@@ -2901,6 +2948,14 @@ function exportarRelatorioExcel() {
       wsData.push([c.data,c.nf||'',c.fornecedor,c.item,c.categoria,c.sku||'',c.qtd,c.custo,c.frete||0,c.imposto||0,(c.qtd*c.custo)+(c.frete||0)+(c.imposto||0)]);
     });
     nome='Relatorio_Compras_'+de+'_a_'+ate;
+  } else if(tipo==='trafego') {
+    wsData.push(['Data','Plataforma','Campanha','Conjunto','Anúncio','Investimento (R$)','Receita (R$)','Resultado (R$)','ROAS','Compras','CPA (R$)','Cliques','Impressões','CTR (%)','Alcance','CPM (R$)','CPC (R$)','Pageviews','Checkouts','Tx Conversão (%)','Observações']);
+    _dadosRelatorio.forEach(r=>{
+      const inv=r.investimento||0, rec=r.receita||0;
+      const roas=r.roas||(inv>0?parseFloat((rec/inv).toFixed(2)):0);
+      wsData.push([r.data,r.plataforma||'Meta Ads',r.campanha||'',r.conjunto||'',r.anuncio||'',inv,rec,parseFloat((rec-inv).toFixed(2)),roas>0?roas:'',r.compras||0,r.cpa||0,r.cliquesLink||0,r.impressoes||0,r.ctr||0,r.alcance||0,r.cpm||0,r.cpc||0,r.pageviews||0,r.checkouts||0,r.txConversao||0,r.obs||'']);
+    });
+    nome='Relatorio_Trafego_'+de+'_a_'+ate;
   } else {
     wsData.push(['Data Emissão','Data Vencimento','Situação','Tipo','Descrição','Categoria','Valor (R$)','Forma Pgto','Observações']);
     _dadosRelatorio.forEach(f=>{
@@ -2919,7 +2974,8 @@ function exportarRelatorioPDF() {
   const tipo=_tipoRelatorio;
   const de=document.getElementById('rel-de').value;
   const ate=document.getElementById('rel-ate').value;
-  const titulosMap={vendas:'Relatório de Vendas',compras:'Relatório de Compras',despesas:'Relatório de Despesas / Lançamentos'};
+  const platSel=document.getElementById('rel-plataforma').value;
+  const titulosMap={vendas:'Relatório de Vendas',compras:'Relatório de Compras',despesas:'Relatório de Despesas / Lançamentos',trafego:'Relatório de Tráfego'+(platSel?' — '+platSel:'')};
   const titulo=titulosMap[tipo]||'Relatório';
   let thead='', tbody='';
   const _r=(v)=>v!=null?v:'—';
@@ -2938,6 +2994,13 @@ function exportarRelatorioPDF() {
     tbody=_dadosRelatorio.map(c=>{
       const total=(c.qtd*c.custo)+(c.frete||0)+(c.imposto||0);
       return `<tr><td>${fmtData(c.data)}</td><td>${_r(c.nf)}</td><td><b>${c.fornecedor}</b></td><td>${c.item}</td><td>${c.categoria}</td><td style="font-family:monospace">${c.sku||'—'}</td><td style="text-align:center">${c.qtd}</td><td>${_m(c.custo)}</td><td>${_m(c.frete||0)}</td><td>${_m(c.imposto||0)}</td><td class="laranja"><b>${_m(total)}</b></td></tr>`;
+    }).join('');
+  } else if(tipo==='trafego') {
+    thead=`<tr><th>Data</th><th>Plataforma</th><th>Campanha</th><th>Conjunto</th><th>Investimento</th><th>Receita</th><th>Resultado</th><th>ROAS</th><th>Compras</th><th>CPA</th><th>Cliques</th><th>CTR</th><th>Obs</th></tr>`;
+    tbody=_dadosRelatorio.map(r=>{
+      const inv=r.investimento||0, rec=r.receita||0, res=rec-inv;
+      const roas=r.roas||(inv>0?parseFloat((rec/inv).toFixed(2)):0);
+      return `<tr><td style="white-space:nowrap">${fmtData(r.data)}</td><td>${r.plataforma||'Meta Ads'}</td><td><b>${r.campanha||'—'}</b></td><td style="font-size:10px">${r.conjunto||'—'}</td><td class="laranja"><b>${_m(inv)}</b></td><td class="verde">${rec>0?_m(rec):'—'}</td><td class="${res>=0?'verde':'vermelho'}"><b>${inv>0||rec>0?(res>=0?'+ ':'- ')+'R$ '+Math.abs(res).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2}):'—'}</b></td><td class="${roas>=2?'verde':roas>=1?'laranja':'vermelho'}">${inv>0?roas.toFixed(2):'—'}</td><td style="text-align:center;font-weight:700">${r.compras||0}</td><td>${r.cpa>0?_m(r.cpa):'—'}</td><td>${(r.cliquesLink||0).toLocaleString('pt-BR')}</td><td>${r.ctr>0?r.ctr.toFixed(2)+'%':'—'}</td><td style="font-size:10px">${r.obs||'—'}</td></tr>`;
     }).join('');
   } else {
     thead=`<tr><th>Data Emissão</th><th>Vencimento</th><th>Situação</th><th>Tipo</th><th>Descrição</th><th>Categoria</th><th>Valor</th><th>Forma Pgto</th><th>Obs</th></tr>`;
