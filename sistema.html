@@ -467,7 +467,8 @@ table.gestao tbody tr:hover .tbl-sticky-r{background:#1f1545}
               <option value="trafego">Tráfego</option>
             </select>
           </div>
-          <div id="rel-filtro-plat" style="display:none"><label class="form-label">Plataforma</label><select class="form-select" id="rel-plataforma" style="width:160px"><option value="">Todas</option><option>Meta Ads</option><option>Google Ads</option><option>TikTok Ads</option><option>Outro</option></select></div>
+          <div id="rel-filtro-plat" style="display:none"><label class="form-label">Plataforma</label><select class="form-select" id="rel-plataforma" style="width:150px"><option value="">Todas</option><option>Meta Ads</option><option>Google Ads</option><option>TikTok Ads</option><option>Outro</option></select></div>
+          <div id="rel-filtro-prod" style="display:none"><label class="form-label">Produto</label><select class="form-select" id="rel-produto" style="width:160px"><option value="">Todos</option><option>Livro Físico</option><option>Kit Digital</option><option>Amazon Digital</option><option>Amazon Físico</option><option>Outro</option></select></div>
           <div><label class="form-label">De</label><input type="date" class="form-control" id="rel-de" style="width:160px"></div>
           <div><label class="form-label">Até</label><input type="date" class="form-control" id="rel-ate" style="width:160px"></div>
           <div style="display:flex;gap:8px;padding-bottom:2px">
@@ -777,7 +778,8 @@ table.gestao tbody tr:hover .tbl-sticky-r{background:#1f1545}
     <div class="col-md-3"><label class="form-label">Data *</label><input class="form-control" id="tr-data" type="date"></div>
     <div class="col-md-3"><label class="form-label">Data Criação da Campanha</label><input class="form-control" id="tr-data-criacao" type="date"></div>
     <div class="col-md-3"><label class="form-label">Plataforma</label><select class="form-select" id="tr-plataforma"><option>Meta Ads</option><option>Google Ads</option><option>TikTok Ads</option><option>Outro</option></select></div>
-    <div class="col-md-9"><label class="form-label">Campanha *</label><input class="form-control" id="tr-campanha" placeholder="Ex: Livro Físico — Maio 2026"></div>
+    <div class="col-md-3"><label class="form-label">Produto</label><select class="form-select" id="tr-produto"><option value="">Não especificado</option><option>Livro Físico</option><option>Kit Digital</option><option>Amazon Digital</option><option>Amazon Físico</option><option>Outro</option></select></div>
+    <div class="col-md-6"><label class="form-label">Campanha *</label><input class="form-control" id="tr-campanha" placeholder="Ex: Livro Físico — Maio 2026"></div>
     <div class="col-md-6"><label class="form-label">Conjunto de Anúncios</label><input class="form-control" id="tr-conjunto" placeholder="Ex: Cj 03 — Lookalike 1%"></div>
     <div class="col-md-6"><label class="form-label">Anúncio</label><input class="form-control" id="tr-anuncio" placeholder="Ex: AD01 — Vídeo depoimento"></div>
 
@@ -2786,7 +2788,9 @@ function renderRelatorios() {
 
 function _toggleFiltroPlat() {
   const v = document.getElementById('rel-tipo').value;
-  document.getElementById('rel-filtro-plat').style.display = v==='trafego' ? '' : 'none';
+  const show = v==='trafego' ? '' : 'none';
+  document.getElementById('rel-filtro-plat').style.display = show;
+  document.getElementById('rel-filtro-prod').style.display = show;
 }
 
 function limparRelatorio() {
@@ -2805,7 +2809,7 @@ function gerarRelatorio() {
   _tipoRelatorio = tipo;
   if(tipo==='vendas') _gerarRelVendas(de,ate);
   else if(tipo==='compras') _gerarRelCompras(de,ate);
-  else if(tipo==='trafego') { const plat=document.getElementById('rel-plataforma').value; _gerarRelTrafego(de,ate,plat); }
+  else if(tipo==='trafego') { const plat=document.getElementById('rel-plataforma').value; const prod=document.getElementById('rel-produto').value; _gerarRelTrafego(de,ate,plat,prod); }
   else _gerarRelDespesas(de,ate);
 }
 
@@ -2887,9 +2891,10 @@ function _gerarRelDespesas(de, ate) {
   _mostrarResultado('Relatório de Despesas / Lançamentos',de,ate);
 }
 
-function _gerarRelTrafego(de, ate, plat) {
+function _gerarRelTrafego(de, ate, plat, prod) {
   let lista = dados.trafegodiario.filter(r=>r.data>=de&&r.data<=ate);
   if(plat) lista = lista.filter(r=>(r.plataforma||'Meta Ads')===plat);
+  if(prod) lista = lista.filter(r=>(r.produto||'')===prod);
   lista = lista.sort((a,b)=>a.data.localeCompare(b.data));
   _dadosRelatorio = lista;
   const totalInv = lista.reduce((s,r)=>s+(r.investimento||0),0);
@@ -2912,7 +2917,7 @@ function _gerarRelTrafego(de, ate, plat) {
     _kpiCardRel('CPA',cpa>0?moeda(cpa):'—','custo por compra','#3B82F6')+
     _kpiCardRel('Compras',totalComp,'conversões','#A78BFA')+
     _kpiCardRel('CTR',ctr>0?ctr.toFixed(2)+'%':'—','cliques / impressões','#9D8EC4');
-  document.getElementById('rel-thead').innerHTML=`<tr><th>Data</th><th>Plataforma</th><th>Campanha</th><th>Conjunto</th><th>Anúncio</th><th>Investimento</th><th>Receita</th><th>Resultado</th><th>ROAS</th><th>Compras</th><th>CPA</th><th>Cliques</th><th>Impressões</th><th>CTR</th><th>Observações</th></tr>`;
+  document.getElementById('rel-thead').innerHTML=`<tr><th>Data</th><th>Produto</th><th>Plataforma</th><th>Campanha</th><th>Conjunto</th><th>Anúncio</th><th>Investimento</th><th>Receita</th><th>Resultado</th><th>ROAS</th><th>Compras</th><th>CPA</th><th>Cliques</th><th>Impressões</th><th>CTR</th><th>Observações</th></tr>`;
   document.getElementById('rel-tbody').innerHTML = lista.length ? lista.map(r=>{
     const inv=r.investimento||0, rec=r.receita||0, res=rec-inv;
     const roas=r.roas||(inv>0?rec/inv:0);
@@ -2920,10 +2925,11 @@ function _gerarRelTrafego(de, ate, plat) {
     const corRo=roas>=2?'var(--cor-verde)':roas>=1?'var(--cor-acento)':'var(--cor-vermelho)';
     const fmt2=v=>v>0?v.toFixed(2):'—';
     const fmtN=v=>(v||0).toLocaleString('pt-BR');
-    return `<tr><td style="white-space:nowrap">${fmtData(r.data)}</td><td style="color:var(--cor-texto-suave)">${r.plataforma||'Meta Ads'}</td><td style="font-weight:600;color:#fff;max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${r.campanha||''}">${r.campanha||'—'}</td><td style="color:var(--cor-texto-suave);max-width:140px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${r.conjunto||''}">${r.conjunto||'—'}</td><td style="color:var(--cor-texto-suave);max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${r.anuncio||''}">${r.anuncio||'—'}</td><td style="color:var(--cor-acento);font-weight:600">${moeda(inv)}</td><td style="color:var(--cor-verde);font-weight:600">${rec>0?moeda(rec):'—'}</td><td style="color:${corR};font-weight:700">${inv>0||rec>0?(res>=0?'+ ':'- ')+'R$ '+Math.abs(res).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2}):'—'}</td><td style="color:${corRo};font-weight:700">${inv>0?fmt2(roas):'—'}</td><td style="font-weight:600">${r.compras||0}</td><td>${r.cpa>0?moeda(r.cpa):cpa>0?moeda(inv/(r.compras||1)):'—'}</td><td>${fmtN(r.cliquesLink)}</td><td>${fmtN(r.impressoes)}</td><td>${r.ctr>0?r.ctr.toFixed(2)+'%':'—'}</td><td style="font-size:12px;color:var(--cor-texto-suave);max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${r.obs||'—'}</td></tr>`;
-  }).join('') : '<tr><td colspan="15"><div class="empty-state"><i class="bi bi-megaphone"></i>Nenhum registro no período</div></td></tr>';
-  const subtitulo = plat ? ` — ${plat}` : '';
-  _mostrarResultado('Relatório de Tráfego'+subtitulo, de, ate);
+    const prodBadge=r.produto?`<span style="font-size:11px;font-weight:600;padding:2px 8px;border-radius:12px;background:rgba(124,58,237,.15);color:var(--cor-secundaria)">${r.produto}</span>`:'<span style="color:var(--cor-texto-suave);font-size:11px">—</span>';
+    return `<tr><td style="white-space:nowrap">${fmtData(r.data)}</td><td>${prodBadge}</td><td style="color:var(--cor-texto-suave)">${r.plataforma||'Meta Ads'}</td><td style="font-weight:600;color:#fff;max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${r.campanha||''}">${r.campanha||'—'}</td><td style="color:var(--cor-texto-suave);max-width:130px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${r.conjunto||''}">${r.conjunto||'—'}</td><td style="color:var(--cor-texto-suave);max-width:110px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${r.anuncio||''}">${r.anuncio||'—'}</td><td style="color:var(--cor-acento);font-weight:600">${moeda(inv)}</td><td style="color:var(--cor-verde);font-weight:600">${rec>0?moeda(rec):'—'}</td><td style="color:${corR};font-weight:700">${inv>0||rec>0?(res>=0?'+ ':'- ')+'R$ '+Math.abs(res).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2}):'—'}</td><td style="color:${corRo};font-weight:700">${inv>0?fmt2(roas):'—'}</td><td style="font-weight:600">${r.compras||0}</td><td>${r.cpa>0?moeda(r.cpa):'—'}</td><td>${fmtN(r.cliquesLink)}</td><td>${fmtN(r.impressoes)}</td><td>${r.ctr>0?r.ctr.toFixed(2)+'%':'—'}</td><td style="font-size:12px;color:var(--cor-texto-suave);max-width:150px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${r.obs||'—'}</td></tr>`;
+  }).join('') : '<tr><td colspan="16"><div class="empty-state"><i class="bi bi-megaphone"></i>Nenhum registro no período</div></td></tr>';
+  const subtitulo = [plat,prod].filter(Boolean).join(' · ');
+  _mostrarResultado('Relatório de Tráfego'+(subtitulo?' — '+subtitulo:''), de, ate);
 }
 
 function exportarRelatorioExcel() {
@@ -2949,11 +2955,11 @@ function exportarRelatorioExcel() {
     });
     nome='Relatorio_Compras_'+de+'_a_'+ate;
   } else if(tipo==='trafego') {
-    wsData.push(['Data','Plataforma','Campanha','Conjunto','Anúncio','Investimento (R$)','Receita (R$)','Resultado (R$)','ROAS','Compras','CPA (R$)','Cliques','Impressões','CTR (%)','Alcance','CPM (R$)','CPC (R$)','Pageviews','Checkouts','Tx Conversão (%)','Observações']);
+    wsData.push(['Data','Produto','Plataforma','Campanha','Conjunto','Anúncio','Investimento (R$)','Receita (R$)','Resultado (R$)','ROAS','Compras','CPA (R$)','Cliques','Impressões','CTR (%)','Alcance','CPM (R$)','CPC (R$)','Pageviews','Checkouts','Tx Conversão (%)','Observações']);
     _dadosRelatorio.forEach(r=>{
       const inv=r.investimento||0, rec=r.receita||0;
       const roas=r.roas||(inv>0?parseFloat((rec/inv).toFixed(2)):0);
-      wsData.push([r.data,r.plataforma||'Meta Ads',r.campanha||'',r.conjunto||'',r.anuncio||'',inv,rec,parseFloat((rec-inv).toFixed(2)),roas>0?roas:'',r.compras||0,r.cpa||0,r.cliquesLink||0,r.impressoes||0,r.ctr||0,r.alcance||0,r.cpm||0,r.cpc||0,r.pageviews||0,r.checkouts||0,r.txConversao||0,r.obs||'']);
+      wsData.push([r.data,r.produto||'',r.plataforma||'Meta Ads',r.campanha||'',r.conjunto||'',r.anuncio||'',inv,rec,parseFloat((rec-inv).toFixed(2)),roas>0?roas:'',r.compras||0,r.cpa||0,r.cliquesLink||0,r.impressoes||0,r.ctr||0,r.alcance||0,r.cpm||0,r.cpc||0,r.pageviews||0,r.checkouts||0,r.txConversao||0,r.obs||'']);
     });
     nome='Relatorio_Trafego_'+de+'_a_'+ate;
   } else {
@@ -2975,7 +2981,9 @@ function exportarRelatorioPDF() {
   const de=document.getElementById('rel-de').value;
   const ate=document.getElementById('rel-ate').value;
   const platSel=document.getElementById('rel-plataforma').value;
-  const titulosMap={vendas:'Relatório de Vendas',compras:'Relatório de Compras',despesas:'Relatório de Despesas / Lançamentos',trafego:'Relatório de Tráfego'+(platSel?' — '+platSel:'')};
+  const prodSel=document.getElementById('rel-produto').value;
+  const _sub=[platSel,prodSel].filter(Boolean).join(' · ');
+  const titulosMap={vendas:'Relatório de Vendas',compras:'Relatório de Compras',despesas:'Relatório de Despesas / Lançamentos',trafego:'Relatório de Tráfego'+(_sub?' — '+_sub:'')};
   const titulo=titulosMap[tipo]||'Relatório';
   let thead='', tbody='';
   const _r=(v)=>v!=null?v:'—';
@@ -2996,11 +3004,11 @@ function exportarRelatorioPDF() {
       return `<tr><td>${fmtData(c.data)}</td><td>${_r(c.nf)}</td><td><b>${c.fornecedor}</b></td><td>${c.item}</td><td>${c.categoria}</td><td style="font-family:monospace">${c.sku||'—'}</td><td style="text-align:center">${c.qtd}</td><td>${_m(c.custo)}</td><td>${_m(c.frete||0)}</td><td>${_m(c.imposto||0)}</td><td class="laranja"><b>${_m(total)}</b></td></tr>`;
     }).join('');
   } else if(tipo==='trafego') {
-    thead=`<tr><th>Data</th><th>Plataforma</th><th>Campanha</th><th>Conjunto</th><th>Investimento</th><th>Receita</th><th>Resultado</th><th>ROAS</th><th>Compras</th><th>CPA</th><th>Cliques</th><th>CTR</th><th>Obs</th></tr>`;
+    thead=`<tr><th>Data</th><th>Produto</th><th>Plataforma</th><th>Campanha</th><th>Conjunto</th><th>Investimento</th><th>Receita</th><th>Resultado</th><th>ROAS</th><th>Compras</th><th>CPA</th><th>Cliques</th><th>CTR</th><th>Obs</th></tr>`;
     tbody=_dadosRelatorio.map(r=>{
       const inv=r.investimento||0, rec=r.receita||0, res=rec-inv;
       const roas=r.roas||(inv>0?parseFloat((rec/inv).toFixed(2)):0);
-      return `<tr><td style="white-space:nowrap">${fmtData(r.data)}</td><td>${r.plataforma||'Meta Ads'}</td><td><b>${r.campanha||'—'}</b></td><td style="font-size:10px">${r.conjunto||'—'}</td><td class="laranja"><b>${_m(inv)}</b></td><td class="verde">${rec>0?_m(rec):'—'}</td><td class="${res>=0?'verde':'vermelho'}"><b>${inv>0||rec>0?(res>=0?'+ ':'- ')+'R$ '+Math.abs(res).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2}):'—'}</b></td><td class="${roas>=2?'verde':roas>=1?'laranja':'vermelho'}">${inv>0?roas.toFixed(2):'—'}</td><td style="text-align:center;font-weight:700">${r.compras||0}</td><td>${r.cpa>0?_m(r.cpa):'—'}</td><td>${(r.cliquesLink||0).toLocaleString('pt-BR')}</td><td>${r.ctr>0?r.ctr.toFixed(2)+'%':'—'}</td><td style="font-size:10px">${r.obs||'—'}</td></tr>`;
+      return `<tr><td style="white-space:nowrap">${fmtData(r.data)}</td><td style="font-weight:600">${r.produto||'—'}</td><td>${r.plataforma||'Meta Ads'}</td><td><b>${r.campanha||'—'}</b></td><td style="font-size:10px">${r.conjunto||'—'}</td><td class="laranja"><b>${_m(inv)}</b></td><td class="verde">${rec>0?_m(rec):'—'}</td><td class="${res>=0?'verde':'vermelho'}"><b>${inv>0||rec>0?(res>=0?'+ ':'- ')+'R$ '+Math.abs(res).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2}):'—'}</b></td><td class="${roas>=2?'verde':roas>=1?'laranja':'vermelho'}">${inv>0?roas.toFixed(2):'—'}</td><td style="text-align:center;font-weight:700">${r.compras||0}</td><td>${r.cpa>0?_m(r.cpa):'—'}</td><td>${(r.cliquesLink||0).toLocaleString('pt-BR')}</td><td>${r.ctr>0?r.ctr.toFixed(2)+'%':'—'}</td><td style="font-size:10px">${r.obs||'—'}</td></tr>`;
     }).join('');
   } else {
     thead=`<tr><th>Data Emissão</th><th>Vencimento</th><th>Situação</th><th>Tipo</th><th>Descrição</th><th>Categoria</th><th>Valor</th><th>Forma Pgto</th><th>Obs</th></tr>`;
@@ -3263,6 +3271,7 @@ function abrirModalTrafego() {
   document.getElementById('modalTrafegoTitulo').textContent='Novo Registro de Tráfego';
   document.getElementById('tr-data').value=new Date().toISOString().split('T')[0];
   document.getElementById('tr-plataforma').value='Meta Ads';
+  document.getElementById('tr-produto').value='';
   ['tr-campanha','tr-conjunto','tr-anuncio','tr-obs','tr-data-criacao'].forEach(id=>document.getElementById(id).value='');
   ['tr-investimento','tr-receita'].forEach(id=>document.getElementById(id).value='');
   ['tr-acoes','tr-resultados','tr-compras-modal','tr-alcance','tr-impressoes','tr-visitas-perfil','tr-cliques-link','tr-cliques-total','tr-pageviews','tr-checkouts'].forEach(id=>document.getElementById(id).value='0');
@@ -3277,6 +3286,7 @@ function editarTrafego(i) {
   document.getElementById('tr-data').value=r.data||'';
   document.getElementById('tr-data-criacao').value=r.dataCriacao||'';
   document.getElementById('tr-plataforma').value=r.plataforma||'Meta Ads';
+  document.getElementById('tr-produto').value=r.produto||'';
   document.getElementById('tr-campanha').value=r.campanha||'';
   document.getElementById('tr-conjunto').value=r.conjunto||'';
   document.getElementById('tr-anuncio').value=r.anuncio||'';
@@ -3309,7 +3319,7 @@ async function salvarTrafego() {
   const res  = parseFloat(v('tr-resultados'))||0;
   const obj = {
     data:v('tr-data'), dataCriacao:v('tr-data-criacao')||'',
-    plataforma:v('tr-plataforma'), campanha:v('tr-campanha'),
+    plataforma:v('tr-plataforma'), produto:v('tr-produto')||'', campanha:v('tr-campanha'),
     conjunto:v('tr-conjunto')||'', anuncio:v('tr-anuncio')||'',
     investimento:inv, receita:rec,
     acoes:parseFloat(v('tr-acoes'))||0, resultados:res, compras:comp,
