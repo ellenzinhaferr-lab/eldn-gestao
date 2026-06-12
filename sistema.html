@@ -180,6 +180,7 @@ table.gestao tbody tr:hover .tbl-sticky-r{background:#1f1545}
     <div class="nav-item"><button class="nav-link" onclick="showPage('afiliados')"><i class="bi bi-person-check-fill"></i> Afiliados</button></div>
     <div class="nav-item"><button class="nav-link" onclick="showPage('trafego')"><i class="bi bi-megaphone-fill"></i> Tráfego</button></div>
     <div class="nav-item"><button class="nav-link" onclick="showPage('prospeccao')"><i class="bi bi-funnel-fill"></i> Prospecção</button></div>
+    <div class="nav-item"><button class="nav-link" onclick="showPage('leads')"><i class="bi bi-person-lines-fill"></i> Leads</button></div>
     <div class="nav-item"><button class="nav-link" onclick="showPage('relatorios')"><i class="bi bi-file-earmark-bar-graph-fill"></i> Relatórios</button></div>
     <div class="nav-item" style="margin-top:8px;border-top:1px solid var(--cor-borda);padding-top:8px;">
       <button class="nav-link" onclick="showPage('usuarios')"><i class="bi bi-shield-lock-fill"></i> Usuários</button>
@@ -453,6 +454,34 @@ table.gestao tbody tr:hover .tbl-sticky-r{background:#1f1545}
           <table class="gestao" id="tabela-prospeccao">
             <thead id="prosp-thead"></thead>
             <tbody id="prosp-tbody"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- LEADS -->
+    <div class="page" id="pg-leads">
+      <div class="kpi-grid" id="kpi-leads"></div>
+      <div class="table-card">
+        <div class="table-header">
+          <h6><i class="bi bi-person-lines-fill me-2" style="color:var(--cor-secundaria)"></i>Leads — Degustação Gratuita</h6>
+          <div style="display:flex;gap:8px">
+            <input type="text" class="input-search" placeholder="Buscar nome ou e-mail..." oninput="filtrarTabela('tabela-leads',this.value)">
+            <button class="btn btn-success btn-sm" onclick="exportLeadsExcel()"><i class="bi bi-file-earmark-excel me-1"></i>Excel</button>
+          </div>
+        </div>
+        <div class="table-responsive">
+          <table class="gestao" id="tabela-leads">
+            <thead><tr>
+              <th>#</th>
+              <th>Nome</th>
+              <th>WhatsApp</th>
+              <th>E-mail</th>
+              <th>Campanha</th>
+              <th>Mídia</th>
+              <th>Data</th>
+            </tr></thead>
+            <tbody id="leads-tbody"></tbody>
           </table>
         </div>
       </div>
@@ -1198,7 +1227,7 @@ function nextNumPedido() { if (!dados.pedidos.length) return 'PED-01'; const num
 // ============================================================
 // NAVEGAÇÃO
 // ============================================================
-const pageTitles = { dashboard:['Dashboard','Visão geral da operação'], clientes:['Clientes','Cadastro e gestão de clientes'], pedidos:['Pedidos','Pedidos diários — todos os canais'], financeiro:['Financeiro','Lançamentos de entradas e saídas'], fluxo:['Fluxo de Caixa','Resumo mensal automático'], compras:['Compras','Compras e fornecedores'], produtos:['Produtos','Cadastro de produtos e preços'], estoque:['Estoque','Controle automático de estoque'], canais:['Canais','Desempenho por canal de venda'], afiliados:['Afiliados','Gestão de afiliados e comissões'], trafego:['Tráfego Pago','Acompanhamento diário de campanhas'], prospeccao:['Prospecção','Pipeline de novos clientes e parceiros'], usuarios:['Usuários','Gerenciar acessos ao sistema'], config:['Configurações','Taxas de canais e dados do sistema'], relatorios:['Relatórios','Geração de relatórios por período'] };
+const pageTitles = { dashboard:['Dashboard','Visão geral da operação'], clientes:['Clientes','Cadastro e gestão de clientes'], pedidos:['Pedidos','Pedidos diários — todos os canais'], financeiro:['Financeiro','Lançamentos de entradas e saídas'], fluxo:['Fluxo de Caixa','Resumo mensal automático'], compras:['Compras','Compras e fornecedores'], produtos:['Produtos','Cadastro de produtos e preços'], estoque:['Estoque','Controle automático de estoque'], canais:['Canais','Desempenho por canal de venda'], afiliados:['Afiliados','Gestão de afiliados e comissões'], trafego:['Tráfego Pago','Acompanhamento diário de campanhas'], prospeccao:['Prospecção','Pipeline de novos clientes e parceiros'], usuarios:['Usuários','Gerenciar acessos ao sistema'], config:['Configurações','Taxas de canais e dados do sistema'], relatorios:['Relatórios','Geração de relatórios por período'], leads:['Leads','Cadastros da página de degustação gratuita'] };
 
 function fixarStickyHeaders(pgId) {
   setTimeout(function(){
@@ -1228,7 +1257,72 @@ function showPage(id) {
   fixarStickyHeaders(id);
 }
 
-function renderPage(id) { const fn={dashboard:renderDashboard,clientes:renderClientes,pedidos:renderPedidos,financeiro:renderFinanceiro,fluxo:renderFluxo,compras:renderCompras,produtos:renderProdutos,estoque:renderEstoque,canais:renderCanais,afiliados:renderAfiliados,trafego:renderTrafego,prospeccao:renderProspeccao,usuarios:renderUsuarios,config:renderConfig,relatorios:renderRelatorios}; if(fn[id]) fn[id](); }
+function renderPage(id) { const fn={dashboard:renderDashboard,clientes:renderClientes,pedidos:renderPedidos,financeiro:renderFinanceiro,fluxo:renderFluxo,compras:renderCompras,produtos:renderProdutos,estoque:renderEstoque,canais:renderCanais,afiliados:renderAfiliados,trafego:renderTrafego,prospeccao:renderProspeccao,usuarios:renderUsuarios,config:renderConfig,relatorios:renderRelatorios,leads:renderLeads}; if(fn[id]) fn[id](); }
+
+// ============================================================
+// LEADS
+// ============================================================
+let _leadsCache = [];
+
+async function renderLeads() {
+  const tbody = document.getElementById('leads-tbody');
+  const kpiEl = document.getElementById('kpi-leads');
+  tbody.innerHTML = '<tr><td colspan="7" class="text-center py-4" style="color:var(--cor-texto-suave)"><i class="bi bi-hourglass-split me-2"></i>Carregando leads...</td></tr>';
+  try {
+    const snap = await db.collection('leads_degustacao').orderBy('criadoEm','desc').get();
+    _leadsCache = snap.docs.map((d,i)=>({id:d.id,...d.data(),_num:snap.docs.length-i}));
+    _renderLeadsTabela(_leadsCache);
+    // KPIs
+    const hoje = new Date(); hoje.setHours(0,0,0,0);
+    const semana = new Date(); semana.setDate(semana.getDate()-7); semana.setHours(0,0,0,0);
+    const total = _leadsCache.length;
+    const hj = _leadsCache.filter(l=>l.criadoEm&&l.criadoEm.toDate&&l.criadoEm.toDate()>=hoje).length;
+    const s7 = _leadsCache.filter(l=>l.criadoEm&&l.criadoEm.toDate&&l.criadoEm.toDate()>=semana).length;
+    kpiEl.innerHTML = `
+      <div class="kpi-card"><div class="kpi-label">Total de Leads</div><div class="kpi-value">${total}</div><div class="kpi-sub">todos os cadastros</div></div>
+      <div class="kpi-card"><div class="kpi-label">Hoje</div><div class="kpi-value">${hj}</div><div class="kpi-sub">novos hoje</div></div>
+      <div class="kpi-card"><div class="kpi-label">Últimos 7 dias</div><div class="kpi-value">${s7}</div><div class="kpi-sub">últimos 7 dias</div></div>`;
+  } catch(e) {
+    tbody.innerHTML = `<tr><td colspan="7" class="text-center py-4" style="color:var(--cor-vermelho)"><i class="bi bi-exclamation-triangle me-2"></i>Erro ao carregar leads.</td></tr>`;
+    console.error(e);
+  }
+}
+
+function _renderLeadsTabela(lista) {
+  const tbody = document.getElementById('leads-tbody');
+  if (!lista.length) { tbody.innerHTML = '<tr><td colspan="7" class="text-center py-4" style="color:var(--cor-texto-suave)">Nenhum lead cadastrado ainda.</td></tr>'; return; }
+  tbody.innerHTML = lista.map(l => {
+    const dt = l.criadoEm && l.criadoEm.toDate ? l.criadoEm.toDate().toLocaleString('pt-BR') : '—';
+    const wpp = l.whatsapp || '—';
+    const wppLink = l.whatsapp ? `<a href="https://wa.me/${l.whatsapp.replace(/\D/g,'')}" target="_blank" style="color:var(--cor-verde)">${wpp}</a>` : '—';
+    return `<tr>
+      <td style="color:var(--cor-texto-suave)">${l._num}</td>
+      <td><strong>${l.nome||'—'}</strong></td>
+      <td>${wppLink}</td>
+      <td>${l.email||'—'}</td>
+      <td>${l.utm_campaign||'—'}</td>
+      <td>${l.utm_medium||'—'}</td>
+      <td style="color:var(--cor-texto-suave);white-space:nowrap">${dt}</td>
+    </tr>`;
+  }).join('');
+}
+
+function exportLeadsExcel() {
+  if (!_leadsCache.length) { alert('Nenhum lead para exportar.'); return; }
+  const rows = _leadsCache.map(l => ({
+    'Nome': l.nome||'',
+    'WhatsApp': l.whatsapp||'',
+    'E-mail': l.email||'',
+    'Campanha': l.utm_campaign||'',
+    'Mídia': l.utm_medium||'',
+    'Origem': l.utm_source||'',
+    'Data': l.criadoEm&&l.criadoEm.toDate ? l.criadoEm.toDate().toLocaleString('pt-BR') : ''
+  }));
+  const ws = XLSX.utils.json_to_sheet(rows);
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, 'Leads');
+  XLSX.writeFile(wb, 'leads-degustacao.xlsx');
+}
 
 // ============================================================
 // DASHBOARD
