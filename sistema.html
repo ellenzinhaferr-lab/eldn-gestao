@@ -477,6 +477,7 @@ table.gestao tbody tr:hover .tbl-sticky-r{background:#1f1545}
               <th>Nome</th>
               <th>WhatsApp</th>
               <th>E-mail</th>
+              <th>Origem</th>
               <th>Campanha</th>
               <th>Mídia</th>
               <th>Data</th>
@@ -1295,11 +1296,13 @@ function _renderLeadsTabela(lista) {
     const dt = l.criadoEm && l.criadoEm.toDate ? l.criadoEm.toDate().toLocaleString('pt-BR') : '—';
     const wpp = l.whatsapp || '—';
     const wppLink = l.whatsapp ? `<a href="https://wa.me/${l.whatsapp.replace(/\D/g,'')}" target="_blank" style="color:var(--cor-verde)">${wpp}</a>` : '—';
+    const origemColor = l.origem === 'degustacao-gratuita' ? 'var(--cor-verde)' : 'var(--cor-acento)';
     return `<tr>
       <td style="color:var(--cor-texto-suave)">${l._num}</td>
       <td><strong>${l.nome||'—'}</strong></td>
       <td>${wppLink}</td>
       <td>${l.email||'—'}</td>
+      <td><span style="background:rgba(16,185,129,.12);color:${origemColor};padding:2px 10px;border-radius:20px;font-size:11px;font-weight:600;white-space:nowrap">${l.origem||'—'}</span></td>
       <td>${l.utm_campaign||'—'}</td>
       <td>${l.utm_medium||'—'}</td>
       <td style="color:var(--cor-texto-suave);white-space:nowrap">${dt}</td>
@@ -1313,9 +1316,10 @@ function exportLeadsExcel() {
     'Nome': l.nome||'',
     'WhatsApp': l.whatsapp||'',
     'E-mail': l.email||'',
+    'Origem': l.origem||'',
     'Campanha': l.utm_campaign||'',
     'Mídia': l.utm_medium||'',
-    'Origem': l.utm_source||'',
+    'UTM Source': l.utm_source||'',
     'Data': l.criadoEm&&l.criadoEm.toDate ? l.criadoEm.toDate().toLocaleString('pt-BR') : ''
   }));
   const ws = XLSX.utils.json_to_sheet(rows);
