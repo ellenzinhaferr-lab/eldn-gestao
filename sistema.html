@@ -181,6 +181,7 @@ table.gestao tbody tr:hover .tbl-sticky-r{background:#1f1545}
     <div class="nav-item"><button class="nav-link" onclick="showPage('trafego')"><i class="bi bi-megaphone-fill"></i> Tráfego</button></div>
     <div class="nav-item"><button class="nav-link" onclick="showPage('prospeccao')"><i class="bi bi-funnel-fill"></i> Prospecção</button></div>
     <div class="nav-item"><button class="nav-link" onclick="showPage('leads')"><i class="bi bi-person-lines-fill"></i> Leads</button></div>
+    <div class="nav-item"><button class="nav-link" onclick="showPage('appmlc')"><i class="bi bi-phone-fill"></i> App MLC</button></div>
     <div class="nav-item"><button class="nav-link" onclick="showPage('relatorios')"><i class="bi bi-file-earmark-bar-graph-fill"></i> Relatórios</button></div>
     <div class="nav-item" style="margin-top:8px;border-top:1px solid var(--cor-borda);padding-top:8px;">
       <button class="nav-link" onclick="showPage('usuarios')"><i class="bi bi-shield-lock-fill"></i> Usuários</button>
@@ -483,6 +484,62 @@ table.gestao tbody tr:hover .tbl-sticky-r{background:#1f1545}
               <th>Data</th>
             </tr></thead>
             <tbody id="leads-tbody"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- APP MLC -->
+    <div class="page" id="pg-appmlc">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;flex-wrap:wrap;gap:10px">
+        <div style="font-size:12px;color:var(--cor-texto-suave)" id="appmlc-ultima-atualizacao"><i class="bi bi-hourglass-split me-1"></i>Aguardando carregamento...</div>
+        <button class="btn btn-outline-secondary btn-sm" onclick="renderAppMlc()"><i class="bi bi-arrow-clockwise me-1"></i>Atualizar dados</button>
+      </div>
+      <!-- KPIs principais -->
+      <div class="kpi-grid mb-3" id="appmlc-kpis" style="grid-template-columns:repeat(auto-fill,minmax(175px,1fr))"></div>
+      <!-- Gráficos -->
+      <div class="row g-3 mb-3">
+        <div class="col-lg-4">
+          <div class="chart-card">
+            <h6><i class="bi bi-pie-chart-fill me-2" style="color:var(--cor-secundaria)"></i>Status das Assinantes</h6>
+            <canvas id="chartAppStatus" height="220"></canvas>
+          </div>
+        </div>
+        <div class="col-lg-4">
+          <div class="chart-card">
+            <h6><i class="bi bi-layers-fill me-2" style="color:var(--cor-acento)"></i>Fase do Devocional</h6>
+            <canvas id="chartAppFase" height="220"></canvas>
+          </div>
+        </div>
+        <div class="col-lg-4">
+          <div class="chart-card">
+            <h6><i class="bi bi-check2-circle me-2" style="color:var(--cor-verde)"></i>Adesão aos Hábitos</h6>
+            <canvas id="chartAppHabitos" height="220"></canvas>
+          </div>
+        </div>
+      </div>
+      <!-- KPIs de engajamento -->
+      <div class="kpi-grid mb-3" id="appmlc-engajamento" style="grid-template-columns:repeat(auto-fill,minmax(175px,1fr))"></div>
+      <!-- Tabela de usuárias -->
+      <div class="table-card">
+        <div class="table-header">
+          <h6><i class="bi bi-people-fill me-2" style="color:var(--cor-secundaria)"></i>Usuárias do App</h6>
+          <input type="text" class="input-search" placeholder="Buscar nome..." oninput="filtrarTabela('tabela-appmlc',this.value)">
+        </div>
+        <div class="table-responsive">
+          <table class="gestao" id="tabela-appmlc">
+            <thead><tr>
+              <th>#</th>
+              <th>Nome</th>
+              <th>Status</th>
+              <th>Dia Atual</th>
+              <th>Dias Conc.</th>
+              <th>Bíblia (cap.)</th>
+              <th>Notificação</th>
+              <th>Horário</th>
+              <th>Cadastro</th>
+            </tr></thead>
+            <tbody id="appmlc-tbody"><tr><td colspan="9" class="text-center py-4" style="color:var(--cor-texto-suave)"><i class="bi bi-hourglass-split me-2"></i>Carregando...</td></tr></tbody>
           </table>
         </div>
       </div>
@@ -1228,7 +1285,7 @@ function nextNumPedido() { if (!dados.pedidos.length) return 'PED-01'; const num
 // ============================================================
 // NAVEGAÇÃO
 // ============================================================
-const pageTitles = { dashboard:['Dashboard','Visão geral da operação'], clientes:['Clientes','Cadastro e gestão de clientes'], pedidos:['Pedidos','Pedidos diários — todos os canais'], financeiro:['Financeiro','Lançamentos de entradas e saídas'], fluxo:['Fluxo de Caixa','Resumo mensal automático'], compras:['Compras','Compras e fornecedores'], produtos:['Produtos','Cadastro de produtos e preços'], estoque:['Estoque','Controle automático de estoque'], canais:['Canais','Desempenho por canal de venda'], afiliados:['Afiliados','Gestão de afiliados e comissões'], trafego:['Tráfego Pago','Acompanhamento diário de campanhas'], prospeccao:['Prospecção','Pipeline de novos clientes e parceiros'], usuarios:['Usuários','Gerenciar acessos ao sistema'], config:['Configurações','Taxas de canais e dados do sistema'], relatorios:['Relatórios','Geração de relatórios por período'], leads:['Leads','Cadastros da página de degustação gratuita'] };
+const pageTitles = { dashboard:['Dashboard','Visão geral da operação'], clientes:['Clientes','Cadastro e gestão de clientes'], pedidos:['Pedidos','Pedidos diários — todos os canais'], financeiro:['Financeiro','Lançamentos de entradas e saídas'], fluxo:['Fluxo de Caixa','Resumo mensal automático'], compras:['Compras','Compras e fornecedores'], produtos:['Produtos','Cadastro de produtos e preços'], estoque:['Estoque','Controle automático de estoque'], canais:['Canais','Desempenho por canal de venda'], afiliados:['Afiliados','Gestão de afiliados e comissões'], trafego:['Tráfego Pago','Acompanhamento diário de campanhas'], prospeccao:['Prospecção','Pipeline de novos clientes e parceiros'], usuarios:['Usuários','Gerenciar acessos ao sistema'], config:['Configurações','Taxas de canais e dados do sistema'], relatorios:['Relatórios','Geração de relatórios por período'], leads:['Leads','Cadastros da página de degustação gratuita'], appmlc:['App MLC','Desempenho e analytics do aplicativo Meu Lugar de Cura'] };
 
 function fixarStickyHeaders(pgId) {
   setTimeout(function(){
@@ -1258,7 +1315,7 @@ function showPage(id) {
   fixarStickyHeaders(id);
 }
 
-function renderPage(id) { const fn={dashboard:renderDashboard,clientes:renderClientes,pedidos:renderPedidos,financeiro:renderFinanceiro,fluxo:renderFluxo,compras:renderCompras,produtos:renderProdutos,estoque:renderEstoque,canais:renderCanais,afiliados:renderAfiliados,trafego:renderTrafego,prospeccao:renderProspeccao,usuarios:renderUsuarios,config:renderConfig,relatorios:renderRelatorios,leads:renderLeads}; if(fn[id]) fn[id](); }
+function renderPage(id) { const fn={dashboard:renderDashboard,clientes:renderClientes,pedidos:renderPedidos,financeiro:renderFinanceiro,fluxo:renderFluxo,compras:renderCompras,produtos:renderProdutos,estoque:renderEstoque,canais:renderCanais,afiliados:renderAfiliados,trafego:renderTrafego,prospeccao:renderProspeccao,usuarios:renderUsuarios,config:renderConfig,relatorios:renderRelatorios,leads:renderLeads,appmlc:renderAppMlc}; if(fn[id]) fn[id](); }
 
 // ============================================================
 // LEADS
@@ -1326,6 +1383,174 @@ function exportLeadsExcel() {
   const wb = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb, ws, 'Leads');
   XLSX.writeFile(wb, 'leads-degustacao.xlsx');
+}
+
+// ============================================================
+// APP MLC — Analytics do aplicativo Meu Lugar de Cura
+// ============================================================
+const _SB_URL = 'https://tvyjxyxycyyiajiojozf.supabase.co';
+const _SB_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InR2eWp4eXh5Y3l5aWFqaW9qb3pmIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3OTczNzA2NiwiZXhwIjoyMDk1MzEzMDY2fQ.mUoBP-rS5a71D7ZUSCdvBgPlUePfxUyfRDqwIvtPj3w';
+let _chartAppStatus = null, _chartAppFase = null, _chartAppHabitos = null;
+
+async function _sbFetch(table, params) {
+  const r = await fetch(`${_SB_URL}/rest/v1/${table}?${params}`, {
+    headers: { 'apikey': _SB_KEY, 'Authorization': `Bearer ${_SB_KEY}` }
+  });
+  if (!r.ok) throw new Error(await r.text());
+  return r.json();
+}
+
+async function renderAppMlc() {
+  document.getElementById('appmlc-ultima-atualizacao').innerHTML = '<i class="bi bi-hourglass-split me-1"></i>Carregando dados do Supabase...';
+  document.getElementById('appmlc-kpis').innerHTML = '<div style="color:var(--cor-texto-suave);font-size:13px;padding:4px"><i class="bi bi-hourglass-split me-2"></i>Aguarde...</div>';
+  document.getElementById('appmlc-engajamento').innerHTML = '';
+  document.getElementById('appmlc-tbody').innerHTML = '<tr><td colspan="9" class="text-center py-4" style="color:var(--cor-texto-suave)"><i class="bi bi-hourglass-split me-2"></i>Carregando...</td></tr>';
+
+  try {
+    const [profiles, progress, bible] = await Promise.all([
+      _sbFetch('profiles', 'select=id,name,subscription_status,current_day,notification_hour,onesignal_player_id,created_at&order=created_at.desc&limit=1000'),
+      _sbFetch('user_progress', 'select=user_id,day_number,completed_at,did_study,did_reading,did_prayer,did_fasting&limit=5000'),
+      _sbFetch('bible_reading', 'select=user_id&limit=5000')
+    ]);
+
+    const total = profiles.length;
+    const ativas = profiles.filter(p => p.subscription_status === 'active').length;
+    const inativas = profiles.filter(p => p.subscription_status === 'inactive').length;
+    const comNotif = profiles.filter(p => p.onesignal_player_id).length;
+    const recEstMensal = (ativas * 9.90).toLocaleString('pt-BR', {minimumFractionDigits:2});
+
+    // Dias concluídos por usuária
+    const progByUser = {};
+    progress.forEach(p => { if(!progByUser[p.user_id]) progByUser[p.user_id]=[]; progByUser[p.user_id].push(p); });
+
+    const totalDiasArr = profiles.map(p => (progByUser[p.id]||[]).length);
+    const mediaDias = total > 0 ? (totalDiasArr.reduce((a,b)=>a+b,0)/total).toFixed(1) : '0';
+    const maxDias = total > 0 ? Math.max(...totalDiasArr) : 0;
+
+    // Engajamento recente
+    const agora = new Date();
+    const limite7  = new Date(agora - 7*24*60*60*1000);
+    const limite30 = new Date(agora - 30*24*60*60*1000);
+    const ativas7d  = new Set(progress.filter(p=>new Date(p.completed_at)>=limite7).map(p=>p.user_id)).size;
+    const ativas30d = new Set(progress.filter(p=>new Date(p.completed_at)>=limite30).map(p=>p.user_id)).size;
+    const totalProg = progress.length;
+
+    // Hábitos
+    const habStudy   = totalProg > 0 ? Math.round((progress.filter(p=>p.did_study).length/totalProg)*100) : 0;
+    const habReading = totalProg > 0 ? Math.round((progress.filter(p=>p.did_reading).length/totalProg)*100) : 0;
+    const habPrayer  = totalProg > 0 ? Math.round((progress.filter(p=>p.did_prayer).length/totalProg)*100) : 0;
+    const habFasting = totalProg > 0 ? Math.round((progress.filter(p=>p.did_fasting).length/totalProg)*100) : 0;
+
+    // Fase do devocional
+    let f1=0,f2=0,f3=0,f4=0;
+    profiles.forEach(p => {
+      const d = p.current_day||1;
+      if(d<=50) f1++; else if(d<=150) f2++; else if(d<=300) f3++; else f4++;
+    });
+
+    // Bíblia por usuária
+    const bibleByUser = {};
+    bible.forEach(b => { bibleByUser[b.user_id] = (bibleByUser[b.user_id]||0)+1; });
+    const totalCapBiblia = bible.length;
+
+    // --- Renderiza KPIs principais ---
+    document.getElementById('appmlc-kpis').innerHTML = `
+      <div class="kpi-card"><div class="kpi-label">Total de Usuárias</div><div class="kpi-value">${total}</div><div class="kpi-sub">contas cadastradas</div></div>
+      <div class="kpi-card"><div class="kpi-label">Assinantes Ativas</div><div class="kpi-value" style="color:var(--cor-verde)">${ativas}</div><div class="kpi-sub">${total>0?Math.round((ativas/total)*100):0}% do total</div></div>
+      <div class="kpi-card"><div class="kpi-label">Inativas</div><div class="kpi-value" style="color:var(--cor-vermelho)">${inativas}</div><div class="kpi-sub">sem assinatura ativa</div></div>
+      <div class="kpi-card"><div class="kpi-label">Com Notificação</div><div class="kpi-value" style="color:var(--cor-azul)">${comNotif}</div><div class="kpi-sub">${total>0?Math.round((comNotif/total)*100):0}% habilitaram push</div></div>
+      <div class="kpi-card"><div class="kpi-label">Receita Est. Mensal</div><div class="kpi-value" style="color:var(--cor-acento)">R$ ${recEstMensal}</div><div class="kpi-sub">ativas × R$ 9,90</div></div>
+      <div class="kpi-card"><div class="kpi-label">Média de Dias</div><div class="kpi-value">${mediaDias}</div><div class="kpi-sub">dias concluídos por usuária</div></div>`;
+
+    // --- KPIs de engajamento ---
+    document.getElementById('appmlc-engajamento').innerHTML = `
+      <div class="kpi-card"><div class="kpi-label">Ativas — 7 dias</div><div class="kpi-value" style="color:var(--cor-verde)">${ativas7d}</div><div class="kpi-sub">fez devocional na última semana</div></div>
+      <div class="kpi-card"><div class="kpi-label">Ativas — 30 dias</div><div class="kpi-value" style="color:var(--cor-secundaria)">${ativas30d}</div><div class="kpi-sub">fez devocional no último mês</div></div>
+      <div class="kpi-card"><div class="kpi-label">Total de Dias Feitos</div><div class="kpi-value">${totalProg}</div><div class="kpi-sub">devocionais concluídos (geral)</div></div>
+      <div class="kpi-card"><div class="kpi-label">Maior Sequência</div><div class="kpi-value">${maxDias}</div><div class="kpi-sub">dias — usuária mais avançada</div></div>
+      <div class="kpi-card"><div class="kpi-label">Caps. Bíblia Lidos</div><div class="kpi-value">${totalCapBiblia}</div><div class="kpi-sub">capítulos marcados no total</div></div>`;
+
+    // --- Gráfico 1: Status ---
+    if(_chartAppStatus) _chartAppStatus.destroy();
+    _chartAppStatus = new Chart(document.getElementById('chartAppStatus'), {
+      type:'doughnut',
+      data:{
+        labels:['Ativas','Inativas'],
+        datasets:[{data:[ativas,inativas],backgroundColor:['#10B981','#EF4444'],borderWidth:0,hoverOffset:6}]
+      },
+      options:{responsive:true,cutout:'65%',plugins:{legend:{position:'bottom',labels:{color:'#9D8EC4',font:{size:12},padding:16}},tooltip:{callbacks:{label:ctx=>`${ctx.label}: ${ctx.parsed} (${total>0?Math.round((ctx.parsed/total)*100):0}%)`}}}}
+    });
+
+    // --- Gráfico 2: Fase do devocional ---
+    if(_chartAppFase) _chartAppFase.destroy();
+    _chartAppFase = new Chart(document.getElementById('chartAppFase'), {
+      type:'bar',
+      data:{
+        labels:['Início\n(Dias 1–50)','Crescendo\n(51–150)','Consistente\n(151–300)','Finalizando\n(301–365)'],
+        datasets:[{label:'Usuárias',data:[f1,f2,f3,f4],backgroundColor:['#7C3AED','#A78BFA','#F59E0B','#10B981'],borderRadius:8,borderSkipped:false}]
+      },
+      options:{responsive:true,plugins:{legend:{display:false}},scales:{x:{ticks:{color:'#9D8EC4',font:{size:10}}},y:{ticks:{color:'#9D8EC4',stepSize:1},beginAtZero:true,grid:{color:'rgba(124,58,237,.1)'}}}}
+    });
+
+    // --- Gráfico 3: Hábitos ---
+    if(_chartAppHabitos) _chartAppHabitos.destroy();
+    _chartAppHabitos = new Chart(document.getElementById('chartAppHabitos'), {
+      type:'bar',
+      data:{
+        labels:['Estudo da\nPalavra','Leitura\nBíblica','Oração','Jejum'],
+        datasets:[{label:'% dos dias',data:[habStudy,habReading,habPrayer,habFasting],backgroundColor:['#7C3AED','#3B82F6','#10B981','#F59E0B'],borderRadius:8,borderSkipped:false}]
+      },
+      options:{
+        indexAxis:'y',responsive:true,
+        plugins:{legend:{display:false},tooltip:{callbacks:{label:ctx=>`${ctx.parsed.x}% dos dias`}}},
+        scales:{
+          x:{max:100,ticks:{color:'#9D8EC4',callback:v=>v+'%'},beginAtZero:true,grid:{color:'rgba(124,58,237,.1)'}},
+          y:{ticks:{color:'#9D8EC4',font:{size:11}}}
+        }
+      }
+    });
+
+    // --- Tabela de usuárias ---
+    const tbody = document.getElementById('appmlc-tbody');
+    if(!total) {
+      tbody.innerHTML='<tr><td colspan="9" class="text-center py-4" style="color:var(--cor-texto-suave)">Nenhuma usuária cadastrada ainda.</td></tr>';
+    } else {
+      tbody.innerHTML = profiles.map((p,i) => {
+        const badge = p.subscription_status==='active'
+          ? '<span class="badge-canal badge-direta">Ativa</span>'
+          : '<span class="badge-canal badge-saida">Inativa</span>';
+        const notifIcon = p.onesignal_player_id
+          ? '<i class="bi bi-bell-fill" style="color:var(--cor-verde)" title="Notificação ativa"></i>'
+          : '<i class="bi bi-bell-slash" style="color:var(--cor-texto-suave)" title="Sem notificação"></i>';
+        const diasConc = (progByUser[p.id]||[]).length;
+        const bibleLidos = bibleByUser[p.id]||0;
+        const cadastro = p.created_at ? new Date(p.created_at).toLocaleDateString('pt-BR') : '—';
+        const horario = p.notification_hour!=null ? `${String(p.notification_hour).padStart(2,'0')}:00` : '—';
+        const nome = p.name || '<span style="color:var(--cor-texto-suave);font-style:italic">Sem nome</span>';
+        return `<tr>
+          <td style="color:var(--cor-texto-suave)">${i+1}</td>
+          <td style="font-weight:500">${nome}</td>
+          <td>${badge}</td>
+          <td><span style="font-weight:600;color:var(--cor-secundaria)">Dia ${p.current_day||1}</span></td>
+          <td>${diasConc}</td>
+          <td>${bibleLidos}</td>
+          <td style="text-align:center">${notifIcon}</td>
+          <td>${horario}</td>
+          <td style="color:var(--cor-texto-suave);white-space:nowrap">${cadastro}</td>
+        </tr>`;
+      }).join('');
+    }
+
+    document.getElementById('appmlc-ultima-atualizacao').innerHTML =
+      `<i class="bi bi-check-circle me-1" style="color:var(--cor-verde)"></i>Atualizado em ${new Date().toLocaleString('pt-BR')}`;
+
+  } catch(e) {
+    document.getElementById('appmlc-kpis').innerHTML =
+      `<div style="color:var(--cor-vermelho);font-size:13px;padding:4px"><i class="bi bi-exclamation-triangle me-2"></i>Erro ao conectar com o Supabase: ${e.message}</div>`;
+    document.getElementById('appmlc-ultima-atualizacao').innerHTML =
+      `<i class="bi bi-x-circle me-1" style="color:var(--cor-vermelho)"></i>Falha ao carregar`;
+    console.error('[App MLC]', e);
+  }
 }
 
 // ============================================================
