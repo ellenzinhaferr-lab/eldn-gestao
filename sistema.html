@@ -655,7 +655,7 @@ table.gestao tbody tr:hover .tbl-sticky-r{background:#1f1545}
     <div class="col-md-4"><label class="form-label">Instagram</label><input class="form-control" id="c-instagram" placeholder="@usuario"></div>
     <div class="col-md-4"><label class="form-label">Canal de Origem</label><select class="form-select" id="c-canal"><option>Instagram</option><option>Amazon</option><option>Indicação</option><option>Parente</option><option>WhatsApp</option><option>Site</option><option>Outro</option></select></div>
     <div class="col-12" style="border-top:1px solid var(--cor-borda);padding-top:12px;margin-top:4px"><small style="color:var(--cor-secundaria);font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:1px"><i class="bi bi-geo-alt-fill me-1"></i>Endereço para Envio</small></div>
-    <div class="col-md-3"><label class="form-label">CEP</label><input class="form-control" id="c-cep" placeholder="00000-000" maxlength="9" oninput="mascaraCEP(this)" onblur="buscarCEP()"></div>
+    <div class="col-md-3"><label class="form-label">CEP</label><input class="form-control" id="c-cep" placeholder="00000-000" maxlength="10" oninput="mascaraCEP(this)" onblur="buscarCEP()"></div>
     <div class="col-md-7"><label class="form-label">Logradouro</label><input class="form-control" id="c-logradouro" placeholder="Rua, Av., Alameda..."></div>
     <div class="col-md-2"><label class="form-label">Número</label><input class="form-control" id="c-numero" placeholder="Nº"></div>
     <div class="col-md-4"><label class="form-label">Complemento</label><input class="form-control" id="c-complemento" placeholder="Apto, Bloco..."></div>
@@ -2282,6 +2282,8 @@ function consultarRastreioView(codigo) {
   window.open(_urlMelhorEnvio(codigo),'_blank');
 }
 function _imprimirPedidoHtml(p, cliente, itens, bruto, liq, taxaCanal, taxaPagto) {
+  let _endImpressao=p.endereco||'';
+  if(cliente){const _rua=cliente.logradouro&&cliente.numero?`${cliente.logradouro}, ${cliente.numero}`:(cliente.logradouro||'');const _cidUf=cliente.cidade&&cliente.estado?`${cliente.cidade}/${cliente.estado}`:(cliente.cidade||cliente.estado||'');const _p=[_rua,cliente.complemento,cliente.bairro,_cidUf,cliente.cep].filter(Boolean);if(_p.length)_endImpressao=_p.join(' — ');}
   const html=`<!DOCTYPE html><html lang="pt-BR"><head><meta charset="UTF-8"><title>Pedido ${escHtml(p.num)}</title><style>
     *{box-sizing:border-box}body{font-family:'Segoe UI',Arial,sans-serif;margin:0;padding:28px;color:#1a1a1a;font-size:13px}
     .header{display:flex;justify-content:space-between;align-items:flex-start;border-bottom:2px solid #7C3AED;padding-bottom:14px;margin-bottom:18px}
@@ -2308,8 +2310,10 @@ function _imprimirPedidoHtml(p, cliente, itens, bruto, liq, taxaCanal, taxaPagto
   <div class="sec">Cliente</div>
   <div style="margin-bottom:14px">
     <div style="font-weight:700;font-size:15px">${cliente?escHtml(cliente.nome):'—'}</div>
+    ${cliente&&cliente.email?`<div style="color:#555;font-size:12px;margin-top:2px">E-mail: ${escHtml(cliente.email)}</div>`:''}
     ${cliente&&cliente.whatsapp?`<div style="color:#555;font-size:12px;margin-top:2px">WhatsApp: ${escHtml(cliente.whatsapp)}</div>`:''}
-    ${p.endereco?`<div style="color:#555;font-size:12px;margin-top:2px">Endereço: ${escHtml(p.endereco)}</div>`:''}
+    ${cliente&&cliente.cpf?`<div style="color:#555;font-size:12px;margin-top:2px">CPF/CNPJ: ${escHtml(cliente.cpf)}</div>`:''}
+    ${_endImpressao?`<div style="color:#555;font-size:12px;margin-top:2px">Endereço: ${escHtml(_endImpressao)}</div>`:''}
   </div>
   <div class="sec">Itens do Pedido</div>
   <table><thead><tr><th>SKU</th><th>Produto / Descrição</th><th style="text-align:center">Qtd</th><th style="text-align:right">Preço Unit.</th><th style="text-align:right">Subtotal</th></tr></thead>
