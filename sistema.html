@@ -305,7 +305,7 @@ table.gestao tbody tr:hover .tbl-sticky-r{background:#1f1545}
     <div class="page" id="pg-compras">
       <div class="table-card">
         <div class="table-header"><h6>Compras & Fornecedores</h6><div style="display:flex;gap:8px;"><input type="text" class="input-search" placeholder="Buscar..." oninput="filtrarTabela('tabela-compras',this.value)"><button class="btn btn-primary btn-sm" onclick="abrirModal('compra')"><i class="bi bi-plus-lg"></i> Nova</button></div></div>
-        <div class="table-responsive"><table class="gestao" id="tabela-compras"><thead><tr><th class="th-sort" data-col="data" onclick="sortBy('compras','data',renderCompras)">Data</th><th class="th-sort" data-col="item" onclick="sortBy('compras','item',renderCompras)">Item</th><th class="th-sort" data-col="fornecedor" onclick="sortBy('compras','fornecedor',renderCompras)">Fornecedor</th><th class="th-sort" data-col="categoria" onclick="sortBy('compras','categoria',renderCompras)">Categoria</th><th class="th-sort" data-col="qtd" onclick="sortBy('compras','qtd',renderCompras)">Qtd</th><th class="th-sort" data-col="custo" onclick="sortBy('compras','custo',renderCompras)">Custo Unit.</th><th class="th-sort" data-col="frete" onclick="sortBy('compras','frete',renderCompras)">Frete</th><th class="th-sort" data-col="total" onclick="sortBy('compras','total',renderCompras)">Total</th><th></th></tr></thead><tbody></tbody></table></div>
+        <div class="table-responsive"><table class="gestao" id="tabela-compras"><thead><tr><th class="th-sort" data-col="data" onclick="sortBy('compras','data',renderCompras)">Dt. Compra</th><th class="th-sort" data-col="dataPagamento" onclick="sortBy('compras','dataPagamento',renderCompras)">Dt. Pagamento</th><th>Situação</th><th class="th-sort" data-col="item" onclick="sortBy('compras','item',renderCompras)">Item</th><th class="th-sort" data-col="fornecedor" onclick="sortBy('compras','fornecedor',renderCompras)">Fornecedor</th><th class="th-sort" data-col="categoria" onclick="sortBy('compras','categoria',renderCompras)">Categoria</th><th class="th-sort" data-col="qtd" onclick="sortBy('compras','qtd',renderCompras)">Qtd</th><th class="th-sort" data-col="custo" onclick="sortBy('compras','custo',renderCompras)">Custo Unit.</th><th class="th-sort" data-col="frete" onclick="sortBy('compras','frete',renderCompras)">Frete</th><th class="th-sort" data-col="total" onclick="sortBy('compras','total',renderCompras)">Total</th><th></th></tr></thead><tbody></tbody></table></div>
       </div>
     </div>
 
@@ -772,7 +772,7 @@ table.gestao tbody tr:hover .tbl-sticky-r{background:#1f1545}
 <div class="modal fade" id="modalFinanceiro" tabindex="-1"><div class="modal-dialog"><div class="modal-content">
   <div class="modal-header"><h5 class="modal-title">Novo Lançamento</h5><button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button></div>
   <div class="modal-body"><input type="hidden" id="f-idx"><div class="row g-3">
-    <div class="col-md-6"><label class="form-label">Data *</label><input class="form-control" id="f-data" type="date"></div>
+    <div class="col-md-6"><label class="form-label">Data de Emissão *</label><input class="form-control" id="f-data" type="date"></div>
     <div class="col-md-6"><label class="form-label">Tipo *</label><select class="form-select" id="f-tipo"><option>Entrada</option><option>Saída</option></select></div>
     <div class="col-12"><label class="form-label">Descrição / Destino *</label><input class="form-control" id="f-desc"></div>
     <div class="col-md-6"><label class="form-label">Categoria</label><select class="form-select" id="f-categoria"><option>Receita Vendas</option><option>Receita Outros</option><option>Custo Produto</option><option>Embalagem</option><option>Frete</option><option>Marketing</option><option>Plataforma</option><option>Taxas</option><option>Pessoal</option><option>Operacional</option><option>Outros</option></select></div>
@@ -789,9 +789,12 @@ table.gestao tbody tr:hover .tbl-sticky-r{background:#1f1545}
 <div class="modal fade" id="modalCompra" tabindex="-1"><div class="modal-dialog modal-lg"><div class="modal-content">
   <div class="modal-header"><h5 class="modal-title">Nova Compra</h5><button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button></div>
   <div class="modal-body"><input type="hidden" id="cp-idx"><div class="row g-3">
-    <div class="col-md-4"><label class="form-label">Data *</label><input class="form-control" id="cp-data" type="date"></div>
+    <div class="col-md-4"><label class="form-label">Data da Compra *</label><input class="form-control" id="cp-data" type="date"></div>
+    <div class="col-md-4"><label class="form-label">Data de Pagamento</label><input class="form-control" id="cp-datapagamento" type="date"></div>
+    <div class="col-md-4"><label class="form-label">Situação do Pagto.</label><select class="form-select" id="cp-situacaopagto"><option value="A Pagar">A Pagar</option><option value="Pago">Pago</option></select></div>
     <div class="col-md-4"><label class="form-label">Nº NF / Pedido</label><input class="form-control" id="cp-nf"></div>
     <div class="col-md-4"><label class="form-label">SKU Produto</label><select class="form-select" id="cp-sku" onchange="preencherProdutoCompra()"><option value="">— Nenhum —</option></select></div>
+    <div class="col-md-4"></div>
     <div class="col-md-6"><label class="form-label">Item Comprado *</label><input class="form-control" id="cp-item"></div>
     <div class="col-md-6"><label class="form-label">Fornecedor *</label><input class="form-control" id="cp-fornecedor"></div>
     <div class="col-md-4"><label class="form-label">Categoria</label><select class="form-select" id="cp-categoria"><option>Livro</option><option>Kit Lançamento</option><option>Embalagens</option><option>Material</option><option>Serviço</option><option>Outros</option></select></div>
@@ -2448,8 +2451,8 @@ function renderFluxo() {
   const meses=['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
   const ent=new Array(12).fill(0), sai=new Array(12).fill(0);
   dados.pedidos.forEach(p=>{const m=parseMes(p.data);if(m>=0)ent[m]+=getPedidoTotal(p);});
-  dados.financeiro.forEach(f=>{const m=parseMes(f.data);if(m>=0)(f.tipo==='Entrada'?ent:sai)[m]+=f.valor;});
-  dados.compras.forEach(c=>{const m=parseMes(c.data);if(m>=0)sai[m]+=(c.qtd*c.custo)+(c.frete||0)+(c.imposto||0);});
+  dados.financeiro.forEach(f=>{const dataRef=(f.situacao==='Prevista'&&f.vencimento)?f.vencimento:f.data;const m=parseMes(dataRef);if(m>=0)(f.tipo==='Entrada'?ent:sai)[m]+=f.valor;});
+  dados.compras.forEach(c=>{const dataRef=(c.dataPagamento)?c.dataPagamento:c.data;const m=parseMes(dataRef);if(m>=0)sai[m]+=(c.qtd*c.custo)+(c.frete||0)+(c.imposto||0);});
   if(chartFluxoChart) chartFluxoChart.destroy();
   chartFluxoChart=new Chart(document.getElementById('chartFluxo'),{type:'bar',data:{labels:meses,datasets:[{label:'Entradas',data:ent,backgroundColor:'rgba(16,185,129,0.7)',borderRadius:4},{label:'Saídas',data:sai,backgroundColor:'rgba(239,68,68,0.7)',borderRadius:4}]},options:{plugins:{legend:{labels:{color:'#9D8EC4'}}},scales:{x:{ticks:{color:'#9D8EC4'},grid:{color:'rgba(45,31,94,.5)'}},y:{ticks:{color:'#9D8EC4',callback:v=>'R$ '+v.toLocaleString('pt-BR')},grid:{color:'rgba(45,31,94,.5)'}}}}});
   const rows=[];
@@ -2467,6 +2470,10 @@ function renderFluxo() {
   dados.financeiro.filter(f=>f.situacao==='Prevista'&&f.vencimento&&f.vencimento>=hoje&&f.vencimento<=ate30).forEach(f=>{
     previsoes.push({data:f.vencimento,desc:f.desc,tipo:f.tipo,valor:f.valor});
   });
+  dados.compras.filter(c=>c.situacaoPagamento==='A Pagar'&&c.dataPagamento&&c.dataPagamento>=hoje&&c.dataPagamento<=ate30).forEach(c=>{
+    const total=(c.qtd*c.custo)+(c.frete||0)+(c.imposto||0);
+    previsoes.push({data:c.dataPagamento,desc:`Compra: ${c.item} — ${c.fornecedor}`,tipo:'Saída',valor:total});
+  });
   previsoes.sort((a,b)=>a.data.localeCompare(b.data));
   document.querySelector('#tabela-previsao tbody').innerHTML=previsoes.length?previsoes.map(p=>`<tr><td style="white-space:nowrap">${fmtData(p.data)}</td><td style="color:#fff;font-weight:600;max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${p.desc}</td><td>${badgeTipo(p.tipo)}</td><td style="font-weight:700;color:${p.tipo==='Entrada'?'#10B981':'#EF4444'}">${moeda(p.valor)}</td></tr>`).join(''):'<tr><td colspan="4"><div class="empty-state"><i class="bi bi-calendar-check"></i>Nada previsto nos próximos 30 dias</div></td></tr>';
 }
@@ -2476,7 +2483,10 @@ function renderFluxo() {
 // ============================================================
 function preencherSelectsCompra() {
   document.getElementById('cp-sku').innerHTML='<option value="">— Nenhum —</option>'+dados.produtos.map(p=>`<option value="${p.sku}">${p.sku} — ${p.nome}</option>`).join('');
-  document.getElementById('cp-data').value=new Date().toISOString().split('T')[0];
+  const hoje=new Date().toISOString().split('T')[0];
+  document.getElementById('cp-data').value=hoje;
+  document.getElementById('cp-datapagamento').value=hoje;
+  document.getElementById('cp-situacaopagto').value='A Pagar';
 }
 function calcularCompra() {
   const qtd=parseFloat(v('cp-qtd'))||0, custo=parseFloat(v('cp-custo'))||0, frete=parseFloat(v('cp-frete'))||0, imp=parseFloat(v('cp-imposto'))||0;
@@ -2507,7 +2517,8 @@ function renderCompras() {
     else{va=(a[s.col]||'').toString().toLowerCase();vb=(b[s.col]||'').toString().toLowerCase();}
     return compararSort(va,vb,s.dir);
   });
-  document.querySelector('#tabela-compras tbody').innerHTML=lista.length?lista.map(c=>{const ri=dados.compras.indexOf(c);const total=(c.qtd*c.custo)+(c.frete||0)+(c.imposto||0);return `<tr><td>${fmtData(c.data)}</td><td style="font-weight:600;color:#fff">${c.item}</td><td>${c.fornecedor}</td><td><span class="badge-canal badge-livro">${c.categoria}</span></td><td style="text-align:center">${c.qtd}</td><td>${moeda(c.custo)}</td><td>${moeda(c.frete)}</td><td style="font-weight:700;color:var(--cor-acento)">${moeda(total)}</td><td style="white-space:nowrap"><button class="btn-sm-action btn-edit" onclick="editarCompra(${ri})"><i class="bi bi-pencil-fill"></i></button><button class="btn-sm-action btn-delete" onclick="deletar('compras',${ri})"><i class="bi bi-trash-fill"></i></button></td></tr>`}).join(''):'<tr><td colspan="9"><div class="empty-state"><i class="bi bi-cart"></i>Nenhuma compra lançada</div></td></tr>';
+  const hoje=new Date().toISOString().split('T')[0];
+  document.querySelector('#tabela-compras tbody').innerHTML=lista.length?lista.map(c=>{const ri=dados.compras.indexOf(c);const total=(c.qtd*c.custo)+(c.frete||0)+(c.imposto||0);const isPago=c.situacaoPagamento==='Pago';const badgePagto=isPago?`<span style="background:rgba(16,185,129,.12);color:#10B981;padding:2px 8px;border-radius:12px;font-size:11px;font-weight:600">Pago</span>`:`<span style="background:rgba(245,158,11,.15);color:#F59E0B;padding:2px 8px;border-radius:12px;font-size:11px;font-weight:600">A Pagar</span>`;const overduePagto=!isPago&&c.dataPagamento&&c.dataPagamento<hoje;const dtPagtoCell=c.dataPagamento?`<span style="${overduePagto?'color:#EF4444;font-weight:700':''}">${fmtData(c.dataPagamento)}${overduePagto?' ⚠️':''}</span>`:'—';return `<tr><td>${fmtData(c.data)}</td><td>${dtPagtoCell}</td><td>${badgePagto}</td><td style="font-weight:600;color:#fff">${c.item}</td><td>${c.fornecedor}</td><td><span class="badge-canal badge-livro">${c.categoria}</span></td><td style="text-align:center">${c.qtd}</td><td>${moeda(c.custo)}</td><td>${moeda(c.frete)}</td><td style="font-weight:700;color:var(--cor-acento)">${moeda(total)}</td><td style="white-space:nowrap"><button class="btn-sm-action btn-edit" onclick="editarCompra(${ri})"><i class="bi bi-pencil-fill"></i></button><button class="btn-sm-action btn-delete" onclick="deletar('compras',${ri})"><i class="bi bi-trash-fill"></i></button></td></tr>`}).join(''):'<tr><td colspan="11"><div class="empty-state"><i class="bi bi-cart"></i>Nenhuma compra lançada</div></td></tr>';
   atualizarThSort('compras',s.col,s.dir);
 }
 function editarCompra(i) {
@@ -2515,6 +2526,8 @@ function editarCompra(i) {
   const c=dados.compras[i];
   document.getElementById('cp-idx').value=i;
   document.getElementById('cp-data').value=c.data;
+  document.getElementById('cp-datapagamento').value=c.dataPagamento||'';
+  document.getElementById('cp-situacaopagto').value=c.situacaoPagamento||'A Pagar';
   document.getElementById('cp-nf').value=c.nf||'';
   document.getElementById('cp-sku').value=c.sku||'';
   document.getElementById('cp-item').value=c.item;
@@ -2533,12 +2546,12 @@ async function salvarCompra() {
   const idx=v('cp-idx');
   const skuSalvo=v('cp-sku');
   const qtdSalva=parseFloat(v('cp-qtd'))||1;
-  const obj={data:v('cp-data'),nf:v('cp-nf'),sku:skuSalvo,item:v('cp-item'),fornecedor:v('cp-fornecedor'),categoria:v('cp-categoria'),qtd:qtdSalva,custo:parseFloat(v('cp-custo'))||0,frete:parseFloat(v('cp-frete'))||0,imposto:parseFloat(v('cp-imposto'))||0,obs:v('cp-obs')};
+  const obj={data:v('cp-data'),dataPagamento:v('cp-datapagamento')||'',situacaoPagamento:v('cp-situacaopagto')||'A Pagar',nf:v('cp-nf'),sku:skuSalvo,item:v('cp-item'),fornecedor:v('cp-fornecedor'),categoria:v('cp-categoria'),qtd:qtdSalva,custo:parseFloat(v('cp-custo'))||0,frete:parseFloat(v('cp-frete'))||0,imposto:parseFloat(v('cp-imposto'))||0,obs:v('cp-obs')};
   if(idx==='') await db.collection('compras').add(obj);
   else await db.collection('compras').doc(dados.compras[parseInt(idx)]._docId).set(obj);
   bootstrap.Modal.getInstance(document.getElementById('modalCompra')).hide();
   document.getElementById('cp-idx').value='';
-  limpaCampos(['cp-nf','cp-item','cp-fornecedor','cp-obs']);
+  limpaCampos(['cp-nf','cp-item','cp-fornecedor','cp-obs','cp-datapagamento']);
   if(skuSalvo){const est=calcEstoque().find(e=>e.sku===skuSalvo);if(est)mostrarToastEstoque(`<strong>${est.nome}</strong> &nbsp;+${qtdSalva} unid. &nbsp;|&nbsp; Saldo: <strong>${est.saldo}</strong>`,'entrada');}
 }
 
@@ -3194,11 +3207,13 @@ function _gerarRelCompras(de, ate) {
     _kpiCardRel('Frete Pago',moeda(totalFrete),'custo de envio','#F59E0B')+
     _kpiCardRel('Impostos',moeda(totalImposto),'tributação','#EF4444')+
     _kpiCardRel('Total Geral',moeda(totalGeral),'custo total do período','#10B981');
-  document.getElementById('rel-thead').innerHTML=`<tr><th>Data</th><th>Nº NF</th><th>Fornecedor</th><th>Item Comprado</th><th>Categoria</th><th>SKU</th><th>Qtd</th><th>Custo Unit.</th><th>Frete</th><th>Imposto</th><th>Total</th></tr>`;
+  document.getElementById('rel-thead').innerHTML=`<tr><th>Dt. Compra</th><th>Dt. Pagamento</th><th>Situação Pgto.</th><th>Nº NF</th><th>Fornecedor</th><th>Item Comprado</th><th>Categoria</th><th>SKU</th><th>Qtd</th><th>Custo Unit.</th><th>Frete</th><th>Imposto</th><th>Total</th></tr>`;
   document.getElementById('rel-tbody').innerHTML = lista.length ? lista.map(c=>{
     const total=(c.qtd*c.custo)+(c.frete||0)+(c.imposto||0);
-    return `<tr><td>${fmtData(c.data)}</td><td style="color:var(--cor-texto-suave)">${c.nf||'—'}</td><td style="font-weight:600;color:#fff">${c.fornecedor}</td><td>${c.item}</td><td><span class="badge-canal badge-livro">${c.categoria}</span></td><td style="font-family:monospace;color:var(--cor-secundaria)">${c.sku||'—'}</td><td style="text-align:center">${c.qtd}</td><td>${moeda(c.custo)}</td><td>${moeda(c.frete||0)}</td><td>${moeda(c.imposto||0)}</td><td style="color:var(--cor-acento);font-weight:700">${moeda(total)}</td></tr>`;
-  }).join('') : '<tr><td colspan="11"><div class="empty-state"><i class="bi bi-cart"></i>Nenhuma compra no período</div></td></tr>';
+    const isPago=c.situacaoPagamento==='Pago';
+    const badgePagto=isPago?`<span style="background:rgba(16,185,129,.12);color:#10B981;padding:2px 8px;border-radius:12px;font-size:11px;font-weight:600">Pago</span>`:`<span style="background:rgba(245,158,11,.15);color:#F59E0B;padding:2px 8px;border-radius:12px;font-size:11px;font-weight:600">A Pagar</span>`;
+    return `<tr><td>${fmtData(c.data)}</td><td>${c.dataPagamento?fmtData(c.dataPagamento):'—'}</td><td>${badgePagto}</td><td style="color:var(--cor-texto-suave)">${c.nf||'—'}</td><td style="font-weight:600;color:#fff">${c.fornecedor}</td><td>${c.item}</td><td><span class="badge-canal badge-livro">${c.categoria}</span></td><td style="font-family:monospace;color:var(--cor-secundaria)">${c.sku||'—'}</td><td style="text-align:center">${c.qtd}</td><td>${moeda(c.custo)}</td><td>${moeda(c.frete||0)}</td><td>${moeda(c.imposto||0)}</td><td style="color:var(--cor-acento);font-weight:700">${moeda(total)}</td></tr>`;
+  }).join('') : '<tr><td colspan="13"><div class="empty-state"><i class="bi bi-cart"></i>Nenhuma compra no período</div></td></tr>';
   _mostrarResultado('Relatório de Compras',de,ate);
 }
 
