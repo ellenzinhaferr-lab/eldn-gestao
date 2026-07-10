@@ -1691,8 +1691,8 @@ function calcKPIs() {
   const totalPedidos = dados.pedidos.length;
   const totalClientes = dados.clientes.length;
   const ticketMedio = totalPedidos ? totalVendas/totalPedidos : 0;
-  const totalEntradas = dados.financeiro.filter(f=>f.tipo==='Entrada').reduce((s,f)=>s+f.valor,0);
-  const totalSaidas = dados.financeiro.filter(f=>f.tipo==='Saída').reduce((s,f)=>s+f.valor,0);
+  const totalEntradas = dados.financeiro.filter(f=>f.tipo==='Entrada'&&(!f.situacao||f.situacao==='Realizada')).reduce((s,f)=>s+f.valor,0);
+  const totalSaidas = dados.financeiro.filter(f=>f.tipo==='Saída'&&(!f.situacao||f.situacao==='Realizada')).reduce((s,f)=>s+f.valor,0);
   const totalCompras = dados.compras.reduce((s,c)=>s+(c.qtd*c.custo)+(c.frete||0)+(c.imposto||0),0);
   const saldoInicial = parseFloat(dados.config.saldoInicial)||0;
   return {totalVendas,receitaLiquida,totalPedidos,totalClientes,ticketMedio,totalEntradas,totalSaidas,totalCompras,saldoInicial};
@@ -1769,12 +1769,12 @@ function renderDashboard() {
   const ativosFisico=ativos.filter(p=>!isPedidoDigital(p));
   const ticketDigital=ativosDigital.length?ativosDigital.reduce((s,p)=>s+getPedidoTotal(p),0)/ativosDigital.length:0;
   const ticketFisico=ativosFisico.length?ativosFisico.reduce((s,p)=>s+getPedidoTotal(p),0)/ativosFisico.length:0;
-  const totalEnt=finFiltro.filter(f=>f.tipo==='Entrada').reduce((s,f)=>s+f.valor,0);
-  const totalSai=finFiltro.filter(f=>f.tipo==='Saída').reduce((s,f)=>s+f.valor,0);
+  const totalEnt=finFiltro.filter(f=>f.tipo==='Entrada'&&(!f.situacao||f.situacao==='Realizada')).reduce((s,f)=>s+f.valor,0);
+  const totalSai=finFiltro.filter(f=>f.tipo==='Saída'&&(!f.situacao||f.situacao==='Realizada')).reduce((s,f)=>s+f.valor,0);
   // Globais (não filtrados)
   const totalClientes=dados.clientes.length;
   const saldoInicial=parseFloat(dados.config.saldoInicial)||0;
-  const saldoReal=saldoInicial+dados.financeiro.filter(f=>f.tipo==='Entrada').reduce((s,f)=>s+f.valor,0)-dados.financeiro.filter(f=>f.tipo==='Saída').reduce((s,f)=>s+f.valor,0);
+  const saldoReal=saldoInicial+dados.financeiro.filter(f=>f.tipo==='Entrada'&&(!f.situacao||f.situacao==='Realizada')).reduce((s,f)=>s+f.valor,0)-dados.financeiro.filter(f=>f.tipo==='Saída'&&(!f.situacao||f.situacao==='Realizada')).reduce((s,f)=>s+f.valor,0);
 
   const card=c=>`<div class="kpi-card"><div class="kpi-label">${c.label} <span style="float:right;font-size:20px">${c.icon}</span></div><div class="kpi-value" style="color:${c.cor}">${c.value}</div><div class="kpi-sub">${c.sub}</div></div>`;
   const sec=(t,cs)=>`<div style="grid-column:1/-1;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:1.5px;color:var(--cor-secundaria);padding:6px 0 10px;border-bottom:1px solid var(--cor-borda);margin-top:8px">${t}</div>${cs.map(card).join('')}`;
@@ -1787,11 +1787,11 @@ function renderDashboard() {
       {label:'Pedidos',value:pedsFiltro.length,sub:'total (incluindo cancelados)',cor:'#EC4899',icon:'📋'},
     ])+
     sec('🏦 Financeiro no Período',[
-      {label:'Entradas',value:moeda(totalEnt),sub:'lançamentos no período',cor:'#10B981',icon:'📈'},
-      {label:'Saídas',value:moeda(totalSai),sub:'despesas no período',cor:'#EF4444',icon:'📉'},
+      {label:'Entradas',value:moeda(totalEnt),sub:'realizadas no período',cor:'#10B981',icon:'📈'},
+      {label:'Saídas',value:moeda(totalSai),sub:'despesas realizadas no período',cor:'#EF4444',icon:'📉'},
       {label:'A Receber',value:moeda(dados.pedidos.filter(p=>p.statusRecebimento==='A receber'&&p.status!=='Cancelado'&&p.status!=='Devolvido').reduce((s,p)=>s+(p.liquido!=null?p.liquido:getPedidoTotal(p)),0)),sub:'pedidos aguardando recebimento',cor:'#3B82F6',icon:'⏳'},
       {label:'Clientes',value:totalClientes,sub:'cadastrados no total',cor:'#A78BFA',icon:'👥'},
-      {label:'Saldo Real',value:moeda(saldoReal),sub:'acumulado total',cor:saldoReal>=0?'#10B981':'#EF4444',icon:'🏦'},
+      {label:'Saldo Real',value:moeda(saldoReal),sub:'acumulado (só realizados)',cor:saldoReal>=0?'#10B981':'#EF4444',icon:'🏦'},
     ]);
 
   // Gráfico 1 — Receita por mês no período
