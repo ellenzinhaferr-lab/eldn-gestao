@@ -809,7 +809,7 @@ table.gestao tbody tr:hover .tbl-sticky-r{background:#1f1545}
     <div class="col-12" id="f-recorrente-wrap">
       <div class="form-check">
         <input class="form-check-input" type="checkbox" id="f-recorrente" onchange="document.getElementById('f-recorrente-meses-wrap').style.display=this.checked?'flex':'none'">
-        <label class="form-check-label" for="f-recorrente"><i class="bi bi-arrow-repeat me-1"></i>Repetir mensalmente<br><span style="color:var(--cor-texto-suave);font-size:11px">Cria um lançamento igual todo mês pela quantidade de meses informada</span></label>
+        <label class="form-check-label" for="f-recorrente"><i class="bi bi-arrow-repeat me-1"></i>Repetir mensalmente<br><span style="color:var(--cor-texto-suave);font-size:11px">Cria os próximos meses como "Prevista" a partir da data acima (funciona também ao editar um lançamento já existente)</span></label>
       </div>
     </div>
     <div class="col-md-6" id="f-recorrente-meses-wrap" style="display:none">
@@ -2543,19 +2543,21 @@ function editarFinanceiro(i) {
   document.getElementById('f-obs').value=f.obs||'';
   document.getElementById('f-recorrente').checked=false;
   document.getElementById('f-recorrente-meses-wrap').style.display='none';
-  document.getElementById('f-recorrente-wrap').style.display='none';
+  document.getElementById('f-recorrente-wrap').style.display='block';
   new bootstrap.Modal(document.getElementById('modalFinanceiro')).show();
 }
 async function salvarFinanceiro() {
   if(!v('f-data')||!v('f-desc')||!v('f-valor')) return alert('Preencha os campos obrigatórios');
   const idx=v('f-idx');
   const obj={data:v('f-data'),tipo:v('f-tipo'),desc:v('f-desc'),categoria:v('f-categoria'),valor:pFloat('f-valor'),forma:v('f-forma'),parcela:parseInt(v('f-parcela'))||1,vencimento:v('f-vencimento')||'',situacao:v('f-situacao')||'Realizada',obs:v('f-obs')};
-  const recorrente = idx==='' && document.getElementById('f-recorrente').checked;
+  const recorrente = document.getElementById('f-recorrente').checked;
   if(recorrente){
     const meses=Math.min(60,Math.max(2,parseInt(v('f-recorrente-meses'))||12));
     const batch=db.batch();
-    for(let i=0;i<meses;i++){
-      const item={...obj, data:addMeses(obj.data,i), vencimento:obj.vencimento?addMeses(obj.vencimento,i):'', situacao:i===0?obj.situacao:'Prevista'};
+    const refPrimeiro = idx===''?db.collection('financeiro').doc():db.collection('financeiro').doc(dados.financeiro[parseInt(idx)]._docId);
+    batch.set(refPrimeiro, obj);
+    for(let i=1;i<meses;i++){
+      const item={...obj, data:addMeses(obj.data,i), vencimento:obj.vencimento?addMeses(obj.vencimento,i):'', situacao:'Prevista'};
       batch.set(db.collection('financeiro').doc(), item);
     }
     await batch.commit();
