@@ -808,12 +808,19 @@ table.gestao tbody tr:hover .tbl-sticky-r{background:#1f1545}
     <div class="col-md-6"><label class="form-label">Situação</label><select class="form-select" id="f-situacao"><option value="Realizada">Realizada</option><option value="Prevista">Prevista</option></select></div>
     <div class="col-12" id="f-recorrente-wrap">
       <div class="form-check">
-        <input class="form-check-input" type="checkbox" id="f-recorrente" onchange="document.getElementById('f-recorrente-meses-wrap').style.display=this.checked?'flex':'none'">
-        <label class="form-check-label" for="f-recorrente"><i class="bi bi-arrow-repeat me-1"></i>Repetir mensalmente<br><span style="color:var(--cor-texto-suave);font-size:11px">Cria os próximos meses como "Prevista" a partir da data acima (funciona também ao editar um lançamento já existente)</span></label>
+        <input class="form-check-input" type="checkbox" id="f-recorrente" onchange="toggleRecorrenteFinanceiro()">
+        <label class="form-check-label" for="f-recorrente"><i class="bi bi-arrow-repeat me-1"></i>Repetir mensalmente<br><span style="color:var(--cor-texto-suave);font-size:11px">Assinatura recorrente ou parcelamento no cartão — cria os próximos meses a partir da data acima (funciona também ao editar um lançamento já existente)</span></label>
       </div>
     </div>
+    <div class="col-md-6" id="f-recorrente-tipo-wrap" style="display:none">
+      <label class="form-label">Tipo de repetição</label>
+      <select class="form-select" id="f-recorrente-tipo" onchange="toggleRecorrenteFinanceiro()">
+        <option value="assinatura">Assinatura (mesmo valor todo mês)</option>
+        <option value="parcelamento">Parcelamento no cartão (numera as parcelas)</option>
+      </select>
+    </div>
     <div class="col-md-6" id="f-recorrente-meses-wrap" style="display:none">
-      <label class="form-label">Repetir por quantos meses</label>
+      <label class="form-label" id="f-recorrente-meses-label">Repetir por quantos meses</label>
       <input class="form-control" id="f-recorrente-meses" type="number" min="2" max="60" value="12">
     </div>
     <div class="col-12"><label class="form-label">Observações</label><textarea class="form-control" id="f-obs" rows="2"></textarea></div>
@@ -1316,6 +1323,13 @@ function mascaraMoeda(el) { let n=el.value.replace(/\D/g,''); if(!n){el.value=''
 function pFloat(id) { const el=document.getElementById(id); if(!el) return 0; return parseFloat((el.value||'0').replace(',','.').replace(/[^\d.]/g,''))||0; }
 function fmtM(n) { return (parseFloat(n)||0).toFixed(2).replace('.',','); }
 function addMeses(dataStr, n) { if(!dataStr) return dataStr; const [y,m,d]=dataStr.split('-').map(Number); const first=new Date(y,m-1+n,1); const diasNoMes=new Date(first.getFullYear(),first.getMonth()+1,0).getDate(); const dia=Math.min(d,diasNoMes); const dt=new Date(first.getFullYear(),first.getMonth(),dia); return `${dt.getFullYear()}-${String(dt.getMonth()+1).padStart(2,'0')}-${String(dt.getDate()).padStart(2,'0')}`; }
+function toggleRecorrenteFinanceiro() {
+  const checked=document.getElementById('f-recorrente').checked;
+  document.getElementById('f-recorrente-tipo-wrap').style.display=checked?'block':'none';
+  document.getElementById('f-recorrente-meses-wrap').style.display=checked?'block':'none';
+  const isParcelamento=document.getElementById('f-recorrente-tipo').value==='parcelamento';
+  document.getElementById('f-recorrente-meses-label').textContent=isParcelamento?'Número de parcelas':'Repetir por quantos meses';
+}
 function mascaraCEP(el) { let x=el.value.replace(/\D/g,''); if(x.length>5) x=x.slice(0,5)+'-'+x.slice(5,8); el.value=x; }
 async function buscarCEP() { const cep=v('c-cep').replace(/\D/g,''); if(cep.length!==8) return; try { const r=await fetch(`https://viacep.com.br/ws/${cep}/json/`); const d=await r.json(); if(!d.erro){ document.getElementById('c-logradouro').value=d.logradouro||''; document.getElementById('c-bairro').value=d.bairro||''; document.getElementById('c-cidade').value=d.localidade||''; document.getElementById('c-estado').value=d.uf||''; document.getElementById('c-numero').focus(); } } catch(e){} }
 async function buscarCEPProsp() { const cep=document.getElementById('prosp-cep').value.replace(/\D/g,''); if(cep.length!==8) return; try { const r=await fetch(`https://viacep.com.br/ws/${cep}/json/`); const d=await r.json(); if(!d.erro){ document.getElementById('prosp-logradouro').value=d.logradouro||''; document.getElementById('prosp-bairro').value=d.bairro||''; document.getElementById('prosp-cidade').value=d.localidade||''; document.getElementById('prosp-uf').value=d.uf||''; document.getElementById('prosp-numero').focus(); } } catch(e){} }
@@ -2009,7 +2023,7 @@ function abrirModal(tipo) {
   const ids={cliente:'modalCliente',pedido:'modalPedido',financeiro:'modalFinanceiro',compra:'modalCompra',produto:'modalProduto',afiliado:'modalAfiliado',canal:'modalCanal',formapagto:'modalFormaPagto',usuario:'modalUsuario'};
   if(tipo==='pedido') preencherSelectsPedido();
   if(tipo==='compra') preencherSelectsCompra();
-  if(tipo==='financeiro'){document.getElementById('f-idx').value='';document.getElementById('f-recorrente').checked=false;document.getElementById('f-recorrente-meses-wrap').style.display='none';document.getElementById('f-recorrente-wrap').style.display='block';}
+  if(tipo==='financeiro'){document.getElementById('f-idx').value='';document.getElementById('f-recorrente').checked=false;document.getElementById('f-recorrente-tipo').value='assinatura';document.getElementById('f-recorrente-wrap').style.display='block';toggleRecorrenteFinanceiro();}
   if(tipo==='usuario'){document.getElementById('u-nome').value='';document.getElementById('u-email').value='';document.getElementById('u-senha').value='';document.getElementById('u-msg').style.display='none';document.getElementById('btn-salvar-usuario').disabled=false;document.getElementById('btn-salvar-usuario').textContent='Criar Usuário';}
   new bootstrap.Modal(document.getElementById(ids[tipo])).show();
 }
@@ -2542,8 +2556,9 @@ function editarFinanceiro(i) {
   document.getElementById('f-situacao').value=f.situacao||'Realizada';
   document.getElementById('f-obs').value=f.obs||'';
   document.getElementById('f-recorrente').checked=false;
-  document.getElementById('f-recorrente-meses-wrap').style.display='none';
+  document.getElementById('f-recorrente-tipo').value='assinatura';
   document.getElementById('f-recorrente-wrap').style.display='block';
+  toggleRecorrenteFinanceiro();
   new bootstrap.Modal(document.getElementById('modalFinanceiro')).show();
 }
 async function salvarFinanceiro() {
@@ -2552,12 +2567,16 @@ async function salvarFinanceiro() {
   const obj={data:v('f-data'),tipo:v('f-tipo'),desc:v('f-desc'),categoria:v('f-categoria'),valor:pFloat('f-valor'),forma:v('f-forma'),parcela:parseInt(v('f-parcela'))||1,vencimento:v('f-vencimento')||'',situacao:v('f-situacao')||'Realizada',obs:v('f-obs')};
   const recorrente = document.getElementById('f-recorrente').checked;
   if(recorrente){
+    const isParcelamento = v('f-recorrente-tipo')==='parcelamento';
     const meses=Math.min(60,Math.max(2,parseInt(v('f-recorrente-meses'))||12));
+    const descBase=obj.desc;
     const batch=db.batch();
     const refPrimeiro = idx===''?db.collection('financeiro').doc():db.collection('financeiro').doc(dados.financeiro[parseInt(idx)]._docId);
-    batch.set(refPrimeiro, obj);
+    const item0 = isParcelamento ? {...obj, parcela:1, totalParcelas:meses, desc:`${descBase} (Parcela 1/${meses})`} : obj;
+    batch.set(refPrimeiro, item0);
     for(let i=1;i<meses;i++){
-      const item={...obj, data:addMeses(obj.data,i), vencimento:obj.vencimento?addMeses(obj.vencimento,i):'', situacao:'Prevista'};
+      const base={...obj, data:addMeses(obj.data,i), vencimento:obj.vencimento?addMeses(obj.vencimento,i):'', situacao:'Prevista'};
+      const item = isParcelamento ? {...base, parcela:i+1, totalParcelas:meses, desc:`${descBase} (Parcela ${i+1}/${meses})`} : base;
       batch.set(db.collection('financeiro').doc(), item);
     }
     await batch.commit();
@@ -2569,8 +2588,9 @@ async function salvarFinanceiro() {
   bootstrap.Modal.getInstance(document.getElementById('modalFinanceiro')).hide();
   document.getElementById('f-idx').value='';
   document.getElementById('f-recorrente').checked=false;
-  document.getElementById('f-recorrente-meses-wrap').style.display='none';
+  document.getElementById('f-recorrente-tipo').value='assinatura';
   document.getElementById('f-recorrente-wrap').style.display='block';
+  toggleRecorrenteFinanceiro();
   limpaCampos(['f-data','f-desc','f-valor','f-vencimento','f-obs']);
 }
 
