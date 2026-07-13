@@ -987,6 +987,7 @@ table.gestao tbody tr:hover .tbl-sticky-r{background:#1f1545}
     <div class="mb-3"><label class="form-label">Taxa % (ex: 0.14 = 14%)</label><input class="form-control" id="cc-taxa" type="number" step="0.01" value="0"></div>
     <div class="mb-3"><label class="form-label">Taxa Fixa (R$) — ex: Hotmart cobra R$ 1,00</label><input class="form-control" id="cc-taxafixa" type="text" inputmode="numeric" value="0,00" oninput="mascaraMoeda(this)"></div>
     <div class="mb-3"><label class="form-label">Prazo de Recebimento (dias) <small style="color:var(--cor-texto-suave)">— Ex: Kiwify = 2 dias, Amazon = 30 dias, PIX direto = 0</small></label><input class="form-control" id="cc-prazo" type="number" min="0" value="0"></div>
+    <div class="mb-3"><label class="form-label">Prazo se Pago no Cartão (dias) <small style="color:var(--cor-texto-suave)">— opcional: deixe em branco se for igual ao prazo acima. Ex: Hotmart PIX = 2 dias, Cartão = 30 dias</small></label><input class="form-control" id="cc-prazocartao" type="number" min="0" placeholder="Igual ao prazo acima"></div>
     <div class="form-check">
       <input class="form-check-input" type="checkbox" id="cc-incluipagto">
       <label class="form-check-label" for="cc-incluipagto" style="font-size:13px">Canal já processa o pagamento<br><span style="color:var(--cor-texto-suave);font-size:11px">Não aplica taxa de forma de pagamento (Hotmart, Kiwify, Amazon...)</span></label>
@@ -1289,6 +1290,14 @@ function setupListeners() {
     dados.config.canais.forEach(c=>{
       if(c.prazoRecebimento===undefined&&prazoesPadrao[c.nome]!==undefined){c.prazoRecebimento=prazoesPadrao[c.nome];migrou=true;}
     });
+    // Hotmart: PIX cai em 2 dias, mas cartão de crédito só cai em até 30 dias — diferencia o prazo
+    const hotmartExist=dados.config.canais.find(c=>c.nome==='Hotmart');
+    if(hotmartExist && hotmartExist.prazoCartao===undefined) { hotmartExist.prazoCartao=30; migrou=true; }
+    // Forma de pagamento genérica "Cartão de Crédito" para usar em canais que já processam o pagamento (Hotmart, Kiwify...)
+    if(!(dados.config.formasPagto||[]).find(f=>f.nome==='Cartão de Crédito')) {
+      dados.config.formasPagto.push({nome:'Cartão de Crédito',taxa:0,taxaFixa:0});
+      migrou=true;
+    }
     if(migrou) db.collection('config').doc('main').set(dados.config);
     if (appReady) renderCurrentPage();
   }));
@@ -1895,9 +1904,14 @@ function renderDashboard() {
 // ============================================================
 // HELPERS — PEDIDO (suporte a itens múltiplos + formato legado)
 // ============================================================
-function calcDataRecebimento(dataPedido, nomeCanal) {
+function getPrazoRecebimento(nomeCanal, nomePagto) {
   const canal=(dados.config.canais||[]).find(c=>c.nome===nomeCanal)||{};
-  const prazo=canal.prazoRecebimento||0;
+  const ehCartao=/cart/i.test(nomePagto||'');
+  if(ehCartao && canal.prazoCartao!=null) return canal.prazoCartao;
+  return canal.prazoRecebimento||0;
+}
+function calcDataRecebimento(dataPedido, nomeCanal, nomePagto) {
+  const prazo=getPrazoRecebimento(nomeCanal, nomePagto);
   if(!prazo||!dataPedido) return '';
   const d=new Date(dataPedido+'T12:00:00');
   d.setDate(d.getDate()+prazo);
@@ -2259,8 +2273,6 @@ function calcularValorPedido() {
   document.getElementById('p-total').value=total.toFixed(2).replace('.',',');
   const nomPagto=v('p-pagto');
   const pagto=canal.incluiPagamento ? {taxa:0,taxaFixa:0} : ((dados.config.formasPagto||[]).find(f=>f.nome===nomPagto)||{taxa:0,taxaFixa:0});
-  const pagtoSelectEl=document.getElementById('p-pagto');
-  if(pagtoSelectEl) { pagtoSelectEl.disabled=!!canal.incluiPagamento; pagtoSelectEl.style.opacity=canal.incluiPagamento?'0.5':'1'; }
   // Taxa fixa cobrada por item/transação (ex: Hotmart R$1,00 por transação, não por pedido)
   let taxaCanal=0;
   if((canal.taxaFixa||0)>0){
@@ -2290,9 +2302,9 @@ function calcularValorPedido() {
     if(taxaCanal===0&&taxaPagto===0&&!canal.incluiPagamento) linhas.push('Nenhuma taxa para este canal e forma de pagamento');
     infoEl.innerHTML=linhas.join('<br>');
   }
-  const dataRec=calcDataRecebimento(v('p-data'),nomCanal);
+  const dataRec=calcDataRecebimento(v('p-data'),nomCanal,nomPagto);
   const recInfoEl=document.getElementById('p-recebimento-info');
-  if(recInfoEl) recInfoEl.innerHTML=dataRec?`<i class="bi bi-calendar-check me-1" style="color:#3B82F6"></i>Recebimento previsto: <strong style="color:#3B82F6">${fmtData(dataRec)}</strong>`:(canal.prazoRecebimento===0?'<span style="color:#10B981;font-size:11px"><i class="bi bi-check-circle me-1"></i>Recebimento imediato</span>':'');
+  if(recInfoEl) recInfoEl.innerHTML=dataRec?`<i class="bi bi-calendar-check me-1" style="color:#3B82F6"></i>Recebimento previsto: <strong style="color:#3B82F6">${fmtData(dataRec)}</strong>`:(getPrazoRecebimento(nomCanal,nomPagto)===0?'<span style="color:#10B981;font-size:11px"><i class="bi bi-check-circle me-1"></i>Recebimento imediato</span>':'');
 }
 function renderPedidos() {
   const s=sortState.pedidos;
@@ -2363,10 +2375,9 @@ async function salvarPedido() {
   if(!itens.length) return alert('Adicione pelo menos um item ao pedido');
   const idx=v('p-idx');
   const statusSalvo=v('p-status');
-  const canalRec=(dados.config.canais||[]).find(c=>c.nome===v('p-canal'))||{prazoRecebimento:0};
-  const dataRecebimento=calcDataRecebimento(v('p-data'),v('p-canal'));
+  const dataRecebimento=calcDataRecebimento(v('p-data'),v('p-canal'),v('p-pagto'));
   const existingRec=idx!==''?dados.pedidos[parseInt(idx)]?.statusRecebimento:null;
-  const statusRecebimento=existingRec==='Recebido'?'Recebido':((canalRec.prazoRecebimento||0)>0?'A receber':'Recebido');
+  const statusRecebimento=existingRec==='Recebido'?'Recebido':(getPrazoRecebimento(v('p-canal'),v('p-pagto'))>0?'A receber':'Recebido');
   const obj={data:v('p-data'),num,canal:v('p-canal'),clienteId:parseInt(v('p-cliente'))||null,endereco:v('p-endereco'),itens,frete:parseFloat((v('p-frete')||'0').replace(',','.'))||0,pagto:v('p-pagto'),liquido:parseFloat((v('p-liquido')||'0').replace(',','.'))||0,status:statusSalvo,dataRecebimento,statusRecebimento,rastreio:v('p-rastreio'),linkRastreio:v('p-link-rastreio'),obs:v('p-obs')};
   if(idx==='') await db.collection('pedidos').add(obj);
   else await db.collection('pedidos').doc(dados.pedidos[parseInt(idx)]._docId).set(obj);
@@ -3060,6 +3071,7 @@ function editarCanal(i) {
   document.getElementById('cc-taxa').value=c.taxa;
   document.getElementById('cc-taxafixa').value=fmtM(c.taxaFixa||0);
   document.getElementById('cc-prazo').value=c.prazoRecebimento||0;
+  document.getElementById('cc-prazocartao').value=c.prazoCartao!=null?c.prazoCartao:'';
   document.getElementById('cc-incluipagto').checked=!!c.incluiPagamento;
   document.getElementById('cc-isroyalties').checked=!!c.isRoyalties;
   new bootstrap.Modal(document.getElementById('modalCanal')).show();
@@ -3067,7 +3079,8 @@ function editarCanal(i) {
 async function salvarCanal() {
   const nome=v('cc-nome').trim(); if(!nome) return alert('Nome é obrigatório');
   const idx=v('cc-idx');
-  const obj={nome,taxa:parseFloat(v('cc-taxa'))||0,taxaFixa:pFloat('cc-taxafixa'),prazoRecebimento:parseInt(v('cc-prazo'))||0,incluiPagamento:document.getElementById('cc-incluipagto').checked,isRoyalties:document.getElementById('cc-isroyalties').checked};
+  const prazoCartaoVal=v('cc-prazocartao');
+  const obj={nome,taxa:parseFloat(v('cc-taxa'))||0,taxaFixa:pFloat('cc-taxafixa'),prazoRecebimento:parseInt(v('cc-prazo'))||0,prazoCartao:prazoCartaoVal===''?null:parseInt(prazoCartaoVal)||0,incluiPagamento:document.getElementById('cc-incluipagto').checked,isRoyalties:document.getElementById('cc-isroyalties').checked};
   if(!dados.config.canais) dados.config.canais=[];
   if(idx==='') dados.config.canais.push(obj);
   else dados.config.canais[parseInt(idx)]=obj;
@@ -3076,7 +3089,7 @@ async function salvarCanal() {
   document.getElementById('cc-idx').value='';
   document.getElementById('cc-incluipagto').checked=false;
   document.getElementById('cc-isroyalties').checked=false;
-  limpaCampos(['cc-nome','cc-taxa','cc-taxafixa','cc-prazo']);
+  limpaCampos(['cc-nome','cc-taxa','cc-taxafixa','cc-prazo','cc-prazocartao']);
 }
 function editarFormaPagto(i) {
   const f=(dados.config.formasPagto||[])[i];
