@@ -2449,7 +2449,7 @@ const NFE_PROXY_URL='https://app.eldndigital.com/nfe-proxy/proxy.php';
 const NFE_EMITENTE={cnpj:'59068669000168',nome:'ELDN DIGITAL LTDA',uf:'SP',regimeTributario:1};
 // Precisa refletir SEMPRE o mesmo ambiente configurado em config.php no servidor (trocado manualmente, de propósito).
 // 'homologacao' = notas de teste sem valor fiscal. 'producao' = notas REAIS, com valor fiscal e legal.
-const NFE_AMBIENTE_ATUAL='homologacao';
+const NFE_AMBIENTE_ATUAL='producao';
 const NFE_BASE_URLS={homologacao:'https://homologacao.focusnfe.com.br',producao:'https://api.focusnfe.com.br'};
 function renderStatusNFe(p,i) {
   if(!p.nfe) return '';
