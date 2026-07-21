@@ -2447,6 +2447,9 @@ async function salvarPedido() {
 // ============================================================
 const NFE_PROXY_URL='https://app.eldndigital.com/nfe-proxy/proxy.php';
 const NFE_EMITENTE={cnpj:'59068669000168',nome:'ELDN DIGITAL LTDA',uf:'SP',regimeTributario:1};
+// Precisa refletir SEMPRE o mesmo ambiente configurado em config.php no servidor (trocado manualmente, de propósito).
+// 'homologacao' = notas de teste sem valor fiscal. 'producao' = notas REAIS, com valor fiscal e legal.
+const NFE_AMBIENTE_ATUAL='homologacao';
 const NFE_BASE_URLS={homologacao:'https://homologacao.focusnfe.com.br',producao:'https://api.focusnfe.com.br'};
 function renderStatusNFe(p,i) {
   if(!p.nfe) return '';
@@ -2507,7 +2510,10 @@ async function emitirNFe(i) {
   let payload;
   try { payload=montarPayloadNFe(p); }
   catch(e) { return alert('Não foi possível montar a NF-e: '+e.message); }
-  if(!confirm(`Emitir NF-e de HOMOLOGAÇÃO (ambiente de teste, sem valor fiscal) para o pedido ${p.num}?`)) return;
+  const msgConfirm=NFE_AMBIENTE_ATUAL==='producao'
+    ?`⚠️ ATENÇÃO: isso vai emitir uma NF-e REAL, com valor fiscal e legal, para o pedido ${p.num}. Não é possível desfazer facilmente — só cancelando dentro do prazo da SEFAZ. Confirma a emissão?`
+    :`Emitir NF-e de HOMOLOGAÇÃO (ambiente de teste, sem valor fiscal) para o pedido ${p.num}?`;
+  if(!confirm(msgConfirm)) return;
   const ref=('ped'+p.num+'-'+Date.now()).replace(/[^a-zA-Z0-9_-]/g,'');
   const area=document.getElementById('nfe-resultado-'+i);
   if(area){ area.style.display='block'; area.innerHTML='<em>Emitindo, aguarde...</em>'; }
@@ -2697,7 +2703,7 @@ function verPedido(i) {
     ${!isPedidoDigital(p)?`<div style="border-top:1px solid var(--cor-borda);padding-top:12px;margin-top:16px">
       <small style="color:var(--cor-secundaria);font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:1.2px"><i class="bi bi-receipt me-1"></i>Nota Fiscal</small>
       <div style="margin-top:8px">
-        <button class="btn btn-outline-warning btn-sm" onclick="emitirNFe(${i})"><i class="bi bi-receipt me-1"></i>Emitir NF-e (Homologação/Teste)</button>
+        <button class="btn ${NFE_AMBIENTE_ATUAL==='producao'?'btn-danger':'btn-outline-warning'} btn-sm" onclick="emitirNFe(${i})"><i class="bi bi-receipt me-1"></i>Emitir NF-e ${NFE_AMBIENTE_ATUAL==='producao'?'(REAL)':'(Homologação/Teste)'}</button>
         <div id="nfe-status-${i}">${renderStatusNFe(p,i)}</div>
         <div id="nfe-resultado-${i}" style="display:none"></div>
       </div>
