@@ -2421,7 +2421,7 @@ function montarPayloadNFe(p) {
     if(!prod.ncm||!prod.csosn) throw new Error(`Produto ${it.sku} sem NCM/CSOSN cadastrado — edite o produto antes de emitir`);
     const valorBruto=it.qtd*it.preco;
     return {codigo_produto:it.sku,descricao:it.desc||prod.nome,cfop:uf==='SP'?'5101':'6101',
-      ncm:prod.ncm.replace(/\D/g,''),unidade_comercial:'UN',quantidade_comercial:it.qtd,
+      codigo_ncm:prod.ncm.replace(/\D/g,''),unidade_comercial:'UN',quantidade_comercial:it.qtd,
       valor_unitario_comercial:it.preco,valor_bruto:valorBruto,unidade_tributavel:'UN',
       quantidade_tributavel:it.qtd,valor_unitario_tributavel:it.preco,icms_origem:'0',
       icms_situacao_tributaria:prod.csosn,pis_situacao_tributaria:'08',cofins_situacao_tributaria:'08',
