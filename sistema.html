@@ -2453,12 +2453,9 @@ async function salvarPedido() {
 const ME_PROXY_URL='https://app.eldndigital.com/melhorenvio-proxy/proxy.php';
 // Precisa refletir SEMPRE o mesmo ambiente configurado em config.php no servidor (trocado manualmente, de propósito).
 const ME_AMBIENTE_ATUAL='sandbox';
-const ME_REMETENTE={
-  name:'ELDN Digital Ltda',phone:'11995713710',email:'eldndigital@hotmail.com',
-  document:'34262996824',company_document:'59068669000168',
-  address:'Rua Xareus',number:'76',complement:'Casa 01',district:'Parque Paulistano',
-  city:'São Paulo',state_abbr:'SP',postal_code:'08080220',country_id:'BR'
-};
+// Só o CEP fica aqui (não é dado sensível, é a origem pra cálculo de frete). O restante do remetente
+// (nome, CPF/CNPJ, endereço completo) fica só no proxy PHP do servidor — nunca no sistema.html público.
+const ME_REMETENTE_CEP='08080220';
 function podeCotarFrete(p,cliente) {
   if(!cliente||!cliente.cep||cliente.cep.replace(/\D/g,'').length!==8) return false;
   return getPedidoItens(p).every(it=>{
@@ -2524,9 +2521,9 @@ async function gerarEtiquetaMelhorEnvio(i) {
   const produtosFatura=montarProdutosFaturaEnvio(p);
   if(!volumes.length) return alert('Pedido não tem itens físicos com peso/dimensões cadastrados.');
   const valorDeclarado=produtosFatura.reduce((s,pr)=>s+pr.quantity*pr.unitary_value,0);
+  // 'from' (remetente, com CPF/CNPJ) não é enviado daqui — o proxy injeta sozinho, no servidor.
   const cartPayload={
     service:p.melhorEnvio.cotacaoEscolhida.id,
-    from:ME_REMETENTE,
     to:montarDestinatarioEnvio(cliente),
     volumes,products:produtosFatura,
     options:{insurance_value:valorDeclarado,receipt:false,own_hand:false,reverse:false,non_commercial:true,platform:'Sistema ELDN'}
@@ -2605,7 +2602,7 @@ async function cotarFreteMelhorEnvio(i) {
   const area=document.getElementById('me-cotacoes-'+i);
   if(area){ area.style.display='block'; area.innerHTML='<em>Cotando, aguarde...</em>'; }
   try {
-    const payload={from:{postal_code:ME_REMETENTE.postal_code},to:{postal_code:cliente.cep.replace(/\D/g,'')},products:produtos};
+    const payload={from:{postal_code:ME_REMETENTE_CEP},to:{postal_code:cliente.cep.replace(/\D/g,'')},products:produtos};
     const resp=await fetch(ME_PROXY_URL,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({acao:'cotar',payload})});
     const data=await resp.json();
     const opcoes=Array.isArray(data.resposta)?data.resposta.filter(o=>!o.error):[];
