@@ -694,7 +694,7 @@ table.gestao tbody tr:hover .tbl-sticky-r{background:#1f1545}
     <div class="col-md-6"><label class="form-label">Nome Completo *</label><input class="form-control" id="c-nome"></div>
     <div class="col-md-6"><label class="form-label">E-mail</label><input class="form-control" id="c-email" type="email"></div>
     <div class="col-md-4"><label class="form-label">WhatsApp</label><input class="form-control" id="c-whatsapp"></div>
-    <div class="col-md-4"><label class="form-label">CPF / CNPJ</label><input class="form-control" id="c-cpf"></div>
+    <div class="col-md-4"><label class="form-label">CPF / CNPJ *</label><input class="form-control" id="c-cpf" placeholder="Necessário para emitir NF-e"></div>
     <div class="col-md-4"><label class="form-label">Instagram</label><input class="form-control" id="c-instagram" placeholder="@usuario"></div>
     <div class="col-md-4"><label class="form-label">Canal de Origem</label><select class="form-select" id="c-canal"><option>Instagram</option><option>Amazon</option><option>Indicação</option><option>Parente</option><option>WhatsApp</option><option>Site</option><option>Outro</option></select></div>
     <div class="col-12" style="border-top:1px solid var(--cor-borda);padding-top:12px;margin-top:4px"><small style="color:var(--cor-secundaria);font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:1px"><i class="bi bi-geo-alt-fill me-1"></i>Endereço para Envio</small></div>
@@ -891,7 +891,7 @@ table.gestao tbody tr:hover .tbl-sticky-r{background:#1f1545}
   <div class="modal-body"><input type="hidden" id="pr-idx"><div class="row g-3">
     <div class="col-md-4"><label class="form-label">SKU *</label><input class="form-control" id="pr-sku" placeholder="DEV-MLCF-01"></div>
     <div class="col-md-8"><label class="form-label">Nome do Produto *</label><input class="form-control" id="pr-nome"></div>
-    <div class="col-md-4"><label class="form-label">Categoria</label><select class="form-select" id="pr-categoria"><option>Livro Físico</option><option>Livro Digital</option><option>Kit</option><option>Serviço</option><option>Outro</option></select></div>
+    <div class="col-md-4"><label class="form-label">Categoria</label><select class="form-select" id="pr-categoria" onchange="sugerirFiscalProduto()"><option>Livro Físico</option><option>Livro Digital</option><option>Kit</option><option>Serviço</option><option>Outro</option></select></div>
     <div class="col-md-4"><label class="form-label">Fornecedor Principal</label><input class="form-control" id="pr-fornecedor"></div>
     <div class="col-md-4" style="display:flex;align-items:flex-end;padding-bottom:6px">
       <div class="form-check form-switch mb-0">
@@ -906,6 +906,10 @@ table.gestao tbody tr:hover .tbl-sticky-r{background:#1f1545}
       <div class="col-md-3"><label class="form-label">Custo Unit. (R$)</label><input class="form-control" id="pr-custo" type="text" inputmode="numeric" value="0,00" oninput="mascaraMoeda(this)"></div>
       <div class="col-md-3"><label class="form-label">Frete Unit. (R$)</label><input class="form-control" id="pr-frete" type="text" inputmode="numeric" value="0,00" oninput="mascaraMoeda(this)"></div>
     </div></div>
+    <div class="col-12" style="border-top:1px solid var(--cor-borda);padding-top:12px;margin-top:4px"><small style="color:var(--cor-secundaria);font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:1px"><i class="bi bi-receipt me-1"></i>Dados Fiscais (NF-e)</small></div>
+    <div class="col-md-4"><label class="form-label">NCM</label><input class="form-control" id="pr-ncm" placeholder="4901.10.00" maxlength="10"></div>
+    <div class="col-md-4"><label class="form-label">CSOSN</label><input class="form-control" id="pr-csosn" placeholder="400" maxlength="3"></div>
+    <div class="col-md-4"><label class="form-label">Situação ICMS</label><select class="form-select" id="pr-icms"><option>Isento</option><option>Tributado</option></select></div>
     <div class="col-12"><label class="form-label">Observações</label><textarea class="form-control" id="pr-obs" rows="2"></textarea></div>
   </div></div>
   <div class="modal-footer"><button class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancelar</button><button class="btn btn-primary" onclick="salvarProduto()">Salvar Produto</button></div>
@@ -2120,9 +2124,15 @@ function editarCliente(i) {
   new bootstrap.Modal(document.getElementById('modalCliente')).show();
 }
 
+function validarCpfCnpjCliente() {
+  const digitos=v('c-cpf').replace(/\D/g,'');
+  if(digitos.length!==11 && digitos.length!==14){alert('CPF/CNPJ é obrigatório e precisa ser válido (11 dígitos para CPF ou 14 para CNPJ) — necessário para emitir NF-e.');return false;}
+  return true;
+}
 async function salvarCliente() {
   const nome=document.getElementById('c-nome').value.trim();
   if(!nome) return alert('Nome é obrigatório');
+  if(!validarCpfCnpjCliente()) return;
   const idx=v('c-idx');
   const obj={id:idx===''?(dados.clientes.length?Math.max(...dados.clientes.map(x=>x.id))+1:1):dados.clientes[parseInt(idx)].id,nome,email:v('c-email'),whatsapp:v('c-whatsapp'),cpf:v('c-cpf'),instagram:v('c-instagram'),canal:v('c-canal'),cep:v('c-cep'),logradouro:v('c-logradouro'),numero:v('c-numero'),complemento:v('c-complemento'),bairro:v('c-bairro'),cidade:v('c-cidade'),estado:v('c-estado'),obs:v('c-obs')};
   if(idx==='') await db.collection('clientes').add(obj);
@@ -2136,6 +2146,7 @@ async function salvarCliente() {
 async function salvarClienteECriarPedido() {
   const nome=document.getElementById('c-nome').value.trim();
   if(!nome) return alert('Nome é obrigatório');
+  if(!validarCpfCnpjCliente()) return;
   const idx=v('c-idx');
   const novoId=idx===''?(dados.clientes.length?Math.max(...dados.clientes.map(x=>x.id))+1:1):dados.clientes[parseInt(idx)].id;
   const obj={id:novoId,nome,email:v('c-email'),whatsapp:v('c-whatsapp'),cpf:v('c-cpf'),instagram:v('c-instagram'),canal:v('c-canal'),cep:v('c-cep'),logradouro:v('c-logradouro'),numero:v('c-numero'),complemento:v('c-complemento'),bairro:v('c-bairro'),cidade:v('c-cidade'),estado:v('c-estado'),obs:v('c-obs')};
@@ -2805,6 +2816,14 @@ function toggleDigitalProduto() {
   const isDigital=document.getElementById('pr-digital').checked;
   document.getElementById('pr-estoque-section').style.display=isDigital?'none':'';
 }
+function sugerirFiscalProduto() {
+  const cat=v('pr-categoria');
+  if(cat==='Livro Físico'||cat==='Livro Digital'){
+    if(!v('pr-ncm')) document.getElementById('pr-ncm').value='4901.10.00';
+    if(!v('pr-csosn')) document.getElementById('pr-csosn').value='400';
+    document.getElementById('pr-icms').value='Isento';
+  }
+}
 function editarProduto(i) {
   const p=dados.produtos[i];
   document.getElementById('pr-idx').value=i;
@@ -2819,6 +2838,9 @@ function editarProduto(i) {
   document.getElementById('pr-estini').value=p.estIni||0;
   document.getElementById('pr-custo').value=fmtM(p.custo||0);
   document.getElementById('pr-frete').value=fmtM(p.frete||0);
+  document.getElementById('pr-ncm').value=p.ncm||'';
+  document.getElementById('pr-csosn').value=p.csosn||'';
+  document.getElementById('pr-icms').value=p.icms||'Isento';
   document.getElementById('pr-obs').value=p.obs||'';
   document.getElementById('modalProdutoTitulo').textContent='Editar Produto';
   new bootstrap.Modal(document.getElementById('modalProduto')).show();
@@ -2831,7 +2853,8 @@ async function salvarProduto() {
   const obj={sku,nome,categoria:v('pr-categoria'),fornecedor:v('pr-fornecedor'),digital:isDigital,
     preco:pFloat('pr-preco'),
     estMin:isDigital?0:parseInt(v('pr-estmin'))||0,estIni:isDigital?0:parseInt(v('pr-estini'))||0,
-    custo:isDigital?0:pFloat('pr-custo'),frete:isDigital?0:pFloat('pr-frete'),obs:v('pr-obs')};
+    custo:isDigital?0:pFloat('pr-custo'),frete:isDigital?0:pFloat('pr-frete'),
+    ncm:v('pr-ncm').trim(),csosn:v('pr-csosn').trim(),icms:v('pr-icms'),obs:v('pr-obs')};
   if(idx==='') await db.collection('produtos').add(obj);
   else await db.collection('produtos').doc(dados.produtos[parseInt(idx)]._docId).set(obj);
   bootstrap.Modal.getInstance(document.getElementById('modalProduto')).hide();
