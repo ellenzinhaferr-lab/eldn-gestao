@@ -2484,6 +2484,8 @@ function montarPayloadNFe(p) {
   itensFiscais.forEach((it,idx)=>it.numero_item=idx+1);
   const valorProdutos=itensFiscais.reduce((s,it)=>s+it.valor_bruto,0);
   const valorFrete=p.frete||0;
+  itensFiscais.forEach(it=>it.valor_frete=0);
+  if(valorFrete>0) itensFiscais[0].valor_frete=valorFrete; // SEFAZ exige que a soma do frete por item bata com o frete do cabeçalho
   const payload={natureza_operacao:'Venda de mercadoria',data_emissao:new Date().toISOString(),
     tipo_documento:1,finalidade_emissao:1,presenca_comprador:2,
     cnpj_emitente:NFE_EMITENTE.cnpj,nome_emitente:NFE_EMITENTE.nome,uf_emitente:NFE_EMITENTE.uf,
