@@ -2408,6 +2408,17 @@ async function salvarPedido() {
 // ============================================================
 const NFE_PROXY_URL='https://app.eldndigital.com/nfe-proxy/proxy.php';
 const NFE_EMITENTE={cnpj:'59068669000168',nome:'ELDN DIGITAL LTDA',uf:'SP',regimeTributario:1};
+const NFE_BASE_URLS={homologacao:'https://homologacao.focusnfe.com.br',producao:'https://api.focusnfe.com.br'};
+function renderStatusNFe(p) {
+  if(!p.nfe) return '';
+  const n=p.nfe;
+  const cor=n.status==='autorizado'?'#10B981':(n.status==='erro_autorizacao'||n.status==='rejeitado'?'#EF4444':'#F59E0B');
+  const danfeUrl=n.danfe?(NFE_BASE_URLS[n.ambiente]||'')+n.danfe:null;
+  return `<div style="margin-top:8px;font-size:12px;color:var(--cor-texto-suave)">
+    Última tentativa (${n.ambiente}): <strong style="color:${cor}">${n.status||'—'}</strong>${n.chave?' — Chave: '+n.chave:''}${n.mensagem?' — '+escHtml(n.mensagem):''}
+    ${danfeUrl?`<div style="margin-top:6px"><a href="${escHtml(danfeUrl)}" target="_blank" class="btn btn-outline-success btn-sm" style="font-size:11px"><i class="bi bi-file-earmark-pdf me-1"></i>Baixar DANFe</a></div>`:''}
+  </div>`;
+}
 
 function montarPayloadNFe(p) {
   const cliente=dados.clientes.find(x=>x.id===p.clienteId);
@@ -2464,6 +2475,8 @@ async function emitirNFe(i) {
     const nfeInfo={ambiente:data.ambiente,ref,status:fr.status||null,chave:fr.chave_nfe||null,numero:fr.numero||null,serie:fr.serie||null,danfe:fr.caminho_danfe||fr.url_danfe||null,mensagem:fr.mensagem_sefaz||fr.mensagem||null,emitidoEm:new Date().toISOString()};
     await db.collection('pedidos').doc(p._docId).update({nfe:nfeInfo});
     dados.pedidos[i].nfe=nfeInfo;
+    const statusArea=document.getElementById('nfe-status-'+i);
+    if(statusArea) statusArea.innerHTML=renderStatusNFe(dados.pedidos[i]);
   } catch(e) {
     if(area) area.innerHTML='Erro ao chamar o proxy: '+e.message;
   }
@@ -2525,7 +2538,7 @@ function verPedido(i) {
       <small style="color:var(--cor-secundaria);font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:1.2px"><i class="bi bi-receipt me-1"></i>Nota Fiscal</small>
       <div style="margin-top:8px">
         <button class="btn btn-outline-warning btn-sm" onclick="emitirNFe(${i})"><i class="bi bi-receipt me-1"></i>Emitir NF-e (Homologação/Teste)</button>
-        ${p.nfe?`<div style="margin-top:8px;font-size:12px;color:var(--cor-texto-suave)">Última tentativa (${p.nfe.ambiente}): <strong>${p.nfe.status||'—'}</strong>${p.nfe.chave?' — Chave: '+p.nfe.chave:''}${p.nfe.mensagem?' — '+escHtml(p.nfe.mensagem):''}</div>`:''}
+        <div id="nfe-status-${i}">${renderStatusNFe(p)}</div>
         <div id="nfe-resultado-${i}" style="display:none"></div>
       </div>
     </div>`:''}
