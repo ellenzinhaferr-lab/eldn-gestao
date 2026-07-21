@@ -2403,6 +2403,72 @@ async function salvarPedido() {
   });
 }
 
+// ============================================================
+// NF-e (Focus NFe via proxy PHP no Hostgator)
+// ============================================================
+const NFE_PROXY_URL='https://app.eldndigital.com/nfe-proxy/proxy.php';
+const NFE_EMITENTE={cnpj:'59068669000168',nome:'ELDN DIGITAL LTDA',uf:'SP',regimeTributario:1};
+
+function montarPayloadNFe(p) {
+  const cliente=dados.clientes.find(x=>x.id===p.clienteId);
+  if(!cliente) throw new Error('Pedido sem cliente vinculado');
+  const doc=(cliente.cpf||'').replace(/\D/g,'');
+  if(doc.length!==11 && doc.length!==14) throw new Error('CPF/CNPJ do cliente ausente ou inválido');
+  const uf=(cliente.estado||'').toUpperCase();
+  const itensFiscais=getPedidoItens(p).map(it=>{
+    const prod=dados.produtos.find(x=>x.sku===it.sku);
+    if(!prod||prod.digital) return null;
+    if(!prod.ncm||!prod.csosn) throw new Error(`Produto ${it.sku} sem NCM/CSOSN cadastrado — edite o produto antes de emitir`);
+    const valorBruto=it.qtd*it.preco;
+    return {codigo_produto:it.sku,descricao:it.desc||prod.nome,cfop:uf==='SP'?'5101':'6101',
+      ncm:prod.ncm.replace(/\D/g,''),unidade_comercial:'UN',quantidade_comercial:it.qtd,
+      valor_unitario_comercial:it.preco,valor_bruto:valorBruto,unidade_tributavel:'UN',
+      quantidade_tributavel:it.qtd,valor_unitario_tributavel:it.preco,icms_origem:'0',
+      icms_situacao_tributaria:prod.csosn,pis_situacao_tributaria:'08',cofins_situacao_tributaria:'08',
+      valor_total_tributos:0};
+  }).filter(Boolean);
+  if(!itensFiscais.length) throw new Error('Pedido não tem itens físicos para gerar NF-e');
+  itensFiscais.forEach((it,idx)=>it.numero_item=idx+1);
+  const valorProdutos=itensFiscais.reduce((s,it)=>s+it.valor_bruto,0);
+  const valorFrete=p.frete||0;
+  const payload={natureza_operacao:'Venda de mercadoria',data_emissao:new Date().toISOString(),
+    tipo_documento:1,finalidade_emissao:1,presenca_comprador:2,
+    cnpj_emitente:NFE_EMITENTE.cnpj,nome_emitente:NFE_EMITENTE.nome,uf_emitente:NFE_EMITENTE.uf,
+    regime_tributario_emitente:NFE_EMITENTE.regimeTributario,
+    nome_destinatario:cliente.nome,logradouro_destinatario:cliente.logradouro||'',
+    numero_destinatario:cliente.numero||'',complemento_destinatario:cliente.complemento||'',
+    bairro_destinatario:cliente.bairro||'',municipio_destinatario:cliente.cidade||'',
+    uf_destinatario:uf,cep_destinatario:(cliente.cep||'').replace(/\D/g,''),
+    telefone_destinatario:(cliente.whatsapp||'').replace(/\D/g,''),email_destinatario:cliente.email||'',
+    indicador_inscricao_estadual_destinatario:9,consumidor_final:1,
+    modalidade_frete:valorFrete>0?0:9,valor_frete:valorFrete,valor_produtos:valorProdutos,
+    valor_total:valorProdutos+valorFrete,items:itensFiscais};
+  if(doc.length===14) payload.cnpj_destinatario=doc; else payload.cpf_destinatario=doc;
+  return payload;
+}
+
+async function emitirNFe(i) {
+  const p=dados.pedidos[i];
+  let payload;
+  try { payload=montarPayloadNFe(p); }
+  catch(e) { return alert('Não foi possível montar a NF-e: '+e.message); }
+  if(!confirm(`Emitir NF-e de HOMOLOGAÇÃO (ambiente de teste, sem valor fiscal) para o pedido ${p.num}?`)) return;
+  const ref=('ped'+p.num+'-'+Date.now()).replace(/[^a-zA-Z0-9_-]/g,'');
+  const area=document.getElementById('nfe-resultado-'+i);
+  if(area){ area.style.display='block'; area.innerHTML='<em>Emitindo, aguarde...</em>'; }
+  try {
+    const resp=await fetch(NFE_PROXY_URL,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({acao:'emitir',ref,payload})});
+    const data=await resp.json();
+    const fr=data.focus_resposta||{};
+    if(area) area.innerHTML=`<pre style="white-space:pre-wrap;font-size:11px;max-height:300px;overflow:auto;background:rgba(0,0,0,.2);padding:8px;border-radius:6px">${escHtml(JSON.stringify(data,null,2))}</pre>`;
+    const nfeInfo={ambiente:data.ambiente,ref,status:fr.status||null,chave:fr.chave_nfe||null,numero:fr.numero||null,serie:fr.serie||null,danfe:fr.caminho_danfe||fr.url_danfe||null,mensagem:fr.mensagem_sefaz||fr.mensagem||null,emitidoEm:new Date().toISOString()};
+    await db.collection('pedidos').doc(p._docId).update({nfe:nfeInfo});
+    dados.pedidos[i].nfe=nfeInfo;
+  } catch(e) {
+    if(area) area.innerHTML='Erro ao chamar o proxy: '+e.message;
+  }
+}
+
 function verPedido(i) {
   const p=dados.pedidos[i];
   const itens=getPedidoItens(p);
@@ -2455,6 +2521,14 @@ function verPedido(i) {
       <div style="font-size:12px;color:var(--cor-texto-suave);margin-top:2px">Forma de pagamento: <strong style="color:var(--cor-texto)">${p.pagto||'—'}</strong></div>
     </div>
     ${p.obs?`<div style="margin-top:16px;padding:10px 14px;background:rgba(124,58,237,.07);border-radius:8px;border:1px solid var(--cor-borda);font-size:13px;color:var(--cor-texto-suave)"><i class="bi bi-chat-left-text me-1"></i>${p.obs}</div>`:''}
+    ${!isPedidoDigital(p)?`<div style="border-top:1px solid var(--cor-borda);padding-top:12px;margin-top:16px">
+      <small style="color:var(--cor-secundaria);font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:1.2px"><i class="bi bi-receipt me-1"></i>Nota Fiscal</small>
+      <div style="margin-top:8px">
+        <button class="btn btn-outline-warning btn-sm" onclick="emitirNFe(${i})"><i class="bi bi-receipt me-1"></i>Emitir NF-e (Homologação/Teste)</button>
+        ${p.nfe?`<div style="margin-top:8px;font-size:12px;color:var(--cor-texto-suave)">Última tentativa (${p.nfe.ambiente}): <strong>${p.nfe.status||'—'}</strong>${p.nfe.chave?' — Chave: '+p.nfe.chave:''}${p.nfe.mensagem?' — '+escHtml(p.nfe.mensagem):''}</div>`:''}
+        <div id="nfe-resultado-${i}" style="display:none"></div>
+      </div>
+    </div>`:''}
   `;
   new bootstrap.Modal(document.getElementById('modalVerPedido')).show();
 }
