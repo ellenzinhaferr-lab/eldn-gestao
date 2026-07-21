@@ -2455,7 +2455,7 @@ const ME_PROXY_URL='https://app.eldndigital.com/melhorenvio-proxy/proxy.php';
 const ME_AMBIENTE_ATUAL='sandbox';
 const ME_REMETENTE={
   name:'ELDN Digital Ltda',phone:'11995713710',email:'eldndigital@hotmail.com',
-  document:'59068669000168',company_document:'59068669000168',
+  document:'34262996824',company_document:'59068669000168',
   address:'Rua Xareus',number:'76',complement:'Casa 01',district:'Parque Paulistano',
   city:'São Paulo',state_abbr:'SP',postal_code:'08080220',country_id:'BR'
 };
@@ -2485,11 +2485,111 @@ function montarDestinatarioEnvio(cliente) {
     postal_code:(cliente.cep||'').replace(/\D/g,''),country_id:'BR'
   };
 }
+function montarVolumesEnvio(p) {
+  const vols=[];
+  getPedidoItens(p).forEach(it=>{
+    const prod=dados.produtos.find(x=>x.sku===it.sku);
+    if(!prod||prod.digital) return;
+    for(let n=0;n<it.qtd;n++) vols.push({height:prod.altura,width:prod.largura,length:prod.comprimento,weight:prod.peso});
+  });
+  return vols;
+}
+function montarProdutosFaturaEnvio(p) {
+  return getPedidoItens(p).map(it=>{
+    const prod=dados.produtos.find(x=>x.sku===it.sku);
+    if(!prod||prod.digital) return null;
+    return {name:it.desc||prod.nome,quantity:it.qtd,unitary_value:it.preco};
+  }).filter(Boolean);
+}
+function renderStatusMelhorEnvio(p,i) {
+  const m=p.melhorEnvio;
+  if(!m||!m.orderId) return '';
+  return `<div style="margin-top:8px;font-size:12px;color:var(--cor-texto-suave)">
+    Etiqueta gerada em ${fmtData(m.etiquetaGeradaEm.split('T')[0])}
+    <div style="margin-top:6px;display:flex;gap:8px;flex-wrap:wrap">
+      ${m.linkEtiqueta?`<a href="${escHtml(m.linkEtiqueta)}" target="_blank" class="btn btn-outline-success btn-sm" style="font-size:11px"><i class="bi bi-file-earmark-pdf me-1"></i>Baixar Etiqueta</a>`:''}
+      <button class="btn btn-outline-info btn-sm" style="font-size:11px" onclick="atualizarRastreioMelhorEnvio(${i})"><i class="bi bi-arrow-repeat me-1"></i>Atualizar Rastreio</button>
+    </div>
+  </div>`;
+}
+async function gerarEtiquetaMelhorEnvio(i) {
+  const p=dados.pedidos[i];
+  const cliente=dados.clientes.find(x=>x.id===p.clienteId);
+  if(!cliente) return alert('Pedido sem cliente vinculado.');
+  if(!p.melhorEnvio||!p.melhorEnvio.cotacaoEscolhida) return alert('Escolha uma cotação de frete antes de gerar a etiqueta.');
+  if(p.melhorEnvio.orderId) return alert('Esse pedido já tem uma etiqueta gerada.');
+  const docCliente=(cliente.cpf||'').replace(/\D/g,'');
+  if(docCliente.length!==11) return alert('O cliente precisa ter um CPF válido cadastrado (11 dígitos) pra gerar a etiqueta.');
+  const volumes=montarVolumesEnvio(p);
+  const produtosFatura=montarProdutosFaturaEnvio(p);
+  if(!volumes.length) return alert('Pedido não tem itens físicos com peso/dimensões cadastrados.');
+  const valorDeclarado=produtosFatura.reduce((s,pr)=>s+pr.quantity*pr.unitary_value,0);
+  const cartPayload={
+    service:p.melhorEnvio.cotacaoEscolhida.id,
+    from:ME_REMETENTE,
+    to:montarDestinatarioEnvio(cliente),
+    volumes,products:produtosFatura,
+    options:{insurance_value:valorDeclarado,receipt:false,own_hand:false,reverse:false,non_commercial:true,platform:'Sistema ELDN'}
+  };
+  const msgConfirm=`Confirma a compra do frete e geração da etiqueta pro pedido ${p.num}? Isso vai debitar saldo da sua carteira Melhor Envio (ambiente ${ME_AMBIENTE_ATUAL==='producao'?'PRODUÇÃO — saldo real':'Sandbox — saldo fictício'}).`;
+  if(!confirm(msgConfirm)) return;
+  try {
+    let resp=await fetch(ME_PROXY_URL,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({acao:'cart',payload:cartPayload})});
+    let data=await resp.json();
+    const orderId=data?.resposta?.id;
+    if(!orderId) throw new Error('Carrinho não retornou um ID válido: '+JSON.stringify(data.resposta));
+
+    resp=await fetch(ME_PROXY_URL,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({acao:'checkout',payload:{orders:[orderId]}})});
+    data=await resp.json();
+    if(data?.resposta?.purchase?.status!=='paid') throw new Error('Pagamento não confirmado: '+JSON.stringify(data.resposta));
+
+    await fetch(ME_PROXY_URL,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({acao:'gerar_etiqueta',payload:{orders:[orderId]}})});
+
+    resp=await fetch(ME_PROXY_URL,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({acao:'imprimir',payload:{mode:'public',orders:[orderId]}})});
+    const printData=await resp.json();
+    const linkEtiqueta=printData?.resposta?.url||null;
+
+    const melhorEnvio={...p.melhorEnvio,orderId,linkEtiqueta,etiquetaGeradaEm:new Date().toISOString()};
+    await db.collection('pedidos').doc(p._docId).update({melhorEnvio});
+    dados.pedidos[i].melhorEnvio=melhorEnvio;
+    verPedido(i);
+    if(currentPage==='pedidos') renderPedidos();
+  } catch(e) {
+    alert('Erro ao gerar etiqueta: '+e.message);
+  }
+}
+async function atualizarRastreioMelhorEnvio(i) {
+  const p=dados.pedidos[i];
+  if(!p.melhorEnvio||!p.melhorEnvio.orderId) return;
+  try {
+    const resp=await fetch(ME_PROXY_URL,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({acao:'rastrear',payload:{orders:[p.melhorEnvio.orderId]}})});
+    const data=await resp.json();
+    const info=data?.resposta?.[p.melhorEnvio.orderId];
+    if(!info) return alert('Não recebi informações de rastreio: '+JSON.stringify(data));
+    if(info.tracking) {
+      const linkRastreio='https://www.melhorrastreio.com.br/rastreio/'+info.tracking;
+      await db.collection('pedidos').doc(p._docId).update({rastreio:info.tracking,linkRastreio});
+      dados.pedidos[i].rastreio=info.tracking;
+      dados.pedidos[i].linkRastreio=linkRastreio;
+      verPedido(i);
+      if(currentPage==='pedidos') renderPedidos();
+    } else {
+      alert('Ainda não há código de rastreio — status atual: '+(info.status||'—'));
+    }
+  } catch(e) { alert('Erro ao consultar rastreio: '+e.message); }
+}
 function renderBotaoCotarFrete(p,i,cliente) {
-  if(p.melhorEnvio&&p.melhorEnvio.cotacaoEscolhida) {
-    const c=p.melhorEnvio.cotacaoEscolhida;
+  const m=p.melhorEnvio;
+  if(m&&m.orderId) {
+    return `<div style="font-size:12px">Etiqueta já gerada pra esse pedido (transportadora ${escHtml(m.cotacaoEscolhida.transportadora)}).</div>`;
+  }
+  if(m&&m.cotacaoEscolhida) {
+    const c=m.cotacaoEscolhida;
     return `<div style="font-size:12px;margin-bottom:8px">Frete escolhido: <strong style="color:#fff">${escHtml(c.transportadora)} — ${escHtml(c.servico)}</strong> (${moeda(c.preco)})</div>
-      <button class="btn btn-outline-secondary btn-sm" onclick="cotarFreteMelhorEnvio(${i})"><i class="bi bi-arrow-repeat me-1"></i>Cotar novamente</button>`;
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
+        <button class="btn btn-outline-secondary btn-sm" onclick="cotarFreteMelhorEnvio(${i})"><i class="bi bi-arrow-repeat me-1"></i>Cotar novamente</button>
+        <button class="btn ${ME_AMBIENTE_ATUAL==='producao'?'btn-danger':'btn-warning'} btn-sm" onclick="gerarEtiquetaMelhorEnvio(${i})"><i class="bi bi-tag me-1"></i>Gerar Etiqueta ${ME_AMBIENTE_ATUAL==='producao'?'(REAL)':'(Sandbox/Teste)'}</button>
+      </div>`;
   }
   if(!podeCotarFrete(p,cliente)) {
     return `<button class="btn btn-outline-secondary btn-sm" disabled title="Verifique se o cliente tem CEP cadastrado e se os produtos do pedido têm peso/dimensões cadastrados"><i class="bi bi-truck me-1"></i>Cotar Frete (Melhor Envio)</button>`;
@@ -2813,6 +2913,7 @@ function verPedido(i) {
       <div style="margin-top:8px">
         <div id="me-btn-${i}">${renderBotaoCotarFrete(p,i,cliente)}</div>
         <div id="me-cotacoes-${i}" style="display:none"></div>
+        <div id="me-etiqueta-${i}">${renderStatusMelhorEnvio(p,i)}</div>
       </div>
     </div>`:''}
     ${!isPedidoDigital(p)?`<div style="border-top:1px solid var(--cor-borda);padding-top:12px;margin-top:16px">
