@@ -171,6 +171,7 @@ table.gestao tbody tr:hover .tbl-sticky-r{background:#1f1545}
     <div class="nav-item"><button class="nav-link active" onclick="showPage('dashboard')"><i class="bi bi-grid-fill"></i> Dashboard</button></div>
     <div class="nav-item"><button class="nav-link" onclick="showPage('clientes')"><i class="bi bi-people-fill"></i> Clientes</button></div>
     <div class="nav-item"><button class="nav-link" onclick="showPage('pedidos')"><i class="bi bi-box-seam-fill"></i> Pedidos</button></div>
+    <div class="nav-item"><button class="nav-link" onclick="showPage('fiscal')"><i class="bi bi-receipt-cutoff"></i> Fiscal</button></div>
     <div class="nav-item"><button class="nav-link" onclick="showPage('financeiro')"><i class="bi bi-cash-stack"></i> Financeiro</button></div>
     <div class="nav-item"><button class="nav-link" onclick="showPage('fluxo')"><i class="bi bi-bar-chart-fill"></i> Fluxo de Caixa</button></div>
     <div class="nav-item"><button class="nav-link" onclick="showPage('compras')"><i class="bi bi-cart-fill"></i> Compras</button></div>
@@ -263,7 +264,34 @@ table.gestao tbody tr:hover .tbl-sticky-r{background:#1f1545}
     <div class="page" id="pg-pedidos">
       <div class="table-card">
         <div class="table-header"><h6>Pedidos Diários</h6><div style="display:flex;gap:8px;"><input type="text" class="input-search" placeholder="Buscar pedido..." oninput="filtrarTabela('tabela-pedidos',this.value)"><button class="btn btn-outline-success btn-sm" onclick="abrirModalRecebimento()"><i class="bi bi-cash-coin me-1"></i>Receber</button><button class="btn btn-primary btn-sm" onclick="abrirModal('pedido')"><i class="bi bi-plus-lg"></i> Novo</button></div></div>
-        <div class="table-responsive"><table class="gestao" id="tabela-pedidos"><thead><tr><th class="th-sort" data-col="data" onclick="sortBy('pedidos','data',renderPedidos)">Data</th><th class="th-sort" data-col="num" onclick="sortBy('pedidos','num',renderPedidos)">Nº Pedido</th><th class="th-sort" data-col="cliente" onclick="sortBy('pedidos','cliente',renderPedidos)">Cliente</th><th class="th-sort" data-col="valor" onclick="sortBy('pedidos','valor',renderPedidos)">Total</th><th>Tipo</th><th class="th-sort" data-col="status" onclick="sortBy('pedidos','status',renderPedidos)">Status</th><th>Recebimento</th><th></th></tr></thead><tbody></tbody></table></div>
+        <div class="table-responsive"><table class="gestao" id="tabela-pedidos"><thead><tr><th class="th-sort" data-col="data" onclick="sortBy('pedidos','data',renderPedidos)">Data</th><th class="th-sort" data-col="num" onclick="sortBy('pedidos','num',renderPedidos)">Nº Pedido</th><th class="th-sort" data-col="cliente" onclick="sortBy('pedidos','cliente',renderPedidos)">Cliente</th><th class="th-sort" data-col="valor" onclick="sortBy('pedidos','valor',renderPedidos)">Total</th><th>Tipo</th><th class="th-sort" data-col="status" onclick="sortBy('pedidos','status',renderPedidos)">Status</th><th>NF</th><th>Recebimento</th><th></th></tr></thead><tbody></tbody></table></div>
+      </div>
+    </div>
+
+    <!-- FISCAL -->
+    <div class="page" id="pg-fiscal">
+      <div style="background:var(--cor-card);border:1px solid var(--cor-borda);border-radius:14px;padding:14px 20px;margin-bottom:20px;display:flex;align-items:center;gap:12px;flex-wrap:wrap">
+        <div style="display:flex;border:1px solid var(--cor-borda);border-radius:8px;overflow:hidden">
+          <button id="fiscal-tab-saida" class="btn btn-sm" style="border-radius:0;border:none;background:rgba(124,58,237,.25);color:#fff;font-size:12px;padding:5px 12px" onclick="setFiscalTab('saida')">Nossas Notas (Saída)</button>
+          <button id="fiscal-tab-entrada" class="btn btn-sm" style="border-radius:0;border:none;background:none;color:var(--cor-texto-suave);font-size:12px;padding:5px 12px" onclick="setFiscalTab('entrada')">Notas de Fornecedores (Entrada)</button>
+        </div>
+        <input type="date" class="form-control form-control-sm" id="fiscal-de" style="width:148px" onchange="renderFiscal()">
+        <span style="color:var(--cor-texto-suave);font-size:12px">até</span>
+        <input type="date" class="form-control form-control-sm" id="fiscal-ate" style="width:148px" onchange="renderFiscal()">
+        <input type="text" class="input-search" id="fiscal-busca" placeholder="Buscar nome, CPF/CNPJ ou nº nota..." oninput="renderFiscal()" style="min-width:220px">
+        <select class="form-select form-select-sm" id="fiscal-status" style="width:170px" onchange="renderFiscal()">
+          <option value="">Todos os status</option>
+          <option value="autorizado">Autorizada</option>
+          <option value="cancelado">Cancelada</option>
+          <option value="erro_autorizacao">Erro/Rejeitada</option>
+        </select>
+        <button class="btn btn-outline-secondary btn-sm" onclick="limparFiltroFiscal()">Limpar filtros</button>
+      </div>
+      <div class="table-card">
+        <div class="table-header"><h6 id="fiscal-titulo">Nossas Notas Fiscais (Saída)</h6></div>
+        <div class="table-responsive"><table class="gestao" id="tabela-fiscal"><thead><tr>
+          <th>Natureza da Operação</th><th>Nº Nota</th><th>Série</th><th>Código</th><th>CPF/CNPJ</th><th>Nome</th><th>Data Emissão</th><th>Valor Total</th><th>Status</th><th></th>
+        </tr></thead><tbody></tbody></table></div>
       </div>
     </div>
 
@@ -1348,6 +1376,13 @@ function badgeTipo(t) { return t==='Entrada'?`<span class="badge-canal badge-ent
 function badgeStatus(s) { const m={'Entregue':'#10B981','Enviado':'#3B82F6','Em separação':'#F59E0B','Pendente':'#9D8EC4','Cancelado':'#EF4444','Devolvido':'#EF4444'}; return `<span style="color:${m[s]||'#9D8EC4'};font-size:12px;font-weight:600;">${s}</span>`; }
 function isPedidoDigital(p) { const itens=getPedidoItens(p); if(!itens.length) return false; return itens.every(it=>{ const prod=dados.produtos.find(x=>x.sku===it.sku); return prod&&prod.digital; }); }
 function badgeTipoPedido(p) { const d=isPedidoDigital(p); return d?`<span class="badge-canal badge-digital"><i class="bi bi-file-earmark-fill me-1"></i>Digital</span>`:`<span class="badge-canal badge-livro"><i class="bi bi-box-seam-fill me-1"></i>Físico</span>`; }
+function badgeNF(p) {
+  if(isPedidoDigital(p)) return '<span style="color:var(--cor-texto-suave);font-size:11px">—</span>';
+  if(!p.nfe) return '<span style="color:var(--cor-texto-suave);font-size:11px">Não emitida</span>';
+  const m={autorizado:['#10B981','✅ Emitida'],cancelado:['#9D8EC4','🚫 Cancelada'],erro_autorizacao:['#EF4444','❌ Erro'],rejeitado:['#EF4444','❌ Erro'],processando_autorizacao:['#F59E0B','⏳ Processando']};
+  const [cor,label]=m[p.nfe.status]||['#F59E0B',p.nfe.status||'—'];
+  return `<span style="color:${cor};font-size:11px;font-weight:600">${label}</span>`;
+}
 function nomeCliente(id) { const c=dados.clientes.find(x=>x.id===id); return c?c.nome:'—'; }
 function v(id) { return document.getElementById(id).value; }
 function limpaCampos(ids) { ids.forEach(id=>{ const el=document.getElementById(id); if(el) el.value=''; }); }
@@ -1371,7 +1406,7 @@ function nextNumPedido() { if (!dados.pedidos.length) return 'PED-01'; const num
 // ============================================================
 // NAVEGAÇÃO
 // ============================================================
-const pageTitles = { dashboard:['Dashboard','Visão geral da operação'], clientes:['Clientes','Cadastro e gestão de clientes'], pedidos:['Pedidos','Pedidos diários — todos os canais'], financeiro:['Financeiro','Lançamentos de entradas e saídas'], fluxo:['Fluxo de Caixa','Resumo mensal automático'], compras:['Compras','Compras e fornecedores'], produtos:['Produtos','Cadastro de produtos e preços'], estoque:['Estoque','Controle automático de estoque'], canais:['Canais','Desempenho por canal de venda'], afiliados:['Afiliados','Gestão de afiliados e comissões'], trafego:['Tráfego Pago','Acompanhamento diário de campanhas'], prospeccao:['Prospecção','Pipeline de novos clientes e parceiros'], usuarios:['Usuários','Gerenciar acessos ao sistema'], config:['Configurações','Taxas de canais e dados do sistema'], relatorios:['Relatórios','Geração de relatórios por período'], leads:['Leads','Cadastros da página de degustação gratuita'], appmlc:['App MLC','Desempenho e analytics do aplicativo Meu Lugar de Cura'] };
+const pageTitles = { dashboard:['Dashboard','Visão geral da operação'], clientes:['Clientes','Cadastro e gestão de clientes'], pedidos:['Pedidos','Pedidos diários — todos os canais'], fiscal:['Fiscal','Notas fiscais emitidas (saída) e recebidas de fornecedores (entrada)'], financeiro:['Financeiro','Lançamentos de entradas e saídas'], fluxo:['Fluxo de Caixa','Resumo mensal automático'], compras:['Compras','Compras e fornecedores'], produtos:['Produtos','Cadastro de produtos e preços'], estoque:['Estoque','Controle automático de estoque'], canais:['Canais','Desempenho por canal de venda'], afiliados:['Afiliados','Gestão de afiliados e comissões'], trafego:['Tráfego Pago','Acompanhamento diário de campanhas'], prospeccao:['Prospecção','Pipeline de novos clientes e parceiros'], usuarios:['Usuários','Gerenciar acessos ao sistema'], config:['Configurações','Taxas de canais e dados do sistema'], relatorios:['Relatórios','Geração de relatórios por período'], leads:['Leads','Cadastros da página de degustação gratuita'], appmlc:['App MLC','Desempenho e analytics do aplicativo Meu Lugar de Cura'] };
 
 function fixarStickyHeaders(pgId) {
   setTimeout(function(){
@@ -1401,7 +1436,7 @@ function showPage(id) {
   fixarStickyHeaders(id);
 }
 
-function renderPage(id) { const fn={dashboard:renderDashboard,clientes:renderClientes,pedidos:renderPedidos,financeiro:renderFinanceiro,fluxo:renderFluxo,compras:renderCompras,produtos:renderProdutos,estoque:renderEstoque,canais:renderCanais,afiliados:renderAfiliados,trafego:renderTrafego,prospeccao:renderProspeccao,usuarios:renderUsuarios,config:renderConfig,relatorios:renderRelatorios,leads:renderLeads,appmlc:renderAppMlc}; if(fn[id]) fn[id](); }
+function renderPage(id) { const fn={dashboard:renderDashboard,clientes:renderClientes,pedidos:renderPedidos,fiscal:renderFiscal,financeiro:renderFinanceiro,fluxo:renderFluxo,compras:renderCompras,produtos:renderProdutos,estoque:renderEstoque,canais:renderCanais,afiliados:renderAfiliados,trafego:renderTrafego,prospeccao:renderProspeccao,usuarios:renderUsuarios,config:renderConfig,relatorios:renderRelatorios,leads:renderLeads,appmlc:renderAppMlc}; if(fn[id]) fn[id](); }
 
 // ============================================================
 // LEADS
@@ -2090,6 +2125,10 @@ function verHistoricoCliente(clienteId) {
     </div>
     <div class="table-responsive"><table class="gestao"><thead><tr><th>Data</th><th>Nº Pedido</th><th>Produto</th><th>Qtd</th><th>Valor</th><th>Status</th></tr></thead><tbody>
     ${peds.length?peds.map(p=>`<tr><td>${fmtData(p.data)}</td><td style="font-weight:600;color:#fff">${p.num}</td><td style="max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${getPedidoDesc(p)}</td><td style="text-align:center">${getPedidoItens(p).reduce((s,i)=>s+i.qtd,0)}</td><td style="color:var(--cor-verde);font-weight:600">${moeda(getPedidoTotal(p))}</td><td>${badgeStatus(p.status)}</td></tr>`).join(''):'<tr><td colspan="6" style="text-align:center;color:var(--cor-texto-suave);padding:20px">Nenhum pedido</td></tr>'}
+    </tbody></table></div>
+    <div style="border-top:1px solid var(--cor-borda);padding-top:12px;margin-top:16px"><small style="color:var(--cor-secundaria);font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:1.2px"><i class="bi bi-receipt-cutoff me-1"></i>Notas Fiscais</small></div>
+    <div class="table-responsive" style="margin-top:8px"><table class="gestao"><thead><tr><th>Nº Nota</th><th>Série</th><th>Data Emissão</th><th>Valor Total</th><th>Status</th><th></th></tr></thead><tbody>
+    ${(()=>{const notas=peds.filter(p=>p.nfe);return notas.length?notas.map(p=>{const danfeUrl=p.nfe.danfe?(NFE_BASE_URLS[p.nfe.ambiente]||'')+p.nfe.danfe:null;return `<tr><td style="font-family:monospace">${p.nfe.numero||'—'}</td><td>${p.nfe.serie||'—'}</td><td>${p.nfe.emitidoEm?fmtData(p.nfe.emitidoEm.split('T')[0]):'—'}</td><td style="color:var(--cor-verde);font-weight:600">${moeda(p.nfe.valorTotal!=null?p.nfe.valorTotal:getPedidoTotal(p))}</td><td>${statusNFeLabel(p.nfe.status)}</td><td>${danfeUrl?`<a href="${escHtml(danfeUrl)}" target="_blank" class="btn-sm-action" style="color:#10B981" title="Baixar DANFe"><i class="bi bi-file-earmark-pdf-fill"></i></a>`:''}</td></tr>`;}).join(''):'<tr><td colspan="6" style="text-align:center;color:var(--cor-texto-suave);padding:20px">Nenhuma nota fiscal emitida</td></tr>';})()}
     </tbody></table></div>`;
   new bootstrap.Modal(document.getElementById('modalHistoricoCliente')).show();
 }
@@ -2339,8 +2378,8 @@ function renderPedidos() {
     if(recStatus==='Recebido') recCell=`<span style="color:#10B981;font-size:11px;font-weight:600"><i class="bi bi-check-circle-fill me-1"></i>Recebido</span>`;
     else if(recDate) { const overdue=recDate<hoje; recCell=`<span style="color:${overdue?'#EF4444':'#F59E0B'};font-size:11px;font-weight:600"><i class="bi bi-clock me-1"></i>${fmtData(recDate)}</span>`; }
     const btnRec=recStatus!=='Recebido'?`<button class="btn-sm-action" style="color:#10B981" onclick="marcarRecebido(${ri})" title="Marcar como Recebido"><i class="bi bi-check-circle"></i></button>`:`<button class="btn-sm-action" style="color:#F59E0B;opacity:.7" onclick="desmarcarRecebido(${ri})" title="Desfazer recebimento"><i class="bi bi-arrow-counterclockwise"></i></button>`;
-    return `<tr style="${rowStyle}"><td>${fmtData(p.data)}</td><td style="font-weight:600;color:#fff">${p.num}</td><td>${nomeCliente(p.clienteId)}</td><td style="font-weight:600;color:var(--cor-verde)">${moeda(bruto)}</td><td>${badgeTipoPedido(p)}</td><td>${badgeStatus(p.status)}</td><td style="white-space:nowrap">${recCell}</td><td style="white-space:nowrap">${btnRec}<button class="btn-sm-action" style="color:#60A5FA" onclick="verPedido(${ri})" title="Visualizar"><i class="bi bi-eye-fill"></i></button><button class="btn-sm-action btn-edit" onclick="editarPedido(${ri})" title="Editar"><i class="bi bi-pencil-fill"></i></button><button class="btn-sm-action btn-delete" onclick="deletar('pedidos',${ri})" title="Excluir"><i class="bi bi-trash-fill"></i></button></td></tr>`;
-  }).join(''):'<tr><td colspan="8"><div class="empty-state"><i class="bi bi-box-seam"></i>Nenhum pedido ainda</div></td></tr>';
+    return `<tr style="${rowStyle}"><td>${fmtData(p.data)}</td><td style="font-weight:600;color:#fff">${p.num}</td><td>${nomeCliente(p.clienteId)}</td><td style="font-weight:600;color:var(--cor-verde)">${moeda(bruto)}</td><td>${badgeTipoPedido(p)}</td><td>${badgeStatus(p.status)}</td><td>${badgeNF(p)}</td><td style="white-space:nowrap">${recCell}</td><td style="white-space:nowrap">${btnRec}<button class="btn-sm-action" style="color:#60A5FA" onclick="verPedido(${ri})" title="Visualizar"><i class="bi bi-eye-fill"></i></button><button class="btn-sm-action btn-edit" onclick="editarPedido(${ri})" title="Editar"><i class="bi bi-pencil-fill"></i></button><button class="btn-sm-action btn-delete" onclick="deletar('pedidos',${ri})" title="Excluir"><i class="bi bi-trash-fill"></i></button></td></tr>`;
+  }).join(''):'<tr><td colspan="9"><div class="empty-state"><i class="bi bi-box-seam"></i>Nenhum pedido ainda</div></td></tr>';
   atualizarThSort('pedidos',s.col,s.dir);
 }
 function editarPedido(i) {
@@ -2409,14 +2448,17 @@ async function salvarPedido() {
 const NFE_PROXY_URL='https://app.eldndigital.com/nfe-proxy/proxy.php';
 const NFE_EMITENTE={cnpj:'59068669000168',nome:'ELDN DIGITAL LTDA',uf:'SP',regimeTributario:1};
 const NFE_BASE_URLS={homologacao:'https://homologacao.focusnfe.com.br',producao:'https://api.focusnfe.com.br'};
-function renderStatusNFe(p) {
+function renderStatusNFe(p,i) {
   if(!p.nfe) return '';
   const n=p.nfe;
-  const cor=n.status==='autorizado'?'#10B981':(n.status==='erro_autorizacao'||n.status==='rejeitado'?'#EF4444':'#F59E0B');
+  const cor=n.status==='autorizado'?'#10B981':(n.status==='erro_autorizacao'||n.status==='rejeitado'?'#EF4444':(n.status==='cancelado'?'#9D8EC4':'#F59E0B'));
   const danfeUrl=n.danfe?(NFE_BASE_URLS[n.ambiente]||'')+n.danfe:null;
   return `<div style="margin-top:8px;font-size:12px;color:var(--cor-texto-suave)">
-    Última tentativa (${n.ambiente}): <strong style="color:${cor}">${n.status||'—'}</strong>${n.chave?' — Chave: '+n.chave:''}${n.mensagem?' — '+escHtml(n.mensagem):''}
-    ${danfeUrl?`<div style="margin-top:6px"><a href="${escHtml(danfeUrl)}" target="_blank" class="btn btn-outline-success btn-sm" style="font-size:11px"><i class="bi bi-file-earmark-pdf me-1"></i>Baixar DANFe</a></div>`:''}
+    Última tentativa (${n.ambiente}): <strong style="color:${cor}">${statusNFeLabel(n.status)}</strong>${n.chave?' — Chave: '+n.chave:''}${n.mensagem?' — '+escHtml(n.mensagem):''}
+    <div style="margin-top:6px;display:flex;gap:8px;flex-wrap:wrap">
+      ${danfeUrl?`<a href="${escHtml(danfeUrl)}" target="_blank" class="btn btn-outline-success btn-sm" style="font-size:11px"><i class="bi bi-file-earmark-pdf me-1"></i>Baixar DANFe</a>`:''}
+      ${n.status==='autorizado'&&i!=null?`<button class="btn btn-outline-danger btn-sm" style="font-size:11px" onclick="cancelarNFe(${i})"><i class="bi bi-x-circle me-1"></i>Cancelar NF-e</button>`:''}
+    </div>
   </div>`;
 }
 
@@ -2472,14 +2514,130 @@ async function emitirNFe(i) {
     const data=await resp.json();
     const fr=data.focus_resposta||{};
     if(area) area.innerHTML=`<pre style="white-space:pre-wrap;font-size:11px;max-height:300px;overflow:auto;background:rgba(0,0,0,.2);padding:8px;border-radius:6px">${escHtml(JSON.stringify(data,null,2))}</pre>`;
-    const nfeInfo={ambiente:data.ambiente,ref,status:fr.status||null,chave:fr.chave_nfe||null,numero:fr.numero||null,serie:fr.serie||null,danfe:fr.caminho_danfe||fr.url_danfe||null,mensagem:fr.mensagem_sefaz||fr.mensagem||null,emitidoEm:new Date().toISOString()};
+    const cliente=dados.clientes.find(x=>x.id===p.clienteId);
+    const nfeInfo={ambiente:data.ambiente,ref,status:fr.status||null,chave:fr.chave_nfe||null,numero:fr.numero||null,serie:fr.serie||null,danfe:fr.caminho_danfe||fr.url_danfe||null,mensagem:fr.mensagem_sefaz||fr.mensagem||null,emitidoEm:new Date().toISOString(),
+      naturezaOperacao:payload.natureza_operacao,valorTotal:payload.valor_total,pedidoNum:p.num,
+      clienteId:p.clienteId,clienteNome:cliente?cliente.nome:'',clienteCpf:cliente?cliente.cpf:''};
     await db.collection('pedidos').doc(p._docId).update({nfe:nfeInfo});
     dados.pedidos[i].nfe=nfeInfo;
     const statusArea=document.getElementById('nfe-status-'+i);
-    if(statusArea) statusArea.innerHTML=renderStatusNFe(dados.pedidos[i]);
+    if(statusArea) statusArea.innerHTML=renderStatusNFe(dados.pedidos[i],i);
+    if(currentPage==='pedidos') renderPedidos();
+    if(currentPage==='fiscal') renderFiscal();
   } catch(e) {
     if(area) area.innerHTML='Erro ao chamar o proxy: '+e.message;
   }
+}
+
+async function cancelarNFe(i) {
+  const p=dados.pedidos[i];
+  if(!p.nfe||p.nfe.status!=='autorizado') return alert('Essa nota não está autorizada — não há o que cancelar.');
+  let justificativa=prompt('Motivo do cancelamento (mínimo 15 caracteres — exigido pela SEFAZ):');
+  if(justificativa===null) return;
+  justificativa=justificativa.trim();
+  if(justificativa.length<15||justificativa.length>255) return alert('A justificativa precisa ter entre 15 e 255 caracteres.');
+  if(!confirm(`Confirma o cancelamento da NF-e nº ${p.nfe.numero} (série ${p.nfe.serie}) do pedido ${p.num}? Essa ação não pode ser desfeita.`)) return;
+  try {
+    const resp=await fetch(NFE_PROXY_URL,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({acao:'cancelar',ref:p.nfe.ref,justificativa})});
+    const data=await resp.json();
+    const fr=data.focus_resposta||{};
+    const nfeInfo={...p.nfe,status:fr.status||p.nfe.status,mensagem:fr.mensagem_sefaz||fr.mensagem||p.nfe.mensagem,canceladoEm:new Date().toISOString()};
+    await db.collection('pedidos').doc(p._docId).update({nfe:nfeInfo});
+    dados.pedidos[i].nfe=nfeInfo;
+    alert('Resposta da Focus NFe:\n\n'+JSON.stringify(data,null,2));
+    const statusArea=document.getElementById('nfe-status-'+i);
+    if(statusArea) statusArea.innerHTML=renderStatusNFe(dados.pedidos[i],i);
+    if(currentPage==='pedidos') renderPedidos();
+    if(currentPage==='fiscal') renderFiscal();
+  } catch(e) {
+    alert('Erro ao cancelar: '+e.message);
+  }
+}
+
+// ============================================================
+// FISCAL (tela de consulta — Nossas Notas x Notas de Fornecedores)
+// ============================================================
+let fiscalTab='saida';
+function setFiscalTab(tab) {
+  fiscalTab=tab;
+  document.getElementById('fiscal-tab-saida').style.background=tab==='saida'?'rgba(124,58,237,.25)':'none';
+  document.getElementById('fiscal-tab-saida').style.color=tab==='saida'?'#fff':'var(--cor-texto-suave)';
+  document.getElementById('fiscal-tab-entrada').style.background=tab==='entrada'?'rgba(124,58,237,.25)':'none';
+  document.getElementById('fiscal-tab-entrada').style.color=tab==='entrada'?'#fff':'var(--cor-texto-suave)';
+  document.getElementById('fiscal-titulo').textContent=tab==='saida'?'Nossas Notas Fiscais (Saída)':'Notas Fiscais de Fornecedores (Entrada)';
+  document.getElementById('fiscal-status').style.display=tab==='saida'?'':'none';
+  renderFiscal();
+}
+function limparFiltroFiscal() {
+  document.getElementById('fiscal-de').value='';
+  document.getElementById('fiscal-ate').value='';
+  document.getElementById('fiscal-busca').value='';
+  document.getElementById('fiscal-status').value='';
+  renderFiscal();
+}
+function statusNFeLabel(status) {
+  const m={autorizado:'✅ Autorizada',cancelado:'🚫 Cancelada','cancelamento homologado':'🚫 Cancelada',erro_autorizacao:'❌ Rejeitada',rejeitado:'❌ Rejeitada',processando_autorizacao:'⏳ Processando'};
+  return m[status]||status||'—';
+}
+function renderFiscal() {
+  const de=v('fiscal-de'), ate=v('fiscal-ate'), busca=(v('fiscal-busca')||'').toLowerCase().trim(), statusF=v('fiscal-status');
+  const tbody=document.querySelector('#tabela-fiscal tbody');
+  const linhas=[];
+  if(fiscalTab==='saida') {
+    dados.pedidos.forEach((p,i)=>{
+      if(!p.nfe) return;
+      const cliente=dados.clientes.find(x=>x.id===p.clienteId);
+      const dataEmissao=(p.nfe.emitidoEm||'').split('T')[0];
+      if(de&&dataEmissao<de) return;
+      if(ate&&dataEmissao>ate) return;
+      if(statusF&&p.nfe.status!==statusF) return;
+      const nome=p.nfe.clienteNome||(cliente?cliente.nome:'—');
+      const cpf=p.nfe.clienteCpf||(cliente?cliente.cpf:'');
+      const codigo=p.nfe.clienteId!=null?p.nfe.clienteId:(p.clienteId!=null?p.clienteId:'—');
+      const valor=p.nfe.valorTotal!=null?p.nfe.valorTotal:getPedidoTotal(p);
+      const natureza=p.nfe.naturezaOperacao||'Venda de mercadoria';
+      if(busca&&!(nome.toLowerCase().includes(busca)||(cpf||'').includes(busca)||(p.nfe.numero||'').includes(busca))) return;
+      linhas.push({data:dataEmissao||'',html:`<tr>
+        <td>${escHtml(natureza)}</td>
+        <td style="font-family:monospace">${p.nfe.numero||'—'}</td>
+        <td>${p.nfe.serie||'—'}</td>
+        <td>${codigo}</td>
+        <td>${cpf||'—'}</td>
+        <td style="font-weight:600;color:#fff">${escHtml(nome)}</td>
+        <td>${dataEmissao?fmtData(dataEmissao):'—'}</td>
+        <td style="color:var(--cor-verde);font-weight:600">${moeda(valor)}</td>
+        <td>${statusNFeLabel(p.nfe.status)}</td>
+        <td style="white-space:nowrap">
+          ${p.nfe.danfe?`<a href="${escHtml((NFE_BASE_URLS[p.nfe.ambiente]||'')+p.nfe.danfe)}" target="_blank" class="btn-sm-action" style="color:#10B981" title="Baixar DANFe"><i class="bi bi-file-earmark-pdf-fill"></i></a>`:''}
+          <button class="btn-sm-action" style="color:#60A5FA" onclick="verPedido(${i})" title="Ver Pedido"><i class="bi bi-eye-fill"></i></button>
+          ${p.nfe.status==='autorizado'?`<button class="btn-sm-action btn-delete" onclick="cancelarNFe(${i})" title="Cancelar NF-e"><i class="bi bi-x-circle-fill"></i></button>`:''}
+        </td>
+      </tr>`});
+    });
+  } else {
+    dados.compras.forEach(c=>{
+      if(!c.nf) return;
+      const dataC=c.data||'';
+      if(de&&dataC<de) return;
+      if(ate&&dataC>ate) return;
+      const valor=(c.qtd*c.custo)+(c.frete||0)+(c.imposto||0);
+      if(busca&&!((c.fornecedor||'').toLowerCase().includes(busca)||(c.nf||'').toLowerCase().includes(busca))) return;
+      linhas.push({data:dataC,html:`<tr>
+        <td>Compra de mercadoria</td>
+        <td style="font-family:monospace">${escHtml(c.nf)}</td>
+        <td>—</td>
+        <td>—</td>
+        <td>—</td>
+        <td style="font-weight:600;color:#fff">${escHtml(c.fornecedor||'—')}</td>
+        <td>${dataC?fmtData(dataC):'—'}</td>
+        <td style="color:var(--cor-verde);font-weight:600">${moeda(valor)}</td>
+        <td>Registrada</td>
+        <td></td>
+      </tr>`});
+    });
+  }
+  linhas.sort((a,b)=>(b.data||'').localeCompare(a.data||''));
+  tbody.innerHTML=linhas.length?linhas.map(l=>l.html).join(''):`<tr><td colspan="10"><div class="empty-state"><i class="bi bi-receipt"></i>Nenhuma nota encontrada</div></td></tr>`;
 }
 
 function verPedido(i) {
@@ -2538,7 +2696,7 @@ function verPedido(i) {
       <small style="color:var(--cor-secundaria);font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:1.2px"><i class="bi bi-receipt me-1"></i>Nota Fiscal</small>
       <div style="margin-top:8px">
         <button class="btn btn-outline-warning btn-sm" onclick="emitirNFe(${i})"><i class="bi bi-receipt me-1"></i>Emitir NF-e (Homologação/Teste)</button>
-        <div id="nfe-status-${i}">${renderStatusNFe(p)}</div>
+        <div id="nfe-status-${i}">${renderStatusNFe(p,i)}</div>
         <div id="nfe-resultado-${i}" style="display:none"></div>
       </div>
     </div>`:''}
