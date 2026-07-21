@@ -2451,6 +2451,16 @@ const NFE_EMITENTE={cnpj:'59068669000168',nome:'ELDN DIGITAL LTDA',uf:'SP',regim
 // 'homologacao' = notas de teste sem valor fiscal. 'producao' = notas REAIS, com valor fiscal e legal.
 const NFE_AMBIENTE_ATUAL='producao';
 const NFE_BASE_URLS={homologacao:'https://homologacao.focusnfe.com.br',producao:'https://api.focusnfe.com.br'};
+function podeEmitirNFe(p) {
+  if(!p.nfe) return true;
+  return ['cancelado','cancelamento homologado','erro_autorizacao','rejeitado'].includes(p.nfe.status);
+}
+function renderBotaoEmitirNFe(p,i) {
+  if(podeEmitirNFe(p)) {
+    return `<button class="btn ${NFE_AMBIENTE_ATUAL==='producao'?'btn-danger':'btn-outline-warning'} btn-sm" onclick="emitirNFe(${i})"><i class="bi bi-receipt me-1"></i>Emitir NF-e ${NFE_AMBIENTE_ATUAL==='producao'?'(REAL)':'(Homologação/Teste)'}</button>`;
+  }
+  return `<button class="btn btn-outline-secondary btn-sm" disabled title="Nota já emitida — cancele a nota atual pra poder emitir outra"><i class="bi bi-check-circle me-1"></i>NF-e já emitida</button>`;
+}
 function renderStatusNFe(p,i) {
   if(!p.nfe) return '';
   const n=p.nfe;
@@ -2507,6 +2517,7 @@ function montarPayloadNFe(p) {
 
 async function emitirNFe(i) {
   const p=dados.pedidos[i];
+  if(!podeEmitirNFe(p)) return alert('Esse pedido já tem uma NF-e emitida. Cancele a nota atual antes de emitir outra — isso evita duplicidade.');
   let payload;
   try { payload=montarPayloadNFe(p); }
   catch(e) { return alert('Não foi possível montar a NF-e: '+e.message); }
@@ -2530,6 +2541,8 @@ async function emitirNFe(i) {
     dados.pedidos[i].nfe=nfeInfo;
     const statusArea=document.getElementById('nfe-status-'+i);
     if(statusArea) statusArea.innerHTML=renderStatusNFe(dados.pedidos[i],i);
+    const btnArea=document.getElementById('nfe-btn-'+i);
+    if(btnArea) btnArea.innerHTML=renderBotaoEmitirNFe(dados.pedidos[i],i);
     if(currentPage==='pedidos') renderPedidos();
     if(currentPage==='fiscal') renderFiscal();
   } catch(e) {
@@ -2555,6 +2568,8 @@ async function cancelarNFe(i) {
     alert('Resposta da Focus NFe:\n\n'+JSON.stringify(data,null,2));
     const statusArea=document.getElementById('nfe-status-'+i);
     if(statusArea) statusArea.innerHTML=renderStatusNFe(dados.pedidos[i],i);
+    const btnArea=document.getElementById('nfe-btn-'+i);
+    if(btnArea) btnArea.innerHTML=renderBotaoEmitirNFe(dados.pedidos[i],i);
     if(currentPage==='pedidos') renderPedidos();
     if(currentPage==='fiscal') renderFiscal();
   } catch(e) {
@@ -2703,7 +2718,7 @@ function verPedido(i) {
     ${!isPedidoDigital(p)?`<div style="border-top:1px solid var(--cor-borda);padding-top:12px;margin-top:16px">
       <small style="color:var(--cor-secundaria);font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:1.2px"><i class="bi bi-receipt me-1"></i>Nota Fiscal</small>
       <div style="margin-top:8px">
-        <button class="btn ${NFE_AMBIENTE_ATUAL==='producao'?'btn-danger':'btn-outline-warning'} btn-sm" onclick="emitirNFe(${i})"><i class="bi bi-receipt me-1"></i>Emitir NF-e ${NFE_AMBIENTE_ATUAL==='producao'?'(REAL)':'(Homologação/Teste)'}</button>
+        <div id="nfe-btn-${i}">${renderBotaoEmitirNFe(p,i)}</div>
         <div id="nfe-status-${i}">${renderStatusNFe(p,i)}</div>
         <div id="nfe-resultado-${i}" style="display:none"></div>
       </div>
