@@ -1379,7 +1379,7 @@ function badgeTipoPedido(p) { const d=isPedidoDigital(p); return d?`<span class=
 function badgeNF(p) {
   if(isPedidoDigital(p)) return '<span style="color:var(--cor-texto-suave);font-size:11px">—</span>';
   if(!p.nfe) return '<span style="color:var(--cor-texto-suave);font-size:11px">Não emitida</span>';
-  const m={autorizado:['#10B981','✅ Emitida'],cancelado:['#9D8EC4','🚫 Cancelada'],erro_autorizacao:['#EF4444','❌ Erro'],rejeitado:['#EF4444','❌ Erro'],processando_autorizacao:['#F59E0B','⏳ Processando']};
+  const m={autorizado:['#10B981','✅ Nº '+(p.nfe.numero||'?')+'/'+(p.nfe.serie||'?')],cancelado:['#9D8EC4','🚫 Cancelada (Nº '+(p.nfe.numero||'?')+')'],erro_autorizacao:['#EF4444','❌ Erro'],rejeitado:['#EF4444','❌ Erro'],processando_autorizacao:['#F59E0B','⏳ Processando']};
   const [cor,label]=m[p.nfe.status]||['#F59E0B',p.nfe.status||'—'];
   return `<span style="color:${cor};font-size:11px;font-weight:600">${label}</span>`;
 }
@@ -2467,6 +2467,7 @@ function renderStatusNFe(p,i) {
   const cor=n.status==='autorizado'?'#10B981':(n.status==='erro_autorizacao'||n.status==='rejeitado'?'#EF4444':(n.status==='cancelado'?'#9D8EC4':'#F59E0B'));
   const danfeUrl=n.danfe?(NFE_BASE_URLS[n.ambiente]||'')+n.danfe:null;
   return `<div style="margin-top:8px;font-size:12px;color:var(--cor-texto-suave)">
+    ${n.numero?`<div style="font-size:13px;margin-bottom:2px">NF-e nº <strong style="color:var(--cor-texto)">${n.numero}</strong> — Série <strong style="color:var(--cor-texto)">${n.serie||'—'}</strong></div>`:''}
     Última tentativa (${n.ambiente}): <strong style="color:${cor}">${statusNFeLabel(n.status)}</strong>${n.chave?' — Chave: '+n.chave:''}${n.mensagem?' — '+escHtml(n.mensagem):''}
     <div style="margin-top:6px;display:flex;gap:8px;flex-wrap:wrap">
       ${danfeUrl?`<a href="${escHtml(danfeUrl)}" target="_blank" class="btn btn-outline-success btn-sm" style="font-size:11px"><i class="bi bi-file-earmark-pdf me-1"></i>Baixar DANFe</a>`:''}
