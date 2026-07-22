@@ -2485,9 +2485,15 @@ async function verificarSaldoMelhorEnvio() {
 const ME_REMETENTE_CEP='08080220';
 function podeCotarFrete(p,cliente) {
   if(!cliente||!cliente.cep||cliente.cep.replace(/\D/g,'').length!==8) return false;
-  return getPedidoItens(p).every(it=>{
+  // Considera só os itens físicos do pedido — itens digitais não entram no frete e não têm peso/dimensões.
+  const itensFisicos=getPedidoItens(p).filter(it=>{
     const prod=dados.produtos.find(x=>x.sku===it.sku);
-    return prod && !prod.digital && prod.peso>0 && prod.altura>0 && prod.largura>0 && prod.comprimento>0;
+    return prod && !prod.digital;
+  });
+  if(!itensFisicos.length) return false;
+  return itensFisicos.every(it=>{
+    const prod=dados.produtos.find(x=>x.sku===it.sku);
+    return prod.peso>0 && prod.altura>0 && prod.largura>0 && prod.comprimento>0;
   });
 }
 function montarProdutosEnvio(p) {
