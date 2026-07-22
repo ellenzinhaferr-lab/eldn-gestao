@@ -3005,7 +3005,7 @@ async function enviarEmailNFe(i) {
   const btn=document.getElementById('nfe-btn-email-'+i);
   if(btn){btn.disabled=true;btn.innerHTML='<i class="bi bi-hourglass-split me-1"></i>Enviando...';}
   try {
-    const resp=await fetch(NFE_PROXY_URL,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({acao:'enviar_email',ref:n.ref,emails})});
+    const resp=await fetch(NFE_PROXY_URL,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({acao:'enviar_email',ref:n.ref,emails,nfe:{ambiente:n.ambiente,danfe:n.danfe,numero:n.numero,pedidoNum:n.pedidoNum,clienteNome:n.clienteNome}})});
     const data=await resp.json();
     if(data.focus_status>=200&&data.focus_status<300) alert('Email enviado com sucesso para: '+emails.join(', '));
     else alert('Erro ao enviar email:\n\n'+JSON.stringify(data.focus_resposta||data,null,2));
