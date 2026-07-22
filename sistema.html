@@ -2588,8 +2588,9 @@ async function gerarEtiquetaMelhorEnvio(i) {
     const linkEtiqueta=printData?.resposta?.url||null;
 
     const melhorEnvio={...p.melhorEnvio,orderId,linkEtiqueta,etiquetaGeradaEm:new Date().toISOString()};
-    await db.collection('pedidos').doc(p._docId).update({melhorEnvio});
+    await db.collection('pedidos').doc(p._docId).update({melhorEnvio,status:'Enviado'});
     dados.pedidos[i].melhorEnvio=melhorEnvio;
+    dados.pedidos[i].status='Enviado';
     verPedido(i);
     if(currentPage==='pedidos') renderPedidos();
   } catch(e) {
@@ -2663,8 +2664,9 @@ async function gerarEtiquetasLote() {
 
     for(const s of sucesso) {
       const melhorEnvio={...s.p.melhorEnvio,orderId:s.orderId,linkEtiqueta:linkEtiquetas,etiquetaGeradaEm:new Date().toISOString()};
-      await db.collection('pedidos').doc(s.p._docId).update({melhorEnvio});
+      await db.collection('pedidos').doc(s.p._docId).update({melhorEnvio,status:'Enviado'});
       dados.pedidos[s.i].melhorEnvio=melhorEnvio;
+      dados.pedidos[s.i].status='Enviado';
     }
     if(currentPage==='pedidos') renderPedidos();
     let html=`<div style="color:var(--cor-verde)"><i class="bi bi-check-circle-fill me-1"></i>${sucesso.length} etiqueta(s) gerada(s) com sucesso.</div>`;
