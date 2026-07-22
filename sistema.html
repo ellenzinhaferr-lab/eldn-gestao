@@ -2863,14 +2863,28 @@ function renderStatusNFe(p,i) {
   const n=p.nfe;
   const cor=n.status==='autorizado'?'#10B981':(n.status==='erro_autorizacao'||n.status==='rejeitado'?'#EF4444':(n.status==='cancelado'?'#9D8EC4':'#F59E0B'));
   const danfeUrl=n.danfe?(NFE_BASE_URLS[n.ambiente]||'')+n.danfe:null;
+  const danfeNome=n.danfe&&n.numero?nomeArquivoDanfe(n):'';
   return `<div style="margin-top:8px;font-size:12px;color:var(--cor-texto-suave)">
     ${n.numero?`<div style="font-size:13px;margin-bottom:2px">NF-e nº <strong style="color:var(--cor-texto)">${n.numero}</strong> — Série <strong style="color:var(--cor-texto)">${n.serie||'—'}</strong></div>`:''}
     Última tentativa (${n.ambiente}): <strong style="color:${cor}">${statusNFeLabel(n.status)}</strong>${n.chave?' — Chave: '+n.chave:''}${n.mensagem?' — '+escHtml(n.mensagem):''}
     <div style="margin-top:6px;display:flex;gap:8px;flex-wrap:wrap">
-      ${danfeUrl?`<a href="${escHtml(danfeUrl)}" target="_blank" class="btn btn-outline-success btn-sm" style="font-size:11px"><i class="bi bi-file-earmark-pdf me-1"></i>Baixar DANFe</a>`:''}
+      ${danfeUrl?`<a href="${escHtml(danfeUrl)}" download="${escHtml(danfeNome)}" target="_blank" rel="noopener" class="btn btn-outline-success btn-sm" style="font-size:11px"><i class="bi bi-file-earmark-pdf me-1"></i>Baixar DANFe</a>`:''}
       ${n.status==='autorizado'&&i!=null?`<button class="btn btn-outline-danger btn-sm" style="font-size:11px" onclick="cancelarNFe(${i})"><i class="bi bi-x-circle me-1"></i>Cancelar NF-e</button>`:''}
     </div>
   </div>`;
+}
+
+function nomeArquivoDanfe(n) {
+  const d=new Date(n.emitidoEm||Date.now());
+  const dd=String(d.getDate()).padStart(2,'0');
+  const mm=String(d.getMonth()+1).padStart(2,'0');
+  return `NF-${n.numero}-${dd}-${mm}-${d.getFullYear()}-${n.pedidoNum}.pdf`;
+}
+function baixarDanfeAutomatico(n) {
+  if(!n||n.status!=='autorizado'||!n.danfe) return;
+  const a=document.createElement('a');
+  a.href=(NFE_BASE_URLS[n.ambiente]||'')+n.danfe; a.download=nomeArquivoDanfe(n); a.target='_blank'; a.rel='noopener';
+  document.body.appendChild(a); a.click(); document.body.removeChild(a);
 }
 
 function montarPayloadNFe(p) {
@@ -2937,6 +2951,7 @@ async function emitirNFe(i) {
       clienteId:p.clienteId,clienteNome:cliente?cliente.nome:'',clienteCpf:cliente?cliente.cpf:''};
     await db.collection('pedidos').doc(p._docId).update({nfe:nfeInfo});
     dados.pedidos[i].nfe=nfeInfo;
+    baixarDanfeAutomatico(nfeInfo);
     const statusArea=document.getElementById('nfe-status-'+i);
     if(statusArea) statusArea.innerHTML=renderStatusNFe(dados.pedidos[i],i);
     const btnArea=document.getElementById('nfe-btn-'+i);
