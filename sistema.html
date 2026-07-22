@@ -831,6 +831,8 @@ table.gestao tbody tr:hover .tbl-sticky-r{background:#1f1545}
   <div class="modal-header"><h5 class="modal-title"><i class="bi bi-tags me-2"></i>Gerar Etiquetas em Lote</h5><button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button></div>
   <div class="modal-body">
     <p style="font-size:12px;color:var(--cor-texto-suave)">Só aparecem aqui pedidos que já têm frete escolhido (via Cotar Frete) e ainda não têm etiqueta gerada. Pagamento, geração e impressão são feitos juntos, num único PDF com todas as etiquetas.</p>
+    <button class="btn btn-outline-secondary btn-sm" style="font-size:11px;margin-bottom:10px" onclick="verificarCarrinhoPendente()"><i class="bi bi-search me-1"></i>Verificar carrinho pendente no Melhor Envio</button>
+    <div id="lote-carrinho-pendente" style="display:none;margin-bottom:12px"></div>
     <div id="lote-etiquetas-lista" style="max-height:50vh;overflow-y:auto"></div>
     <div id="lote-etiquetas-total" style="margin-top:12px"></div>
     <div id="lote-etiquetas-resultado" style="margin-top:14px"></div>
@@ -2602,6 +2604,58 @@ async function gerarEtiquetaMelhorEnvio(i) {
 function pedidosProntosParaLote() {
   return dados.pedidos.map((p,i)=>({p,i})).filter(({p})=>p.melhorEnvio&&p.melhorEnvio.cotacaoEscolhida&&!p.melhorEnvio.orderId);
 }
+// Itens que ficaram presos no carrinho do Melhor Envio (ex: aba fechada no meio de um lote, sem pagar) — bloqueiam
+// novas tentativas pra o mesmo pedido porque a NF-e já está "reservada" nesse item pendente.
+async function verificarCarrinhoPendente() {
+  const div=document.getElementById('lote-carrinho-pendente');
+  div.style.display='block';
+  div.innerHTML='<em>Consultando carrinho pendente no Melhor Envio...</em>';
+  try {
+    let pagina=1,itens=[],lastPage=1;
+    do {
+      const resp=await fetch(ME_PROXY_URL,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({acao:'listar_carrinho',payload:{page:pagina}})});
+      const data=await resp.json();
+      const r=data?.resposta;
+      if(!r||!Array.isArray(r.data)) break;
+      itens=itens.concat(r.data);
+      lastPage=r.last_page||1;
+      pagina++;
+    } while(pagina<=lastPage);
+    renderCarrinhoPendente(itens);
+  } catch(e) {
+    div.innerHTML='Erro ao consultar o carrinho: '+escHtml(e.message);
+  }
+}
+function renderCarrinhoPendente(itens) {
+  const div=document.getElementById('lote-carrinho-pendente');
+  if(!itens.length) { div.innerHTML='<div style="font-size:12px;color:var(--cor-verde)"><i class="bi bi-check-circle-fill me-1"></i>Nenhum item pendente no carrinho.</div>'; div.dataset.ids=''; return; }
+  div.dataset.ids=itens.map(o=>o.id).join(',');
+  div.innerHTML=`<div style="font-size:12px;color:#F59E0B;margin-bottom:8px"><i class="bi bi-exclamation-triangle-fill me-1"></i>${itens.length} item(ns) pendente(s) no carrinho (ainda não pagos) — provavelmente sobrou de uma tentativa anterior que não terminou. Remova antes de gerar um novo lote pros mesmos pedidos.</div>
+    <div style="max-height:200px;overflow-y:auto;margin-bottom:8px;border:1px solid var(--cor-borda);border-radius:8px">${itens.map(o=>`
+      <div style="display:flex;justify-content:space-between;align-items:center;padding:6px 10px;border-bottom:1px solid var(--cor-borda);font-size:12px">
+        <span>${escHtml(o.to?.name||'—')} — ${moeda(parseFloat(o.price)||0)} <span style="color:var(--cor-texto-suave)">(${escHtml(o.created_at||'')})</span></span>
+        <button class="btn btn-outline-danger btn-sm" style="font-size:11px" onclick="removerDoCarrinhoPendente('${o.id}',this)">Remover</button>
+      </div>`).join('')}</div>
+    <button class="btn btn-outline-danger btn-sm" style="font-size:11px" onclick="removerTodosCarrinhoPendente()"><i class="bi bi-trash me-1"></i>Remover todos</button>`;
+}
+async function removerDoCarrinhoPendente(id,btnEl) {
+  if(btnEl) { btnEl.disabled=true; btnEl.textContent='Removendo...'; }
+  try {
+    await fetch(ME_PROXY_URL,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({acao:'remover_carrinho',payload:{id}})});
+  } catch(e) { alert('Erro ao remover: '+e.message); }
+  verificarCarrinhoPendente();
+}
+async function removerTodosCarrinhoPendente() {
+  const div=document.getElementById('lote-carrinho-pendente');
+  const ids=(div.dataset.ids||'').split(',').filter(Boolean);
+  if(!ids.length) return;
+  if(!confirm(`Remover os ${ids.length} itens pendentes do carrinho? Isso não afeta pedidos já pagos, só limpa reservas que não foram concluídas.`)) return;
+  div.innerHTML='<em>Removendo...</em>';
+  for(const id of ids) {
+    try { await fetch(ME_PROXY_URL,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({acao:'remover_carrinho',payload:{id}})}); } catch(e) {}
+  }
+  verificarCarrinhoPendente();
+}
 let _loteSaldoCache=null;
 async function abrirModalLoteEtiquetas() {
   const itens=pedidosProntosParaLote();
@@ -2610,6 +2664,9 @@ async function abrirModalLoteEtiquetas() {
   btn.className='btn btn-sm '+(ME_AMBIENTE_ATUAL==='producao'?'btn-danger':'btn-warning');
   btn.innerHTML=`<i class="bi bi-tag me-1"></i>Gerar Etiquetas Selecionadas ${ME_AMBIENTE_ATUAL==='producao'?'(REAL)':'(Sandbox/Teste)'}`;
   document.getElementById('lote-etiquetas-resultado').innerHTML='';
+  const divCarrinho=document.getElementById('lote-carrinho-pendente');
+  divCarrinho.style.display='none';
+  divCarrinho.innerHTML='';
   lista.innerHTML=itens.length?itens.map(({p,i})=>{
     const c=p.melhorEnvio.cotacaoEscolhida;
     const temNfe=p.nfe&&p.nfe.status==='autorizado';
