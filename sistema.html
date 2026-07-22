@@ -263,7 +263,7 @@ table.gestao tbody tr:hover .tbl-sticky-r{background:#1f1545}
     <!-- PEDIDOS -->
     <div class="page" id="pg-pedidos">
       <div class="table-card">
-        <div class="table-header"><h6>Pedidos Diários</h6><div style="display:flex;gap:8px;"><input type="text" class="input-search" placeholder="Buscar pedido..." oninput="filtrarTabela('tabela-pedidos',this.value)"><button class="btn btn-outline-success btn-sm" onclick="abrirModalRecebimento()"><i class="bi bi-cash-coin me-1"></i>Receber</button><button class="btn btn-primary btn-sm" onclick="abrirModal('pedido')"><i class="bi bi-plus-lg"></i> Novo</button></div></div>
+        <div class="table-header"><h6>Pedidos Diários</h6><div style="display:flex;gap:8px;"><input type="text" class="input-search" placeholder="Buscar pedido..." oninput="filtrarTabela('tabela-pedidos',this.value)"><button class="btn btn-outline-warning btn-sm" onclick="abrirModalLoteEtiquetas()"><i class="bi bi-tags me-1"></i>Etiquetas em Lote</button><button class="btn btn-outline-success btn-sm" onclick="abrirModalRecebimento()"><i class="bi bi-cash-coin me-1"></i>Receber</button><button class="btn btn-primary btn-sm" onclick="abrirModal('pedido')"><i class="bi bi-plus-lg"></i> Novo</button></div></div>
         <div class="table-responsive"><table class="gestao" id="tabela-pedidos"><thead><tr><th class="th-sort" data-col="data" onclick="sortBy('pedidos','data',renderPedidos)">Data</th><th class="th-sort" data-col="num" onclick="sortBy('pedidos','num',renderPedidos)">Nº Pedido</th><th class="th-sort" data-col="cliente" onclick="sortBy('pedidos','cliente',renderPedidos)">Cliente</th><th class="th-sort" data-col="valor" onclick="sortBy('pedidos','valor',renderPedidos)">Total</th><th>Tipo</th><th class="th-sort" data-col="status" onclick="sortBy('pedidos','status',renderPedidos)">Status</th><th>NF</th><th>Recebimento</th><th></th></tr></thead><tbody></tbody></table></div>
       </div>
     </div>
@@ -825,6 +825,16 @@ table.gestao tbody tr:hover .tbl-sticky-r{background:#1f1545}
   <div class="modal-header"><h5 class="modal-title" id="modalVerPedidoTitulo">Pedido</h5><button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button></div>
   <div class="modal-body" id="modalVerPedidoBody"></div>
   <div class="modal-footer"><button class="btn btn-outline-secondary" data-bs-dismiss="modal">Fechar</button><button class="btn btn-success" id="btn-imprimir-do-ver" onclick=""><i class="bi bi-printer-fill me-1"></i>Imprimir PDF</button><button class="btn btn-primary" id="btn-editar-do-ver" onclick=""><i class="bi bi-pencil-fill me-1"></i>Editar</button></div>
+</div></div></div>
+
+<div class="modal fade" id="modalLoteEtiquetas" tabindex="-1"><div class="modal-dialog modal-lg"><div class="modal-content">
+  <div class="modal-header"><h5 class="modal-title"><i class="bi bi-tags me-2"></i>Gerar Etiquetas em Lote</h5><button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button></div>
+  <div class="modal-body">
+    <p style="font-size:12px;color:var(--cor-texto-suave)">Só aparecem aqui pedidos que já têm frete escolhido (via Cotar Frete) e ainda não têm etiqueta gerada. Pagamento, geração e impressão são feitos juntos, num único PDF com todas as etiquetas.</p>
+    <div id="lote-etiquetas-lista" style="max-height:50vh;overflow-y:auto"></div>
+    <div id="lote-etiquetas-resultado" style="margin-top:14px"></div>
+  </div>
+  <div class="modal-footer"><button class="btn btn-outline-secondary" data-bs-dismiss="modal">Fechar</button><button class="btn btn-sm" id="btn-gerar-lote" onclick="gerarEtiquetasLote()"><i class="bi bi-tag me-1"></i>Gerar Etiquetas Selecionadas</button></div>
 </div></div></div>
 
 <div class="modal fade" id="modalReceberPagamento" tabindex="-1"><div class="modal-dialog modal-lg"><div class="modal-content">
@@ -2515,6 +2525,20 @@ function montarProdutosFaturaEnvio(p) {
     return {name:it.desc||prod.nome,quantity:it.qtd,unitary_value:it.preco};
   }).filter(Boolean);
 }
+// Monta o payload de 'cart' pro Melhor Envio. Sempre que o pedido já tem NF-e autorizada, anexa a chave
+// (options.invoice.key) pra etiqueta sair com a Nota Fiscal em vez da Declaração de Conteúdo automática.
+function montarCartPayloadEnvio(p,cliente) {
+  const volumes=montarVolumesEnvio(p);
+  const produtosFatura=montarProdutosFaturaEnvio(p);
+  if(!volumes.length) throw new Error('Pedido não tem itens físicos com peso/dimensões cadastrados.');
+  const valorDeclarado=produtosFatura.reduce((s,pr)=>s+pr.quantity*pr.unitary_value,0);
+  const chaveNFe=(p.nfe&&p.nfe.status==='autorizado'&&p.nfe.chave)?p.nfe.chave.replace(/^NFe/,''):null;
+  const options={insurance_value:valorDeclarado,receipt:false,own_hand:false,reverse:false,platform:'Sistema ELDN'};
+  if(chaveNFe&&chaveNFe.length===44) { options.non_commercial=false; options.invoice={key:chaveNFe}; }
+  else { options.non_commercial=true; }
+  // 'from' (remetente, com CPF/CNPJ) não é enviado daqui — o proxy injeta sozinho, no servidor.
+  return {service:p.melhorEnvio.cotacaoEscolhida.id,to:montarDestinatarioEnvio(cliente),volumes,products:produtosFatura,options};
+}
 function renderStatusMelhorEnvio(p,i) {
   const m=p.melhorEnvio;
   if(!m||!m.orderId) return '';
@@ -2534,17 +2558,11 @@ async function gerarEtiquetaMelhorEnvio(i) {
   if(p.melhorEnvio.orderId) return alert('Esse pedido já tem uma etiqueta gerada.');
   const docCliente=(cliente.cpf||'').replace(/\D/g,'');
   if(docCliente.length!==11) return alert('O cliente precisa ter um CPF válido cadastrado (11 dígitos) pra gerar a etiqueta.');
-  const volumes=montarVolumesEnvio(p);
-  const produtosFatura=montarProdutosFaturaEnvio(p);
-  if(!volumes.length) return alert('Pedido não tem itens físicos com peso/dimensões cadastrados.');
-  const valorDeclarado=produtosFatura.reduce((s,pr)=>s+pr.quantity*pr.unitary_value,0);
-  // 'from' (remetente, com CPF/CNPJ) não é enviado daqui — o proxy injeta sozinho, no servidor.
-  const cartPayload={
-    service:p.melhorEnvio.cotacaoEscolhida.id,
-    to:montarDestinatarioEnvio(cliente),
-    volumes,products:produtosFatura,
-    options:{insurance_value:valorDeclarado,receipt:false,own_hand:false,reverse:false,non_commercial:true,platform:'Sistema ELDN'}
-  };
+  let cartPayload;
+  try { cartPayload=montarCartPayloadEnvio(p,cliente); } catch(e) { return alert(e.message); }
+  if(!cartPayload.options.invoice) {
+    if(!confirm('Esse pedido não tem NF-e emitida — a etiqueta vai sair com Declaração de Conteúdo em vez da Nota Fiscal. Deseja continuar mesmo assim?')) return;
+  }
   const msgConfirm=`Confirma a compra do frete e geração da etiqueta pro pedido ${p.num}? Isso vai debitar saldo da sua carteira Melhor Envio (ambiente ${ME_AMBIENTE_ATUAL==='producao'?'PRODUÇÃO — saldo real':'Sandbox — saldo fictício'}).`;
   if(!confirm(msgConfirm)) return;
   try {
@@ -2570,6 +2588,85 @@ async function gerarEtiquetaMelhorEnvio(i) {
     if(currentPage==='pedidos') renderPedidos();
   } catch(e) {
     alert('Erro ao gerar etiqueta: '+e.message);
+  }
+}
+// Pedidos com frete Melhor Envio já escolhido, mas ainda sem etiqueta gerada — candidatos ao lote.
+function pedidosProntosParaLote() {
+  return dados.pedidos.map((p,i)=>({p,i})).filter(({p})=>p.melhorEnvio&&p.melhorEnvio.cotacaoEscolhida&&!p.melhorEnvio.orderId);
+}
+function abrirModalLoteEtiquetas() {
+  const itens=pedidosProntosParaLote();
+  const lista=document.getElementById('lote-etiquetas-lista');
+  const btn=document.getElementById('btn-gerar-lote');
+  btn.className='btn btn-sm '+(ME_AMBIENTE_ATUAL==='producao'?'btn-danger':'btn-warning');
+  btn.innerHTML=`<i class="bi bi-tag me-1"></i>Gerar Etiquetas Selecionadas ${ME_AMBIENTE_ATUAL==='producao'?'(REAL)':'(Sandbox/Teste)'}`;
+  document.getElementById('lote-etiquetas-resultado').innerHTML='';
+  lista.innerHTML=itens.length?itens.map(({p,i})=>{
+    const c=p.melhorEnvio.cotacaoEscolhida;
+    const temNfe=p.nfe&&p.nfe.status==='autorizado';
+    return `<div style="display:flex;align-items:center;gap:10px;padding:10px;border-bottom:1px solid var(--cor-borda)">
+      <input type="checkbox" class="form-check-input lote-etiqueta-check" value="${i}" checked style="margin:0">
+      <div style="flex:1">
+        <strong style="color:#fff">${escHtml(p.num)}</strong> — ${escHtml(nomeCliente(p.clienteId))}
+        <div style="font-size:12px;color:var(--cor-texto-suave)">${escHtml(c.transportadora)} — ${escHtml(c.servico)} · ${moeda(c.preco)} · ${temNfe?'<span style="color:var(--cor-verde)">NF-e será anexada</span>':'<span style="color:#F59E0B">sem NF-e — vai com Declaração de Conteúdo</span>'}</div>
+      </div>
+    </div>`;
+  }).join(''):'<div class="empty-state"><i class="bi bi-inbox"></i>Nenhum pedido com frete escolhido aguardando etiqueta.</div>';
+  new bootstrap.Modal(document.getElementById('modalLoteEtiquetas')).show();
+}
+async function gerarEtiquetasLote() {
+  const checks=[...document.querySelectorAll('.lote-etiqueta-check:checked')].map(c=>parseInt(c.value));
+  if(!checks.length) return alert('Selecione ao menos um pedido.');
+  const resultadoDiv=document.getElementById('lote-etiquetas-resultado');
+  const semNfe=checks.filter(i=>{const p=dados.pedidos[i];return !(p.nfe&&p.nfe.status==='autorizado');});
+  if(semNfe.length && !confirm(`${semNfe.length} pedido(s) selecionado(s) não têm NF-e emitida e vão sair com Declaração de Conteúdo em vez da Nota Fiscal. Continuar mesmo assim?`)) return;
+  const msgConfirm=`Confirma a compra do frete e geração de ${checks.length} etiqueta(s)? Isso vai debitar saldo da sua carteira Melhor Envio (ambiente ${ME_AMBIENTE_ATUAL==='producao'?'PRODUÇÃO — saldo real':'Sandbox — saldo fictício'}).`;
+  if(!confirm(msgConfirm)) return;
+  resultadoDiv.innerHTML='<em>Processando, aguarde...</em>';
+  const sucesso=[],falha=[];
+  for(const i of checks) {
+    const p=dados.pedidos[i];
+    const cliente=dados.clientes.find(x=>x.id===p.clienteId);
+    if(!cliente) { falha.push({num:p.num,erro:'Sem cliente vinculado'}); continue; }
+    const docCliente=(cliente.cpf||'').replace(/\D/g,'');
+    if(docCliente.length!==11) { falha.push({num:p.num,erro:'CPF do cliente inválido'}); continue; }
+    try {
+      const cartPayload=montarCartPayloadEnvio(p,cliente);
+      const resp=await fetch(ME_PROXY_URL,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({acao:'cart',payload:cartPayload})});
+      const data=await resp.json();
+      const orderId=data?.resposta?.id;
+      if(!orderId) throw new Error(JSON.stringify(data.resposta));
+      sucesso.push({i,p,orderId});
+    } catch(e) { falha.push({num:p.num,erro:e.message}); }
+  }
+  if(!sucesso.length) {
+    resultadoDiv.innerHTML='Nenhum pedido pôde ser colocado no carrinho. Erros: <pre style="white-space:pre-wrap;font-size:11px">'+escHtml(JSON.stringify(falha,null,2))+'</pre>';
+    return;
+  }
+  const orderIds=sucesso.map(s=>s.orderId);
+  try {
+    let resp=await fetch(ME_PROXY_URL,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({acao:'checkout',payload:{orders:orderIds}})});
+    let data=await resp.json();
+    if(data?.resposta?.purchase?.status!=='paid') throw new Error('Pagamento não confirmado: '+JSON.stringify(data.resposta));
+
+    await fetch(ME_PROXY_URL,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({acao:'gerar_etiqueta',payload:{orders:orderIds}})});
+
+    resp=await fetch(ME_PROXY_URL,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({acao:'imprimir',payload:{mode:'public',orders:orderIds}})});
+    data=await resp.json();
+    const linkEtiquetas=data?.resposta?.url||null;
+
+    for(const s of sucesso) {
+      const melhorEnvio={...s.p.melhorEnvio,orderId:s.orderId,linkEtiqueta:linkEtiquetas,etiquetaGeradaEm:new Date().toISOString()};
+      await db.collection('pedidos').doc(s.p._docId).update({melhorEnvio});
+      dados.pedidos[s.i].melhorEnvio=melhorEnvio;
+    }
+    if(currentPage==='pedidos') renderPedidos();
+    let html=`<div style="color:var(--cor-verde)"><i class="bi bi-check-circle-fill me-1"></i>${sucesso.length} etiqueta(s) gerada(s) com sucesso.</div>`;
+    if(linkEtiquetas) html+=`<a href="${escHtml(linkEtiquetas)}" target="_blank" class="btn btn-outline-success btn-sm mt-2"><i class="bi bi-file-earmark-pdf me-1"></i>Baixar PDF com todas as etiquetas</a>`;
+    if(falha.length) html+=`<div style="margin-top:10px;color:#F59E0B">${falha.length} pedido(s) não entraram no lote:<pre style="white-space:pre-wrap;font-size:11px">${escHtml(JSON.stringify(falha,null,2))}</pre></div>`;
+    resultadoDiv.innerHTML=html;
+  } catch(e) {
+    resultadoDiv.innerHTML='Erro no pagamento/geração em lote: '+escHtml(e.message)+' — os pedidos abaixo entraram no carrinho mas podem não ter sido pagos/gerados, confira no painel do Melhor Envio: '+sucesso.map(s=>s.p.num).join(', ');
   }
 }
 async function atualizarRastreioMelhorEnvio(i) {
