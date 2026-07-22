@@ -3036,7 +3036,7 @@ function verPedido(i) {
       </div>
     </div>`:''}
   `;
-  new bootstrap.Modal(document.getElementById('modalVerPedido')).show();
+  bootstrap.Modal.getOrCreateInstance(document.getElementById('modalVerPedido')).show();
 }
 
 function _urlMelhorEnvio(codigo) {
