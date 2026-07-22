@@ -2869,6 +2869,7 @@ function renderStatusNFe(p,i) {
     Última tentativa (${n.ambiente}): <strong style="color:${cor}">${statusNFeLabel(n.status)}</strong>${n.chave?' — Chave: '+n.chave:''}${n.mensagem?' — '+escHtml(n.mensagem):''}
     <div style="margin-top:6px;display:flex;gap:8px;flex-wrap:wrap">
       ${danfeUrl?`<a href="${escHtml(danfeUrl)}" download="${escHtml(danfeNome)}" target="_blank" rel="noopener" class="btn btn-outline-success btn-sm" style="font-size:11px"><i class="bi bi-file-earmark-pdf me-1"></i>Baixar DANFe</a>`:''}
+      ${n.status==='autorizado'&&n.ref&&i!=null?`<button id="nfe-btn-email-${i}" class="btn btn-outline-primary btn-sm" style="font-size:11px" onclick="enviarEmailNFe(${i})"><i class="bi bi-envelope me-1"></i>Enviar por E-mail</button>`:''}
       ${n.status==='autorizado'&&i!=null?`<button class="btn btn-outline-danger btn-sm" style="font-size:11px" onclick="cancelarNFe(${i})"><i class="bi bi-x-circle me-1"></i>Cancelar NF-e</button>`:''}
     </div>
   </div>`;
@@ -2987,6 +2988,31 @@ async function cancelarNFe(i) {
     if(currentPage==='fiscal') renderFiscal();
   } catch(e) {
     alert('Erro ao cancelar: '+e.message);
+  }
+}
+
+async function enviarEmailNFe(i) {
+  const p=dados.pedidos[i];
+  const n=p.nfe;
+  if(!n||n.status!=='autorizado'||!n.ref) return alert('Essa nota não está autorizada — não é possível enviar o email.');
+  const cliente=dados.clientes.find(x=>x.id===p.clienteId);
+  const emailsStr=prompt('Enviar a NF-e (DANFe) por e-mail para qual endereço? Para vários, separe por vírgula.',(cliente&&cliente.email)||'');
+  if(!emailsStr) return;
+  const emails=emailsStr.split(',').map(e=>e.trim()).filter(Boolean);
+  const emailRegex=/^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  const invalidos=emails.filter(e=>!emailRegex.test(e));
+  if(!emails.length||invalidos.length) return alert(invalidos.length?'Email inválido: '+invalidos.join(', '):'Informe pelo menos um email.');
+  const btn=document.getElementById('nfe-btn-email-'+i);
+  if(btn){btn.disabled=true;btn.innerHTML='<i class="bi bi-hourglass-split me-1"></i>Enviando...';}
+  try {
+    const resp=await fetch(NFE_PROXY_URL,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({acao:'enviar_email',ref:n.ref,emails})});
+    const data=await resp.json();
+    if(data.focus_status>=200&&data.focus_status<300) alert('Email enviado com sucesso para: '+emails.join(', '));
+    else alert('Erro ao enviar email:\n\n'+JSON.stringify(data.focus_resposta||data,null,2));
+  } catch(e) {
+    alert('Erro ao chamar o proxy: '+e.message);
+  } finally {
+    if(btn){btn.disabled=false;btn.innerHTML='<i class="bi bi-envelope me-1"></i>Enviar por E-mail';}
   }
 }
 
