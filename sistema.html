@@ -832,6 +832,7 @@ table.gestao tbody tr:hover .tbl-sticky-r{background:#1f1545}
   <div class="modal-body">
     <p style="font-size:12px;color:var(--cor-texto-suave)">Só aparecem aqui pedidos que já têm frete escolhido (via Cotar Frete) e ainda não têm etiqueta gerada. Pagamento, geração e impressão são feitos juntos, num único PDF com todas as etiquetas.</p>
     <div id="lote-etiquetas-lista" style="max-height:50vh;overflow-y:auto"></div>
+    <div id="lote-etiquetas-total" style="margin-top:12px"></div>
     <div id="lote-etiquetas-resultado" style="margin-top:14px"></div>
   </div>
   <div class="modal-footer"><button class="btn btn-outline-secondary" data-bs-dismiss="modal">Fechar</button><button class="btn btn-sm" id="btn-gerar-lote" onclick="gerarEtiquetasLote()"><i class="bi bi-tag me-1"></i>Gerar Etiquetas Selecionadas</button></div>
@@ -2601,7 +2602,8 @@ async function gerarEtiquetaMelhorEnvio(i) {
 function pedidosProntosParaLote() {
   return dados.pedidos.map((p,i)=>({p,i})).filter(({p})=>p.melhorEnvio&&p.melhorEnvio.cotacaoEscolhida&&!p.melhorEnvio.orderId);
 }
-function abrirModalLoteEtiquetas() {
+let _loteSaldoCache=null;
+async function abrirModalLoteEtiquetas() {
   const itens=pedidosProntosParaLote();
   const lista=document.getElementById('lote-etiquetas-lista');
   const btn=document.getElementById('btn-gerar-lote');
@@ -2612,14 +2614,40 @@ function abrirModalLoteEtiquetas() {
     const c=p.melhorEnvio.cotacaoEscolhida;
     const temNfe=p.nfe&&p.nfe.status==='autorizado';
     return `<div style="display:flex;align-items:center;gap:10px;padding:10px;border-bottom:1px solid var(--cor-borda)">
-      <input type="checkbox" class="form-check-input lote-etiqueta-check" value="${i}" checked style="margin:0">
+      <input type="checkbox" class="form-check-input lote-etiqueta-check" value="${i}" data-preco="${c.preco}" checked style="margin:0" onchange="atualizarTotalLote()">
       <div style="flex:1">
         <strong style="color:#fff">${escHtml(p.num)}</strong> — ${escHtml(nomeCliente(p.clienteId))}
         <div style="font-size:12px;color:var(--cor-texto-suave)">${escHtml(c.transportadora)} — ${escHtml(c.servico)} · ${moeda(c.preco)} · ${temNfe?'<span style="color:var(--cor-verde)">NF-e será anexada</span>':'<span style="color:#F59E0B">sem NF-e — vai com Declaração de Conteúdo</span>'}</div>
       </div>
     </div>`;
   }).join(''):'<div class="empty-state"><i class="bi bi-inbox"></i>Nenhum pedido com frete escolhido aguardando etiqueta.</div>';
+  document.getElementById('lote-etiquetas-total').innerHTML='';
   new bootstrap.Modal(document.getElementById('modalLoteEtiquetas')).show();
+  _loteSaldoCache=null;
+  try {
+    const resp=await fetch(ME_PROXY_URL,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({acao:'saldo'})});
+    const data=await resp.json();
+    _loteSaldoCache=typeof data?.resposta?.balance==='number'?data.resposta.balance:null;
+  } catch(e) { _loteSaldoCache=null; }
+  atualizarTotalLote();
+}
+function atualizarTotalLote() {
+  const div=document.getElementById('lote-etiquetas-total');
+  if(!div) return;
+  const checks=[...document.querySelectorAll('.lote-etiqueta-check:checked')];
+  const total=checks.reduce((s,c)=>s+parseFloat(c.dataset.preco||0),0);
+  const n=checks.length;
+  const suficiente=_loteSaldoCache==null||_loteSaldoCache>=total;
+  let html=`<div style="display:flex;justify-content:space-between;align-items:center;padding:10px 12px;background:rgba(255,255,255,.03);border-radius:8px;border:1px solid var(--cor-borda)">
+    <span style="font-size:13px">Total selecionado (${n} etiqueta${n===1?'':'s'})</span>
+    <strong style="font-size:16px;color:${suficiente?'var(--cor-verde)':'#EF4444'}">${moeda(total)}</strong>
+  </div>`;
+  if(_loteSaldoCache==null) {
+    html+=`<div style="margin-top:6px;font-size:12px;color:#F59E0B">Não foi possível consultar o saldo da carteira agora — confira manualmente antes de gerar.</div>`;
+  } else {
+    html+=`<div style="margin-top:6px;font-size:12px;color:${suficiente?'var(--cor-texto-suave)':'#EF4444'}">Saldo atual na carteira Melhor Envio: <strong style="color:${suficiente?'var(--cor-texto)':'#EF4444'}">${moeda(_loteSaldoCache)}</strong>${suficiente?'':' — saldo insuficiente pra esse total, recarregue antes de gerar'}</div>`;
+  }
+  div.innerHTML=html;
 }
 async function gerarEtiquetasLote() {
   const checks=[...document.querySelectorAll('.lote-etiqueta-check:checked')].map(c=>parseInt(c.value));
@@ -2627,7 +2655,8 @@ async function gerarEtiquetasLote() {
   const resultadoDiv=document.getElementById('lote-etiquetas-resultado');
   const semNfe=checks.filter(i=>{const p=dados.pedidos[i];return !(p.nfe&&p.nfe.status==='autorizado');});
   if(semNfe.length && !confirm(`${semNfe.length} pedido(s) selecionado(s) não têm NF-e emitida e vão sair com Declaração de Conteúdo em vez da Nota Fiscal. Continuar mesmo assim?`)) return;
-  const msgConfirm=`Confirma a compra do frete e geração de ${checks.length} etiqueta(s)? Isso vai debitar saldo da sua carteira Melhor Envio (ambiente ${ME_AMBIENTE_ATUAL==='producao'?'PRODUÇÃO — saldo real':'Sandbox — saldo fictício'}).`;
+  const totalLote=checks.reduce((s,i)=>s+(dados.pedidos[i].melhorEnvio?.cotacaoEscolhida?.preco||0),0);
+  const msgConfirm=`Confirma a compra do frete e geração de ${checks.length} etiqueta(s), somando ${moeda(totalLote)}? Isso vai debitar saldo da sua carteira Melhor Envio (ambiente ${ME_AMBIENTE_ATUAL==='producao'?'PRODUÇÃO — saldo real':'Sandbox — saldo fictício'}).`;
   if(!confirm(msgConfirm)) return;
   resultadoDiv.innerHTML='<em>Processando, aguarde...</em>';
   const sucesso=[],falha=[];
