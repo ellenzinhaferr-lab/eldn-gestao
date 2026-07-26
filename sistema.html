@@ -2148,7 +2148,7 @@ function verHistoricoCliente(clienteId) {
     </tbody></table></div>
     <div style="border-top:1px solid var(--cor-borda);padding-top:12px;margin-top:16px"><small style="color:var(--cor-secundaria);font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:1.2px"><i class="bi bi-receipt-cutoff me-1"></i>Notas Fiscais</small></div>
     <div class="table-responsive" style="margin-top:8px"><table class="gestao"><thead><tr><th>Nº Nota</th><th>Série</th><th>Data Emissão</th><th>Valor Total</th><th>Status</th><th></th></tr></thead><tbody>
-    ${(()=>{const notas=peds.filter(p=>p.nfe);return notas.length?notas.map(p=>{const danfeUrl=p.nfe.danfe?(NFE_BASE_URLS[p.nfe.ambiente]||'')+p.nfe.danfe:null;return `<tr><td style="font-family:monospace">${p.nfe.numero||'—'}</td><td>${p.nfe.serie||'—'}</td><td>${p.nfe.emitidoEm?fmtData(p.nfe.emitidoEm.split('T')[0]):'—'}</td><td style="color:var(--cor-verde);font-weight:600">${moeda(p.nfe.valorTotal!=null?p.nfe.valorTotal:getPedidoTotal(p))}</td><td>${statusNFeLabel(p.nfe.status)}</td><td>${danfeUrl?`<a href="${escHtml(danfeUrl)}" target="_blank" class="btn-sm-action" style="color:#10B981" title="Baixar DANFe"><i class="bi bi-file-earmark-pdf-fill"></i></a>`:''}</td></tr>`;}).join(''):'<tr><td colspan="6" style="text-align:center;color:var(--cor-texto-suave);padding:20px">Nenhuma nota fiscal emitida</td></tr>';})()}
+    ${(()=>{const notas=peds.filter(p=>p.nfe);return notas.length?notas.map(p=>{return `<tr><td style="font-family:monospace">${p.nfe.numero||'—'}</td><td>${p.nfe.serie||'—'}</td><td>${p.nfe.emitidoEm?fmtData(p.nfe.emitidoEm.split('T')[0]):'—'}</td><td style="color:var(--cor-verde);font-weight:600">${moeda(p.nfe.valorTotal!=null?p.nfe.valorTotal:getPedidoTotal(p))}</td><td>${statusNFeLabel(p.nfe.status)}</td><td>${p.nfe.danfe?`<button class="btn-sm-action" style="color:#10B981;background:none;border:none" onclick="baixarDanfePorDocId('${escHtml(p._docId)}')" title="Baixar DANFe"><i class="bi bi-file-earmark-pdf-fill"></i></button>`:''}</td></tr>`;}).join(''):'<tr><td colspan="6" style="text-align:center;color:var(--cor-texto-suave);padding:20px">Nenhuma nota fiscal emitida</td></tr>';})()}
     </tbody></table></div>`;
   new bootstrap.Modal(document.getElementById('modalHistoricoCliente')).show();
 }
@@ -2862,14 +2862,12 @@ function renderStatusNFe(p,i) {
   if(!p.nfe) return '';
   const n=p.nfe;
   const cor=n.status==='autorizado'?'#10B981':(n.status==='erro_autorizacao'||n.status==='rejeitado'?'#EF4444':(n.status==='cancelado'?'#9D8EC4':'#F59E0B'));
-  const danfeUrl=n.danfe?(NFE_BASE_URLS[n.ambiente]||'')+n.danfe:null;
-  const danfeNome=n.danfe&&n.numero?nomeArquivoDanfe(n):'';
   return `<div style="margin-top:8px;font-size:12px;color:var(--cor-texto-suave)">
     ${n.numero?`<div style="font-size:13px;margin-bottom:2px">NF-e nº <strong style="color:var(--cor-texto)">${n.numero}</strong> — Série <strong style="color:var(--cor-texto)">${n.serie||'—'}</strong></div>`:''}
     Última tentativa (${n.ambiente}): <strong style="color:${cor}">${statusNFeLabel(n.status)}</strong>${n.chave?' — Chave: '+n.chave:''}${n.mensagem?' — '+escHtml(n.mensagem):''}
     ${n.emailEnviadoEm?`<div style="margin-top:4px;color:#10B981"><i class="bi bi-envelope-check-fill me-1"></i>Email enviado em ${fmtDataHora(n.emailEnviadoEm)} para ${escHtml((n.emailEnviadoPara||[]).join(', '))}</div>`:''}
     <div style="margin-top:6px;display:flex;gap:8px;flex-wrap:wrap">
-      ${danfeUrl?`<a href="${escHtml(danfeUrl)}" download="${escHtml(danfeNome)}" target="_blank" rel="noopener" class="btn btn-outline-success btn-sm" style="font-size:11px"><i class="bi bi-file-earmark-pdf me-1"></i>Baixar DANFe</a>`:''}
+      ${n.danfe&&i!=null?`<button class="btn btn-outline-success btn-sm" style="font-size:11px" onclick="baixarDanfe(dados.pedidos[${i}].nfe)"><i class="bi bi-file-earmark-pdf me-1"></i>Baixar DANFe</button>`:''}
       ${n.status==='autorizado'&&n.ref&&i!=null?`<button id="nfe-btn-email-${i}" class="btn ${n.emailEnviadoEm?'btn-outline-secondary':'btn-outline-primary'} btn-sm" style="font-size:11px" onclick="enviarEmailNFe(${i})"><i class="bi bi-envelope${n.emailEnviadoEm?'-check':''} me-1"></i>${n.emailEnviadoEm?'Reenviar':'Enviar'} por E-mail</button>`:''}
       ${n.status==='autorizado'&&i!=null?`<button class="btn btn-outline-danger btn-sm" style="font-size:11px" onclick="cancelarNFe(${i})"><i class="bi bi-x-circle me-1"></i>Cancelar NF-e</button>`:''}
     </div>
@@ -2883,11 +2881,31 @@ function nomeArquivoDanfe(n) {
   const mm=String(d.getMonth()+1).padStart(2,'0');
   return `NF-${n.numero}-${dd}-${mm}-${d.getFullYear()}-${n.pedidoNum}.pdf`;
 }
+async function baixarDanfe(n) {
+  if(!n||!n.danfe) return;
+  const nomeArquivo=nomeArquivoDanfe(n);
+  try {
+    const resp=await fetch(NFE_PROXY_URL,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({acao:'baixar_danfe',ref:n.ref||n.pedidoNum||'danfe',ambienteNota:n.ambiente,danfe:n.danfe,nomeArquivo})});
+    if(!resp.ok) throw new Error('proxy_falhou');
+    const blob=await resp.blob();
+    const url=URL.createObjectURL(blob);
+    const a=document.createElement('a');
+    a.href=url; a.download=nomeArquivo;
+    document.body.appendChild(a); a.click(); document.body.removeChild(a);
+    setTimeout(()=>URL.revokeObjectURL(url),5000);
+  } catch(e) {
+    const a=document.createElement('a');
+    a.href=(NFE_BASE_URLS[n.ambiente]||'')+n.danfe; a.download=nomeArquivo; a.target='_blank'; a.rel='noopener';
+    document.body.appendChild(a); a.click(); document.body.removeChild(a);
+  }
+}
 function baixarDanfeAutomatico(n) {
   if(!n||n.status!=='autorizado'||!n.danfe) return;
-  const a=document.createElement('a');
-  a.href=(NFE_BASE_URLS[n.ambiente]||'')+n.danfe; a.download=nomeArquivoDanfe(n); a.target='_blank'; a.rel='noopener';
-  document.body.appendChild(a); a.click(); document.body.removeChild(a);
+  baixarDanfe(n);
+}
+function baixarDanfePorDocId(docId) {
+  const p=dados.pedidos.find(x=>x._docId===docId);
+  if(p&&p.nfe) baixarDanfe(p.nfe);
 }
 
 function montarPayloadNFe(p) {
@@ -3082,7 +3100,7 @@ function renderFiscal() {
         <td style="color:var(--cor-verde);font-weight:600">${moeda(valor)}</td>
         <td>${statusNFeLabel(p.nfe.status)}</td>
         <td style="white-space:nowrap">
-          ${p.nfe.danfe?`<a href="${escHtml((NFE_BASE_URLS[p.nfe.ambiente]||'')+p.nfe.danfe)}" target="_blank" class="btn-sm-action" style="color:#10B981" title="Baixar DANFe"><i class="bi bi-file-earmark-pdf-fill"></i></a>`:''}
+          ${p.nfe.danfe?`<button class="btn-sm-action" style="color:#10B981;background:none;border:none" onclick="baixarDanfe(dados.pedidos[${i}].nfe)" title="Baixar DANFe"><i class="bi bi-file-earmark-pdf-fill"></i></button>`:''}
           <button class="btn-sm-action" style="color:#60A5FA" onclick="verPedido(${i})" title="Ver Pedido"><i class="bi bi-eye-fill"></i></button>
           ${p.nfe.status==='autorizado'?`<button class="btn-sm-action btn-delete" onclick="cancelarNFe(${i})" title="Cancelar NF-e"><i class="bi bi-x-circle-fill"></i></button>`:''}
         </td>
