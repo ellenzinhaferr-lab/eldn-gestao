@@ -2867,13 +2867,15 @@ function renderStatusNFe(p,i) {
   return `<div style="margin-top:8px;font-size:12px;color:var(--cor-texto-suave)">
     ${n.numero?`<div style="font-size:13px;margin-bottom:2px">NF-e nº <strong style="color:var(--cor-texto)">${n.numero}</strong> — Série <strong style="color:var(--cor-texto)">${n.serie||'—'}</strong></div>`:''}
     Última tentativa (${n.ambiente}): <strong style="color:${cor}">${statusNFeLabel(n.status)}</strong>${n.chave?' — Chave: '+n.chave:''}${n.mensagem?' — '+escHtml(n.mensagem):''}
+    ${n.emailEnviadoEm?`<div style="margin-top:4px;color:#10B981"><i class="bi bi-envelope-check-fill me-1"></i>Email enviado em ${fmtDataHora(n.emailEnviadoEm)} para ${escHtml((n.emailEnviadoPara||[]).join(', '))}</div>`:''}
     <div style="margin-top:6px;display:flex;gap:8px;flex-wrap:wrap">
       ${danfeUrl?`<a href="${escHtml(danfeUrl)}" download="${escHtml(danfeNome)}" target="_blank" rel="noopener" class="btn btn-outline-success btn-sm" style="font-size:11px"><i class="bi bi-file-earmark-pdf me-1"></i>Baixar DANFe</a>`:''}
-      ${n.status==='autorizado'&&n.ref&&i!=null?`<button id="nfe-btn-email-${i}" class="btn btn-outline-primary btn-sm" style="font-size:11px" onclick="enviarEmailNFe(${i})"><i class="bi bi-envelope me-1"></i>Enviar por E-mail</button>`:''}
+      ${n.status==='autorizado'&&n.ref&&i!=null?`<button id="nfe-btn-email-${i}" class="btn ${n.emailEnviadoEm?'btn-outline-secondary':'btn-outline-primary'} btn-sm" style="font-size:11px" onclick="enviarEmailNFe(${i})"><i class="bi bi-envelope${n.emailEnviadoEm?'-check':''} me-1"></i>${n.emailEnviadoEm?'Reenviar':'Enviar'} por E-mail</button>`:''}
       ${n.status==='autorizado'&&i!=null?`<button class="btn btn-outline-danger btn-sm" style="font-size:11px" onclick="cancelarNFe(${i})"><i class="bi bi-x-circle me-1"></i>Cancelar NF-e</button>`:''}
     </div>
   </div>`;
 }
+function fmtDataHora(iso) { if(!iso) return '—'; return new Date(iso).toLocaleString('pt-BR',{day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit'}); }
 
 function nomeArquivoDanfe(n) {
   const d=new Date(n.emitidoEm||Date.now());
@@ -2995,8 +2997,9 @@ async function enviarEmailNFe(i) {
   const p=dados.pedidos[i];
   const n=p.nfe;
   if(!n||n.status!=='autorizado'||!n.ref) return alert('Essa nota não está autorizada — não é possível enviar o email.');
+  if(n.emailEnviadoEm&&!confirm(`Essa nota já foi enviada por email em ${fmtDataHora(n.emailEnviadoEm)} para ${(n.emailEnviadoPara||[]).join(', ')}.\n\nQuer reenviar mesmo assim?`)) return;
   const cliente=dados.clientes.find(x=>x.id===p.clienteId);
-  const emailsStr=prompt('Enviar a NF-e (DANFe) por e-mail para qual endereço? Para vários, separe por vírgula.',(cliente&&cliente.email)||'');
+  const emailsStr=prompt('Enviar a NF-e (DANFe) por e-mail para qual endereço? Para vários, separe por vírgula.',(n.emailEnviadoPara&&n.emailEnviadoPara[0])||(cliente&&cliente.email)||'');
   if(!emailsStr) return;
   const emails=emailsStr.split(',').map(e=>e.trim()).filter(Boolean);
   const emailRegex=/^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -3007,12 +3010,21 @@ async function enviarEmailNFe(i) {
   try {
     const resp=await fetch(NFE_PROXY_URL,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({acao:'enviar_email',ref:n.ref,emails,nfe:{ambiente:n.ambiente,danfe:n.danfe,numero:n.numero,pedidoNum:n.pedidoNum,clienteNome:n.clienteNome,produtoNome:getPedidoDesc(p)}})});
     const data=await resp.json();
-    if(data.focus_status>=200&&data.focus_status<300) alert('Email enviado com sucesso para: '+emails.join(', '));
+    if(data.focus_status>=200&&data.focus_status<300) {
+      alert('Email enviado com sucesso para: '+emails.join(', '));
+      const nfeInfo={...dados.pedidos[i].nfe,emailEnviadoEm:new Date().toISOString(),emailEnviadoPara:emails};
+      await db.collection('pedidos').doc(p._docId).update({nfe:nfeInfo});
+      dados.pedidos[i].nfe=nfeInfo;
+      const statusArea=document.getElementById('nfe-status-'+i);
+      if(statusArea) statusArea.innerHTML=renderStatusNFe(dados.pedidos[i],i);
+      if(currentPage==='pedidos') renderPedidos();
+      if(currentPage==='fiscal') renderFiscal();
+    }
     else alert('Erro ao enviar email:\n\n'+JSON.stringify(data.focus_resposta||data,null,2));
   } catch(e) {
     alert('Erro ao chamar o proxy: '+e.message);
   } finally {
-    if(btn){btn.disabled=false;btn.innerHTML='<i class="bi bi-envelope me-1"></i>Enviar por E-mail';}
+    if(btn){btn.disabled=false;btn.innerHTML=`<i class="bi bi-envelope${dados.pedidos[i].nfe.emailEnviadoEm?'-check':''} me-1"></i>${dados.pedidos[i].nfe.emailEnviadoEm?'Reenviar':'Enviar'} por E-mail`;}
   }
 }
 
