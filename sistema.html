@@ -2850,7 +2850,7 @@ const NFE_AMBIENTE_ATUAL='producao';
 const NFE_BASE_URLS={homologacao:'https://homologacao.focusnfe.com.br',producao:'https://api.focusnfe.com.br'};
 function podeEmitirNFe(p) {
   if(!p.nfe) return true;
-  return ['cancelado','cancelamento homologado','erro_autorizacao','rejeitado'].includes(p.nfe.status);
+  return !['autorizado','processando_autorizacao'].includes(p.nfe.status);
 }
 function renderBotaoEmitirNFe(p,i) {
   if(podeEmitirNFe(p)) {
@@ -2967,7 +2967,8 @@ async function emitirNFe(i) {
     const fr=data.focus_resposta||{};
     if(area) area.innerHTML=`<pre style="white-space:pre-wrap;font-size:11px;max-height:300px;overflow:auto;background:rgba(0,0,0,.2);padding:8px;border-radius:6px">${escHtml(JSON.stringify(data,null,2))}</pre>`;
     const cliente=dados.clientes.find(x=>x.id===p.clienteId);
-    const nfeInfo={ambiente:data.ambiente,ref,status:fr.status||null,chave:fr.chave_nfe||null,numero:fr.numero||null,serie:fr.serie||null,danfe:fr.caminho_danfe||fr.url_danfe||null,mensagem:fr.mensagem_sefaz||fr.mensagem||null,emitidoEm:new Date().toISOString(),
+    const detalheErros=Array.isArray(fr.erros)?fr.erros.map(er=>er.mensagem||JSON.stringify(er)).join(' | '):null;
+    const nfeInfo={ambiente:data.ambiente,ref,status:fr.status||fr.codigo||'erro',chave:fr.chave_nfe||null,numero:fr.numero||null,serie:fr.serie||null,danfe:fr.caminho_danfe||fr.url_danfe||null,mensagem:[fr.mensagem_sefaz||fr.mensagem,detalheErros].filter(Boolean).join(' — ')||null,emitidoEm:new Date().toISOString(),
       naturezaOperacao:payload.natureza_operacao,valorTotal:payload.valor_total,pedidoNum:p.num,
       clienteId:p.clienteId,clienteNome:cliente?cliente.nome:'',clienteCpf:cliente?cliente.cpf:''};
     await db.collection('pedidos').doc(p._docId).update({nfe:nfeInfo});
