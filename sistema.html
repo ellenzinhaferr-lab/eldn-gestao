@@ -2591,9 +2591,19 @@ async function gerarEtiquetaMelhorEnvio(i) {
     const linkEtiqueta=printData?.resposta?.url||null;
 
     const melhorEnvio={...p.melhorEnvio,orderId,linkEtiqueta,etiquetaGeradaEm:new Date().toISOString()};
-    await db.collection('pedidos').doc(p._docId).update({melhorEnvio,status:'Enviado'});
+    const updateData={melhorEnvio,status:'Enviado'};
+    // Tenta puxar o rastreio na hora — nem sempre a transportadora já liberou o código nesse momento,
+    // então isso é best-effort: se não vier, o pedido fica normal e dá pra usar "Atualizar Rastreio" depois.
+    const mapaRastreio=await buscarRastreioLote([orderId]);
+    const trackingInfo=mapaRastreio[orderId];
+    if(trackingInfo?.tracking) {
+      updateData.rastreio=trackingInfo.tracking;
+      updateData.linkRastreio='https://www.melhorrastreio.com.br/rastreio/'+trackingInfo.tracking;
+    }
+    await db.collection('pedidos').doc(p._docId).update(updateData);
     dados.pedidos[i].melhorEnvio=melhorEnvio;
     dados.pedidos[i].status='Enviado';
+    if(updateData.rastreio) { dados.pedidos[i].rastreio=updateData.rastreio; dados.pedidos[i].linkRastreio=updateData.linkRastreio; }
     verPedido(i);
     if(currentPage==='pedidos') renderPedidos();
   } catch(e) {
@@ -2748,11 +2758,21 @@ async function gerarEtiquetasLote() {
     data=await resp.json();
     const linkEtiquetas=data?.resposta?.url||null;
 
+    // Tenta puxar o rastreio de todos de uma vez — best-effort, nem sempre já está liberado nesse momento.
+    const mapaRastreio=await buscarRastreioLote(orderIds);
+
     for(const s of sucesso) {
       const melhorEnvio={...s.p.melhorEnvio,orderId:s.orderId,linkEtiqueta:linkEtiquetas,etiquetaGeradaEm:new Date().toISOString()};
-      await db.collection('pedidos').doc(s.p._docId).update({melhorEnvio,status:'Enviado'});
+      const updateData={melhorEnvio,status:'Enviado'};
+      const trackingInfo=mapaRastreio[s.orderId];
+      if(trackingInfo?.tracking) {
+        updateData.rastreio=trackingInfo.tracking;
+        updateData.linkRastreio='https://www.melhorrastreio.com.br/rastreio/'+trackingInfo.tracking;
+      }
+      await db.collection('pedidos').doc(s.p._docId).update(updateData);
       dados.pedidos[s.i].melhorEnvio=melhorEnvio;
       dados.pedidos[s.i].status='Enviado';
+      if(updateData.rastreio) { dados.pedidos[s.i].rastreio=updateData.rastreio; dados.pedidos[s.i].linkRastreio=updateData.linkRastreio; }
     }
     if(currentPage==='pedidos') renderPedidos();
     let html=`<div style="color:var(--cor-verde)"><i class="bi bi-check-circle-fill me-1"></i>${sucesso.length} etiqueta(s) gerada(s) com sucesso.</div>`;
@@ -2763,14 +2783,22 @@ async function gerarEtiquetasLote() {
     resultadoDiv.innerHTML='Erro no pagamento/geração em lote: '+escHtml(e.message)+' — os pedidos abaixo entraram no carrinho mas podem não ter sido pagos/gerados, confira no painel do Melhor Envio: '+sucesso.map(s=>s.p.num).join(', ');
   }
 }
+// Consulta o rastreio de um ou mais orderIds do Melhor Envio de uma vez.
+// Retorna o mapa {orderId: {tracking, status, ...}} cru da API, ou {} se der erro (nunca lança).
+async function buscarRastreioLote(orderIds) {
+  try {
+    const resp=await fetch(ME_PROXY_URL,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({acao:'rastrear',payload:{orders:orderIds}})});
+    const data=await resp.json();
+    return data?.resposta||{};
+  } catch(e) { return {}; }
+}
 async function atualizarRastreioMelhorEnvio(i) {
   const p=dados.pedidos[i];
   if(!p.melhorEnvio||!p.melhorEnvio.orderId) return;
   try {
-    const resp=await fetch(ME_PROXY_URL,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({acao:'rastrear',payload:{orders:[p.melhorEnvio.orderId]}})});
-    const data=await resp.json();
-    const info=data?.resposta?.[p.melhorEnvio.orderId];
-    if(!info) return alert('Não recebi informações de rastreio: '+JSON.stringify(data));
+    const mapa=await buscarRastreioLote([p.melhorEnvio.orderId]);
+    const info=mapa[p.melhorEnvio.orderId];
+    if(!info) return alert('Não recebi informações de rastreio: '+JSON.stringify(mapa));
     if(info.tracking) {
       const linkRastreio='https://www.melhorrastreio.com.br/rastreio/'+info.tracking;
       await db.collection('pedidos').doc(p._docId).update({rastreio:info.tracking,linkRastreio});
