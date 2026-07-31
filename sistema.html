@@ -2513,7 +2513,7 @@ function montarDestinatarioEnvio(cliente) {
   return {
     name:cliente.nome,phone:(cliente.whatsapp||'').replace(/\D/g,''),email:cliente.email||'',
     document:(cliente.cpf||'').replace(/\D/g,''),
-    address:cliente.logradouro||'',number:cliente.numero||'',complement:cliente.complemento||'',
+    address:cliente.logradouro||'',number:cliente.numero||'',complement:(cliente.complemento||'').slice(0,64),
     district:cliente.bairro||'',city:cliente.cidade||'',state_abbr:(cliente.estado||'').toUpperCase(),
     postal_code:(cliente.cep||'').replace(/\D/g,''),country_id:'BR'
   };
