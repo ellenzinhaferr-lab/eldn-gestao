@@ -726,7 +726,7 @@ table.gestao tbody tr:hover .tbl-sticky-r{background:#1f1545}
   <div class="modal-body"><input type="hidden" id="c-idx"><div class="row g-3">
     <div class="col-md-6"><label class="form-label">Nome Completo *</label><input class="form-control" id="c-nome"></div>
     <div class="col-md-6"><label class="form-label">E-mail</label><input class="form-control" id="c-email" type="email"></div>
-    <div class="col-md-4"><label class="form-label">WhatsApp</label><input class="form-control" id="c-whatsapp"></div>
+    <div class="col-md-4"><label class="form-label">WhatsApp</label><input class="form-control" id="c-whatsapp" maxlength="16" oninput="this.value=formatarTelefone(this.value)"></div>
     <div class="col-md-4"><label class="form-label">CPF / CNPJ *</label><input class="form-control" id="c-cpf" placeholder="Necessário para emitir NF-e" maxlength="18" oninput="this.value=formatarCpfCnpj(this.value)"></div>
     <div class="col-md-4"><label class="form-label">Instagram</label><input class="form-control" id="c-instagram" placeholder="@usuario"></div>
     <div class="col-md-4"><label class="form-label">Canal de Origem</label><select class="form-select" id="c-canal"><option>Instagram</option><option>Amazon</option><option>Indicação</option><option>Parente</option><option>WhatsApp</option><option>Site</option><option>Outro</option></select></div>
@@ -1086,7 +1086,7 @@ table.gestao tbody tr:hover .tbl-sticky-r{background:#1f1545}
     <div class="row g-3">
       <div class="col-md-6"><label class="form-label">Nome / Empresa *</label><input class="form-control" id="prosp-nome" placeholder="Nome do lead ou empresa"></div>
       <div class="col-md-6" id="prosp-campo-responsavel" style="display:none"><label class="form-label">Pessoa de Contato</label><input class="form-control" id="prosp-responsavel" placeholder="Nome de quem você vai falar"></div>
-      <div class="col-md-6"><label class="form-label">WhatsApp</label><input class="form-control" id="prosp-whatsapp" placeholder="11 9 9999-9999"></div>
+      <div class="col-md-6"><label class="form-label">WhatsApp</label><input class="form-control" id="prosp-whatsapp" placeholder="(11) 99999-9999" maxlength="16" oninput="this.value=formatarTelefone(this.value)"></div>
       <div class="col-md-6"><label class="form-label">E-mail</label><input class="form-control" id="prosp-email" type="email"></div>
       <div class="col-12" id="prosp-campo-site" style="display:none"><label class="form-label">Site da Empresa</label><input class="form-control" id="prosp-site" type="url" placeholder="https://www.livraria.com.br"></div>
       <div class="col-12" id="prosp-campo-endereco" style="display:none">
@@ -1521,7 +1521,7 @@ function _renderEsperaTabela(lista) {
   if (!lista.length) { tbody.innerHTML = '<tr><td colspan="7" class="text-center py-4" style="color:var(--cor-texto-suave)">Ninguém na lista de espera ainda.</td></tr>'; return; }
   tbody.innerHTML = lista.map(l => {
     const dt = l.criadoEm && l.criadoEm.toDate ? l.criadoEm.toDate().toLocaleString('pt-BR') : '—';
-    const wpp = l.whatsapp || '—';
+    const wpp = formatarTelefone(l.whatsapp) || '—';
     const wppLink = l.whatsapp ? `<a href="https://wa.me/${l.whatsapp.replace(/\D/g,'')}" target="_blank" style="color:var(--cor-verde)">${wpp}</a>` : '—';
     const avisadoBadge = l.avisado
       ? `<span style="background:rgba(16,185,129,.12);color:var(--cor-verde);padding:2px 10px;border-radius:20px;font-size:11px;font-weight:600">Avisada</span>`
@@ -1552,7 +1552,7 @@ function exportEsperaExcel() {
   if (!_esperaCache.length) { alert('Nenhum cadastro para exportar.'); return; }
   const rows = _esperaCache.map(l => ({
     'Nome': l.nome||'',
-    'WhatsApp': l.whatsapp||'',
+    'WhatsApp': formatarTelefone(l.whatsapp||''),
     'E-mail': l.email||'',
     'Estado': l.estado||'',
     'Avisada': l.avisado ? 'Sim' : 'Não',
@@ -1569,7 +1569,7 @@ function _renderLeadsTabela(lista) {
   if (!lista.length) { tbody.innerHTML = '<tr><td colspan="7" class="text-center py-4" style="color:var(--cor-texto-suave)">Nenhum lead cadastrado ainda.</td></tr>'; return; }
   tbody.innerHTML = lista.map(l => {
     const dt = l.criadoEm && l.criadoEm.toDate ? l.criadoEm.toDate().toLocaleString('pt-BR') : '—';
-    const wpp = l.whatsapp || '—';
+    const wpp = formatarTelefone(l.whatsapp) || '—';
     const wppLink = l.whatsapp ? `<a href="https://wa.me/${l.whatsapp.replace(/\D/g,'')}" target="_blank" style="color:var(--cor-verde)">${wpp}</a>` : '—';
     const origemColor = l.origem === 'degustacao-gratuita' ? 'var(--cor-verde)' : 'var(--cor-acento)';
     return `<tr>
@@ -1589,7 +1589,7 @@ function exportLeadsExcel() {
   if (!_leadsCache.length) { alert('Nenhum lead para exportar.'); return; }
   const rows = _leadsCache.map(l => ({
     'Nome': l.nome||'',
-    'WhatsApp': l.whatsapp||'',
+    'WhatsApp': formatarTelefone(l.whatsapp||''),
     'E-mail': l.email||'',
     'Origem': l.origem||'',
     'Campanha': l.utm_campaign||'',
@@ -2143,7 +2143,7 @@ function renderClientes() {
     const i=dados.clientes.indexOf(c);
     const peds=dados.pedidos.filter(p=>p.clienteId===c.id);
     const pedCol=peds.length?`<span style="color:var(--cor-secundaria);font-weight:600;cursor:pointer;" onclick="verHistoricoCliente(${c.id})" title="Ver histórico">${peds.length} pedido${peds.length>1?'s':''} <i class="bi bi-eye-fill" style="font-size:10px"></i></span>`:'<span style="color:var(--cor-texto-suave)">—</span>';
-    return `<tr><td style="color:var(--cor-texto-suave)">${c.id}</td><td style="font-weight:600;color:#fff">${c.nome}</td><td>${c.email||'—'}</td><td>${c.whatsapp||'—'}</td><td>${c.instagram||'—'}</td><td>${badgeCanal(c.canal)}</td><td>${c.cidade||'—'}</td><td>${pedCol}</td><td style="white-space:nowrap"><button class="btn-sm-action btn-edit" onclick="editarCliente(${i})"><i class="bi bi-pencil-fill"></i></button><button class="btn-sm-action btn-delete" onclick="deletar('clientes',${i})"><i class="bi bi-trash-fill"></i></button></td></tr>`;
+    return `<tr><td style="color:var(--cor-texto-suave)">${c.id}</td><td style="font-weight:600;color:#fff">${c.nome}</td><td>${c.email||'—'}</td><td>${formatarTelefone(c.whatsapp)||'—'}</td><td>${c.instagram||'—'}</td><td>${badgeCanal(c.canal)}</td><td>${c.cidade||'—'}</td><td>${pedCol}</td><td style="white-space:nowrap"><button class="btn-sm-action btn-edit" onclick="editarCliente(${i})"><i class="bi bi-pencil-fill"></i></button><button class="btn-sm-action btn-delete" onclick="deletar('clientes',${i})"><i class="bi bi-trash-fill"></i></button></td></tr>`;
   }).join('') : '<tr><td colspan="9"><div class="empty-state"><i class="bi bi-people"></i>Nenhum cliente cadastrado</div></td></tr>';
   atualizarThSort('clientes',s.col,s.dir);
 }
@@ -2187,7 +2187,7 @@ function editarCliente(i) {
   document.getElementById('c-idx').value=i;
   document.getElementById('c-nome').value=c.nome;
   document.getElementById('c-email').value=c.email;
-  document.getElementById('c-whatsapp').value=c.whatsapp;
+  document.getElementById('c-whatsapp').value=formatarTelefone(c.whatsapp);
   document.getElementById('c-cpf').value=formatarCpfCnpj(c.cpf);
   document.getElementById('c-instagram').value=c.instagram;
   document.getElementById('c-canal').value=c.canal;
@@ -2203,6 +2203,11 @@ function editarCliente(i) {
   new bootstrap.Modal(document.getElementById('modalCliente')).show();
 }
 
+function formatarTelefone(valor) {
+  const d=(valor||'').toString().replace(/\D/g,'').slice(0,11);
+  if(d.length<=10) return d.replace(/(\d{2})(\d)/,'($1) $2').replace(/(\d{4})(\d{1,4})$/,'$1-$2');
+  return d.replace(/(\d{2})(\d)/,'($1) $2').replace(/(\d{5})(\d{1,4})$/,'$1-$2');
+}
 function formatarCpfCnpj(valor) {
   const d=(valor||'').toString().replace(/\D/g,'').slice(0,14);
   if(d.length<=11) return d.replace(/(\d{3})(\d)/,'$1.$2').replace(/(\d{3})(\d)/,'$1.$2').replace(/(\d{3})(\d{1,2})$/,'$1-$2');
@@ -2218,7 +2223,7 @@ async function salvarCliente() {
   if(!nome) return alert('Nome é obrigatório');
   if(!validarCpfCnpjCliente()) return;
   const idx=v('c-idx');
-  const obj={id:idx===''?(dados.clientes.length?Math.max(...dados.clientes.map(x=>x.id))+1:1):dados.clientes[parseInt(idx)].id,nome,email:v('c-email'),whatsapp:v('c-whatsapp'),cpf:formatarCpfCnpj(v('c-cpf')),instagram:v('c-instagram'),canal:v('c-canal'),cep:v('c-cep'),logradouro:v('c-logradouro'),numero:v('c-numero'),complemento:v('c-complemento'),bairro:v('c-bairro'),cidade:v('c-cidade'),estado:v('c-estado'),obs:v('c-obs')};
+  const obj={id:idx===''?(dados.clientes.length?Math.max(...dados.clientes.map(x=>x.id))+1:1):dados.clientes[parseInt(idx)].id,nome,email:v('c-email'),whatsapp:formatarTelefone(v('c-whatsapp')),cpf:formatarCpfCnpj(v('c-cpf')),instagram:v('c-instagram'),canal:v('c-canal'),cep:v('c-cep'),logradouro:v('c-logradouro'),numero:v('c-numero'),complemento:v('c-complemento'),bairro:v('c-bairro'),cidade:v('c-cidade'),estado:v('c-estado'),obs:v('c-obs')};
   await salvarComCriadoEm('clientes',idx,obj,dados.clientes);
   bootstrap.Modal.getInstance(document.getElementById('modalCliente')).hide();
   document.getElementById('c-idx').value='';
@@ -2232,7 +2237,7 @@ async function salvarClienteECriarPedido() {
   if(!validarCpfCnpjCliente()) return;
   const idx=v('c-idx');
   const novoId=idx===''?(dados.clientes.length?Math.max(...dados.clientes.map(x=>x.id))+1:1):dados.clientes[parseInt(idx)].id;
-  const obj={id:novoId,nome,email:v('c-email'),whatsapp:v('c-whatsapp'),cpf:formatarCpfCnpj(v('c-cpf')),instagram:v('c-instagram'),canal:v('c-canal'),cep:v('c-cep'),logradouro:v('c-logradouro'),numero:v('c-numero'),complemento:v('c-complemento'),bairro:v('c-bairro'),cidade:v('c-cidade'),estado:v('c-estado'),obs:v('c-obs')};
+  const obj={id:novoId,nome,email:v('c-email'),whatsapp:formatarTelefone(v('c-whatsapp')),cpf:formatarCpfCnpj(v('c-cpf')),instagram:v('c-instagram'),canal:v('c-canal'),cep:v('c-cep'),logradouro:v('c-logradouro'),numero:v('c-numero'),complemento:v('c-complemento'),bairro:v('c-bairro'),cidade:v('c-cidade'),estado:v('c-estado'),obs:v('c-obs')};
   await salvarComCriadoEm('clientes',idx,obj,dados.clientes);
   bootstrap.Modal.getInstance(document.getElementById('modalCliente')).hide();
   document.getElementById('c-idx').value='';
@@ -3285,7 +3290,7 @@ function verPedido(i) {
     <div style="border-top:1px solid var(--cor-borda);padding-top:12px;margin-bottom:12px"><small style="color:var(--cor-secundaria);font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:1.2px"><i class="bi bi-person-fill me-1"></i>Cliente</small></div>
     <div style="margin-bottom:16px">
       <div style="font-weight:600;color:#fff;font-size:14px">${cliente?cliente.nome:'—'}</div>
-      ${cliente&&cliente.whatsapp?`<div style="font-size:12px;color:var(--cor-texto-suave);margin-top:2px"><i class="bi bi-whatsapp me-1" style="color:#25D366"></i>${cliente.whatsapp}</div>`:''}
+      ${cliente&&cliente.whatsapp?`<div style="font-size:12px;color:var(--cor-texto-suave);margin-top:2px"><i class="bi bi-whatsapp me-1" style="color:#25D366"></i>${formatarTelefone(cliente.whatsapp)}</div>`:''}
       ${p.endereco?`<div style="font-size:12px;color:var(--cor-texto-suave);margin-top:4px"><i class="bi bi-geo-alt me-1"></i>${p.endereco}</div>`:''}
     </div>
     <div style="border-top:1px solid var(--cor-borda);padding-top:12px;margin-bottom:10px"><small style="color:var(--cor-secundaria);font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:1.2px"><i class="bi bi-box-seam me-1"></i>Itens</small></div>
@@ -3389,7 +3394,7 @@ function _imprimirPedidoHtml(p, cliente, itens, bruto, liq, taxaCanal, taxaPagto
   <div style="margin-bottom:14px">
     <div style="font-weight:700;font-size:15px">${cliente?escHtml(cliente.nome):'—'}</div>
     ${cliente&&cliente.email?`<div style="color:#555;font-size:12px;margin-top:2px">E-mail: ${escHtml(cliente.email)}</div>`:''}
-    ${cliente&&cliente.whatsapp?`<div style="color:#555;font-size:12px;margin-top:2px">WhatsApp: ${escHtml(cliente.whatsapp)}</div>`:''}
+    ${cliente&&cliente.whatsapp?`<div style="color:#555;font-size:12px;margin-top:2px">WhatsApp: ${escHtml(formatarTelefone(cliente.whatsapp))}</div>`:''}
     ${cliente&&cliente.cpf?`<div style="color:#555;font-size:12px;margin-top:2px">CPF/CNPJ: ${escHtml(formatarCpfCnpj(cliente.cpf))}</div>`:''}
     ${_endImpressao?`<div style="color:#555;font-size:12px;margin-top:2px">Endereço: ${escHtml(_endImpressao)}</div>`:''}
   </div>
@@ -4082,9 +4087,10 @@ function renderProspeccao() {
     const tentativas = p.tentativas || 0;
     const cidadeUf = p.cidade ? `${p.cidade}${p.uf?' / '+p.uf:''}` : (p.uf||'—');
     const siteHtml = p.site ? `<a href="${p.site}" target="_blank" style="color:var(--cor-secundaria);font-size:11px" title="${p.site}"><i class="bi bi-box-arrow-up-right"></i></a> ` : '';
+    const contatoFmt = formatarTelefone(p.contato)||'—';
     const col2 = prospTab === 'carrinho'
-      ? `<td>${p.contato||'—'}</td><td>${p.produto||'—'}</td><td><span style="color:var(--cor-texto-suave);font-size:12px">${p.origem||'—'}</span></td>`
-      : `<td><span style="color:var(--cor-texto-suave);font-size:12px">${siteHtml}${p.responsavel||'—'}</span></td><td>${p.contato||'—'}</td><td><span style="color:var(--cor-texto-suave);font-size:12px">${p.tipoEmpresa||'—'}</span></td><td style="font-size:12px;color:var(--cor-texto-suave)">${cidadeUf}</td>`;
+      ? `<td>${contatoFmt}</td><td>${p.produto||'—'}</td><td><span style="color:var(--cor-texto-suave);font-size:12px">${p.origem||'—'}</span></td>`
+      : `<td><span style="color:var(--cor-texto-suave);font-size:12px">${siteHtml}${p.responsavel||'—'}</span></td><td>${contatoFmt}</td><td><span style="color:var(--cor-texto-suave);font-size:12px">${p.tipoEmpresa||'—'}</span></td><td style="font-size:12px;color:var(--cor-texto-suave)">${cidadeUf}</td>`;
     return `<tr>
       <td style="font-weight:600">${p.nome||'—'}</td>
       ${col2}
@@ -4140,7 +4146,7 @@ function abrirModalProspeccao(docId) {
     document.getElementById('prosp-tipo').value = p.tipo || prospTab;
     document.getElementById('prosp-nome').value = p.nome || '';
     document.getElementById('prosp-responsavel').value = p.responsavel || '';
-    document.getElementById('prosp-whatsapp').value = p.contato || '';
+    document.getElementById('prosp-whatsapp').value = formatarTelefone(p.contato || '');
     document.getElementById('prosp-email').value = p.email || '';
     document.getElementById('prosp-site').value = p.site || '';
     document.getElementById('prosp-cep').value = p.cep || '';
@@ -4183,7 +4189,7 @@ async function salvarProspeccao() {
     tipo,
     nome,
     responsavel: document.getElementById('prosp-responsavel').value.trim(),
-    contato: document.getElementById('prosp-whatsapp').value.trim(),
+    contato: formatarTelefone(document.getElementById('prosp-whatsapp').value.trim()),
     email: document.getElementById('prosp-email').value.trim(),
     site: document.getElementById('prosp-site').value.trim(),
     cep: document.getElementById('prosp-cep').value.trim(),
@@ -4538,7 +4544,7 @@ function exportarClientes(formato) {
   if(formato === 'excel') {
     const wsData = [['ID','Nome','E-mail','WhatsApp','CPF','Instagram','Canal','CEP','Logradouro','Número','Complemento','Bairro','Cidade','UF','Observações']];
     lista.forEach(c => {
-      wsData.push([c.id,c.nome,c.email||'',c.whatsapp||'',formatarCpfCnpj(c.cpf||''),c.instagram||'',c.canal||'',c.cep||'',c.logradouro||'',c.numero||'',c.complemento||'',c.bairro||'',c.cidade||'',c.estado||'',c.obs||'']);
+      wsData.push([c.id,c.nome,c.email||'',formatarTelefone(c.whatsapp||''),formatarCpfCnpj(c.cpf||''),c.instagram||'',c.canal||'',c.cep||'',c.logradouro||'',c.numero||'',c.complemento||'',c.bairro||'',c.cidade||'',c.estado||'',c.obs||'']);
     });
     const wb = XLSX.utils.book_new();
     const ws = XLSX.utils.aoa_to_sheet(wsData);
