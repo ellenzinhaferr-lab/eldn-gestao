@@ -727,7 +727,7 @@ table.gestao tbody tr:hover .tbl-sticky-r{background:#1f1545}
     <div class="col-md-6"><label class="form-label">Nome Completo *</label><input class="form-control" id="c-nome"></div>
     <div class="col-md-6"><label class="form-label">E-mail</label><input class="form-control" id="c-email" type="email"></div>
     <div class="col-md-4"><label class="form-label">WhatsApp</label><input class="form-control" id="c-whatsapp"></div>
-    <div class="col-md-4"><label class="form-label">CPF / CNPJ *</label><input class="form-control" id="c-cpf" placeholder="Necessário para emitir NF-e"></div>
+    <div class="col-md-4"><label class="form-label">CPF / CNPJ *</label><input class="form-control" id="c-cpf" placeholder="Necessário para emitir NF-e" maxlength="18" oninput="this.value=formatarCpfCnpj(this.value)"></div>
     <div class="col-md-4"><label class="form-label">Instagram</label><input class="form-control" id="c-instagram" placeholder="@usuario"></div>
     <div class="col-md-4"><label class="form-label">Canal de Origem</label><select class="form-select" id="c-canal"><option>Instagram</option><option>Amazon</option><option>Indicação</option><option>Parente</option><option>WhatsApp</option><option>Site</option><option>Outro</option></select></div>
     <div class="col-12" style="border-top:1px solid var(--cor-borda);padding-top:12px;margin-top:4px"><small style="color:var(--cor-secundaria);font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:1px"><i class="bi bi-geo-alt-fill me-1"></i>Endereço para Envio</small></div>
@@ -2105,11 +2105,26 @@ function atualizarThSort(tabela,col,dir){
     if(th.dataset.col===col) th.classList.add(dir);
   });
 }
-function compararSort(va,vb,dir){
+function compararSort(va,vb,dir,a,b){
   let r;
   if(typeof va==='number'&&typeof vb==='number') r=va-vb;
   else r=(va||'').toString().localeCompare((vb||'').toString(),'pt-BR',{numeric:true});
+  if(r===0&&a&&b){
+    const ta=a.criadoEm&&a.criadoEm.seconds?a.criadoEm.seconds:0;
+    const tb=b.criadoEm&&b.criadoEm.seconds?b.criadoEm.seconds:0;
+    if(ta!==tb) r=ta-tb;
+  }
   return dir==='asc'?r:-r;
+}
+async function salvarComCriadoEm(colecao,idx,obj,listaAtual){
+  if(idx===''){
+    obj.criadoEm=firebase.firestore.FieldValue.serverTimestamp();
+    await db.collection(colecao).add(obj);
+  } else {
+    const existente=listaAtual[parseInt(idx)];
+    if(existente.criadoEm) obj.criadoEm=existente.criadoEm;
+    await db.collection(colecao).doc(existente._docId).set(obj);
+  }
 }
 
 // ============================================================
@@ -2122,7 +2137,7 @@ function renderClientes() {
     if(s.col==='id'){va=a.id;vb=b.id;}
     else if(s.col==='pedidos'){va=dados.pedidos.filter(p=>p.clienteId===a.id).length;vb=dados.pedidos.filter(p=>p.clienteId===b.id).length;}
     else{va=(a[s.col]||'').toLowerCase();vb=(b[s.col]||'').toLowerCase();}
-    return compararSort(va,vb,s.dir);
+    return compararSort(va,vb,s.dir,a,b);
   });
   document.querySelector('#tabela-clientes tbody').innerHTML = lista.length ? lista.map(c=>{
     const i=dados.clientes.indexOf(c);
@@ -2173,7 +2188,7 @@ function editarCliente(i) {
   document.getElementById('c-nome').value=c.nome;
   document.getElementById('c-email').value=c.email;
   document.getElementById('c-whatsapp').value=c.whatsapp;
-  document.getElementById('c-cpf').value=c.cpf;
+  document.getElementById('c-cpf').value=formatarCpfCnpj(c.cpf);
   document.getElementById('c-instagram').value=c.instagram;
   document.getElementById('c-canal').value=c.canal;
   document.getElementById('c-cep').value=c.cep||'';
@@ -2188,6 +2203,11 @@ function editarCliente(i) {
   new bootstrap.Modal(document.getElementById('modalCliente')).show();
 }
 
+function formatarCpfCnpj(valor) {
+  const d=(valor||'').toString().replace(/\D/g,'').slice(0,14);
+  if(d.length<=11) return d.replace(/(\d{3})(\d)/,'$1.$2').replace(/(\d{3})(\d)/,'$1.$2').replace(/(\d{3})(\d{1,2})$/,'$1-$2');
+  return d.replace(/(\d{2})(\d)/,'$1.$2').replace(/(\d{3})(\d)/,'$1.$2').replace(/(\d{3})(\d)/,'$1/$2').replace(/(\d{4})(\d{1,2})$/,'$1-$2');
+}
 function validarCpfCnpjCliente() {
   const digitos=v('c-cpf').replace(/\D/g,'');
   if(digitos.length!==11 && digitos.length!==14){alert('CPF/CNPJ é obrigatório e precisa ser válido (11 dígitos para CPF ou 14 para CNPJ) — necessário para emitir NF-e.');return false;}
@@ -2198,9 +2218,8 @@ async function salvarCliente() {
   if(!nome) return alert('Nome é obrigatório');
   if(!validarCpfCnpjCliente()) return;
   const idx=v('c-idx');
-  const obj={id:idx===''?(dados.clientes.length?Math.max(...dados.clientes.map(x=>x.id))+1:1):dados.clientes[parseInt(idx)].id,nome,email:v('c-email'),whatsapp:v('c-whatsapp'),cpf:v('c-cpf'),instagram:v('c-instagram'),canal:v('c-canal'),cep:v('c-cep'),logradouro:v('c-logradouro'),numero:v('c-numero'),complemento:v('c-complemento'),bairro:v('c-bairro'),cidade:v('c-cidade'),estado:v('c-estado'),obs:v('c-obs')};
-  if(idx==='') await db.collection('clientes').add(obj);
-  else await db.collection('clientes').doc(dados.clientes[parseInt(idx)]._docId).set(obj);
+  const obj={id:idx===''?(dados.clientes.length?Math.max(...dados.clientes.map(x=>x.id))+1:1):dados.clientes[parseInt(idx)].id,nome,email:v('c-email'),whatsapp:v('c-whatsapp'),cpf:formatarCpfCnpj(v('c-cpf')),instagram:v('c-instagram'),canal:v('c-canal'),cep:v('c-cep'),logradouro:v('c-logradouro'),numero:v('c-numero'),complemento:v('c-complemento'),bairro:v('c-bairro'),cidade:v('c-cidade'),estado:v('c-estado'),obs:v('c-obs')};
+  await salvarComCriadoEm('clientes',idx,obj,dados.clientes);
   bootstrap.Modal.getInstance(document.getElementById('modalCliente')).hide();
   document.getElementById('c-idx').value='';
   document.getElementById('modalClienteTitulo').textContent='Novo Cliente';
@@ -2213,9 +2232,8 @@ async function salvarClienteECriarPedido() {
   if(!validarCpfCnpjCliente()) return;
   const idx=v('c-idx');
   const novoId=idx===''?(dados.clientes.length?Math.max(...dados.clientes.map(x=>x.id))+1:1):dados.clientes[parseInt(idx)].id;
-  const obj={id:novoId,nome,email:v('c-email'),whatsapp:v('c-whatsapp'),cpf:v('c-cpf'),instagram:v('c-instagram'),canal:v('c-canal'),cep:v('c-cep'),logradouro:v('c-logradouro'),numero:v('c-numero'),complemento:v('c-complemento'),bairro:v('c-bairro'),cidade:v('c-cidade'),estado:v('c-estado'),obs:v('c-obs')};
-  if(idx==='') await db.collection('clientes').add(obj);
-  else await db.collection('clientes').doc(dados.clientes[parseInt(idx)]._docId).set(obj);
+  const obj={id:novoId,nome,email:v('c-email'),whatsapp:v('c-whatsapp'),cpf:formatarCpfCnpj(v('c-cpf')),instagram:v('c-instagram'),canal:v('c-canal'),cep:v('c-cep'),logradouro:v('c-logradouro'),numero:v('c-numero'),complemento:v('c-complemento'),bairro:v('c-bairro'),cidade:v('c-cidade'),estado:v('c-estado'),obs:v('c-obs')};
+  await salvarComCriadoEm('clientes',idx,obj,dados.clientes);
   bootstrap.Modal.getInstance(document.getElementById('modalCliente')).hide();
   document.getElementById('c-idx').value='';
   document.getElementById('modalClienteTitulo').textContent='Novo Cliente';
@@ -2237,7 +2255,7 @@ let _itemCount=0;
 function preencherSelectsPedido() {
   document.getElementById('p-canal').innerHTML=(dados.config.canais||[]).map(c=>`<option>${c.nome}</option>`).join('');
   document.getElementById('p-pagto').innerHTML=(dados.config.formasPagto||[{nome:'PIX',taxa:0,taxaFixa:0}]).map(f=>`<option>${f.nome}</option>`).join('');
-  document.getElementById('p-cliente').innerHTML='<option value="">— Selecione —</option>'+dados.clientes.map(c=>`<option value="${c.id}">${c.id} — ${c.nome}${c.cpf?' | '+c.cpf:''}</option>`).join('');
+  document.getElementById('p-cliente').innerHTML='<option value="">— Selecione —</option>'+dados.clientes.map(c=>`<option value="${c.id}">${c.id} — ${c.nome}${c.cpf?' | '+formatarCpfCnpj(c.cpf):''}</option>`).join('');
   document.getElementById('p-cliente-busca').value='';
   document.getElementById('p-data').value=new Date().toISOString().split('T')[0];
   document.getElementById('p-num').value=nextNumPedido();
@@ -2389,7 +2407,7 @@ function renderPedidos() {
     else if(s.col==='valor'){va=getPedidoTotal(a);vb=getPedidoTotal(b);}
     else if(s.col==='liquido'){va=a.liquido!=null?a.liquido:getPedidoTotal(a);vb=b.liquido!=null?b.liquido:getPedidoTotal(b);}
     else{va=(a[s.col]||'').toString().toLowerCase();vb=(b[s.col]||'').toString().toLowerCase();}
-    return compararSort(va,vb,s.dir);
+    return compararSort(va,vb,s.dir,a,b);
   });
   document.querySelector('#tabela-pedidos tbody').innerHTML=lista.length?lista.map(p=>{
     const ri=dados.pedidos.indexOf(p);
@@ -2416,7 +2434,7 @@ function editarPedido(i) {
   document.getElementById('p-canal').value=p.canal;
   document.getElementById('p-cliente').value=p.clienteId||'';
   const cEd=dados.clientes.find(x=>x.id===p.clienteId);
-  document.getElementById('p-cliente-busca').value=cEd?`${cEd.id} — ${cEd.nome}${cEd.cpf?' | '+cEd.cpf:''}`:'';
+  document.getElementById('p-cliente-busca').value=cEd?`${cEd.id} — ${cEd.nome}${cEd.cpf?' | '+formatarCpfCnpj(cEd.cpf):''}`:'';
   document.getElementById('p-endereco').value=p.endereco||'';
   // Populate items
   _itemCount=0;
@@ -2454,8 +2472,7 @@ async function salvarPedido() {
   const existingRec=idx!==''?dados.pedidos[parseInt(idx)]?.statusRecebimento:null;
   const statusRecebimento=existingRec==='Recebido'?'Recebido':(getPrazoRecebimento(v('p-canal'),v('p-pagto'))>0?'A receber':'Recebido');
   const obj={data:v('p-data'),num,canal:v('p-canal'),clienteId:parseInt(v('p-cliente'))||null,endereco:v('p-endereco'),itens,frete:parseFloat((v('p-frete')||'0').replace(',','.'))||0,pagto:v('p-pagto'),liquido:parseFloat((v('p-liquido')||'0').replace(',','.'))||0,status:statusSalvo,dataRecebimento,statusRecebimento,rastreio:v('p-rastreio'),linkRastreio:v('p-link-rastreio'),obs:v('p-obs')};
-  if(idx==='') await db.collection('pedidos').add(obj);
-  else await db.collection('pedidos').doc(dados.pedidos[parseInt(idx)]._docId).set(obj);
+  await salvarComCriadoEm('pedidos',idx,obj,dados.pedidos);
   bootstrap.Modal.getInstance(document.getElementById('modalPedido')).hide();
   document.getElementById('p-idx').value='';
   document.getElementById('modalPedidoTitulo').textContent='Novo Pedido';
@@ -3203,7 +3220,7 @@ function renderFiscal() {
         <td style="font-family:monospace">${p.nfe.numero||'—'}</td>
         <td>${p.nfe.serie||'—'}</td>
         <td>${codigo}</td>
-        <td>${cpf||'—'}</td>
+        <td>${cpf?formatarCpfCnpj(cpf):'—'}</td>
         <td style="font-weight:600;color:#fff">${escHtml(nome)}</td>
         <td>${dataEmissao?fmtData(dataEmissao):'—'}</td>
         <td style="color:var(--cor-verde);font-weight:600">${moeda(valor)}</td>
@@ -3373,7 +3390,7 @@ function _imprimirPedidoHtml(p, cliente, itens, bruto, liq, taxaCanal, taxaPagto
     <div style="font-weight:700;font-size:15px">${cliente?escHtml(cliente.nome):'—'}</div>
     ${cliente&&cliente.email?`<div style="color:#555;font-size:12px;margin-top:2px">E-mail: ${escHtml(cliente.email)}</div>`:''}
     ${cliente&&cliente.whatsapp?`<div style="color:#555;font-size:12px;margin-top:2px">WhatsApp: ${escHtml(cliente.whatsapp)}</div>`:''}
-    ${cliente&&cliente.cpf?`<div style="color:#555;font-size:12px;margin-top:2px">CPF/CNPJ: ${escHtml(cliente.cpf)}</div>`:''}
+    ${cliente&&cliente.cpf?`<div style="color:#555;font-size:12px;margin-top:2px">CPF/CNPJ: ${escHtml(formatarCpfCnpj(cliente.cpf))}</div>`:''}
     ${_endImpressao?`<div style="color:#555;font-size:12px;margin-top:2px">Endereço: ${escHtml(_endImpressao)}</div>`:''}
   </div>
   <div class="sec">Itens do Pedido</div>
@@ -3475,7 +3492,7 @@ function renderFinanceiro() {
   lista=lista.sort((a,b)=>{
     const va=s.col==='valor'?a.valor:((a[s.col]||'').toString().toLowerCase());
     const vb=s.col==='valor'?b.valor:((b[s.col]||'').toString().toLowerCase());
-    return compararSort(va,vb,s.dir);
+    return compararSort(va,vb,s.dir,a,b);
   });
   const hoje=new Date().toISOString().split('T')[0];
   document.querySelector('#tabela-financeiro tbody').innerHTML=lista.length?lista.map(f=>{
@@ -3521,17 +3538,18 @@ async function salvarFinanceiro() {
     const batch=db.batch();
     const refPrimeiro = idx===''?db.collection('financeiro').doc():db.collection('financeiro').doc(dados.financeiro[parseInt(idx)]._docId);
     const item0 = isParcelamento ? {...obj, parcela:1, totalParcelas:meses, desc:`${descBase} (Parcela 1/${meses})`} : obj;
+    if(idx==='') item0.criadoEm=firebase.firestore.FieldValue.serverTimestamp();
+    else if(dados.financeiro[parseInt(idx)].criadoEm) item0.criadoEm=dados.financeiro[parseInt(idx)].criadoEm;
     batch.set(refPrimeiro, item0);
     for(let i=1;i<meses;i++){
       const base={...obj, data:addMeses(obj.data,i), vencimento:obj.vencimento?addMeses(obj.vencimento,i):'', situacao:'Prevista'};
       const item = isParcelamento ? {...base, parcela:i+1, totalParcelas:meses, desc:`${descBase} (Parcela ${i+1}/${meses})`} : base;
+      item.criadoEm=firebase.firestore.FieldValue.serverTimestamp();
       batch.set(db.collection('financeiro').doc(), item);
     }
     await batch.commit();
-  } else if(idx==='') {
-    await db.collection('financeiro').add(obj);
   } else {
-    await db.collection('financeiro').doc(dados.financeiro[parseInt(idx)]._docId).set(obj);
+    await salvarComCriadoEm('financeiro',idx,obj,dados.financeiro);
   }
   bootstrap.Modal.getInstance(document.getElementById('modalFinanceiro')).hide();
   document.getElementById('f-idx').value='';
@@ -3613,7 +3631,7 @@ function renderCompras() {
     if(s.col==='total'){va=(a.qtd*a.custo)+(a.frete||0)+(a.imposto||0);vb=(b.qtd*b.custo)+(b.frete||0)+(b.imposto||0);}
     else if(['qtd','custo','frete'].includes(s.col)){va=a[s.col]||0;vb=b[s.col]||0;}
     else{va=(a[s.col]||'').toString().toLowerCase();vb=(b[s.col]||'').toString().toLowerCase();}
-    return compararSort(va,vb,s.dir);
+    return compararSort(va,vb,s.dir,a,b);
   });
   document.querySelector('#tabela-compras tbody').innerHTML=lista.length?lista.map(c=>{const ri=dados.compras.indexOf(c);const total=(c.qtd*c.custo)+(c.frete||0)+(c.imposto||0);return `<tr><td>${fmtData(c.data)}</td><td style="font-weight:600;color:#fff">${c.item}</td><td>${c.fornecedor}</td><td><span class="badge-canal badge-livro">${c.categoria}</span></td><td style="text-align:center">${c.qtd}</td><td>${moeda(c.custo)}</td><td>${moeda(c.frete)}</td><td style="font-weight:700;color:var(--cor-acento)">${moeda(total)}</td><td style="white-space:nowrap"><button class="btn-sm-action btn-edit" onclick="editarCompra(${ri})"><i class="bi bi-pencil-fill"></i></button><button class="btn-sm-action btn-delete" onclick="deletar('compras',${ri})"><i class="bi bi-trash-fill"></i></button></td></tr>`}).join(''):'<tr><td colspan="9"><div class="empty-state"><i class="bi bi-cart"></i>Nenhuma compra lançada</div></td></tr>';
   atualizarThSort('compras',s.col,s.dir);
@@ -3644,8 +3662,7 @@ async function salvarCompra() {
   const skuSalvo=v('cp-sku');
   const qtdSalva=parseFloat(v('cp-qtd'))||1;
   const obj={data:v('cp-data'),dataPagamento:v('cp-datapagamento')||'',situacaoPagamento:v('cp-situacaopagto')||'A Pagar',nf:v('cp-nf'),sku:skuSalvo,item:v('cp-item'),fornecedor:v('cp-fornecedor'),categoria:v('cp-categoria'),qtd:qtdSalva,custo:pFloat('cp-custo'),frete:pFloat('cp-frete'),imposto:pFloat('cp-imposto'),obs:v('cp-obs')};
-  if(idx==='') await db.collection('compras').add(obj);
-  else await db.collection('compras').doc(dados.compras[parseInt(idx)]._docId).set(obj);
+  await salvarComCriadoEm('compras',idx,obj,dados.compras);
   bootstrap.Modal.getInstance(document.getElementById('modalCompra')).hide();
   document.getElementById('cp-idx').value='';
   limpaCampos(['cp-nf','cp-item','cp-fornecedor','cp-obs','cp-datapagamento']);
@@ -3758,7 +3775,7 @@ function renderMovimentosEstoque() {
     let va,vb;
     if(s.col==='qtd'){va=a.qtd||0;vb=b.qtd||0;}
     else{va=(a[s.col]||'').toString().toLowerCase();vb=(b[s.col]||'').toString().toLowerCase();}
-    return compararSort(va,vb,s.dir);
+    return compararSort(va,vb,s.dir,a,b);
   });
   const nomeProd=sku=>{ const p=dados.produtos.find(x=>x.sku===sku); return p?p.nome:sku; };
   document.querySelector('#tabela-est-mov tbody').innerHTML=lista.length?lista.map(m=>{const ri=dados.estoqueMovimentos.indexOf(m);return `<tr><td>${fmtData(m.data)}</td><td><span style="font-family:monospace;font-size:11px;color:var(--cor-secundaria)">${m.sku}</span><br><span style="font-size:12px">${nomeProd(m.sku)}</span></td><td>${m.desc||'—'}</td><td style="text-align:center;font-weight:700;color:#3B82F6">+${m.qtd}</td><td style="font-size:12px;color:var(--cor-texto-suave)">${m.obs||'—'}</td><td style="white-space:nowrap"><button class="btn-sm-action" style="color:#60A5FA" onclick="verEstoqueMov(${ri})" title="Visualizar"><i class="bi bi-eye-fill"></i></button><button class="btn-sm-action btn-edit" onclick="editarEstoqueMov(${ri})" title="Editar"><i class="bi bi-pencil-fill"></i></button><button class="btn-sm-action btn-delete" onclick="deletar('estoqueMovimentos',${ri})" title="Excluir"><i class="bi bi-trash-fill"></i></button></td></tr>`;}).join(''):'<tr><td colspan="6"><div class="empty-state"><i class="bi bi-arrow-down-up"></i>Nenhuma movimentação registrada</div></td></tr>';
@@ -3808,8 +3825,7 @@ async function salvarEstoqueMov() {
   if(qtd<1) return alert('Quantidade deve ser maior que zero');
   const idx=v('em-idx');
   const obj={data:v('em-data'),sku,desc,qtd,obs:v('em-obs')};
-  if(idx==='') await db.collection('estoqueMovimentos').add(obj);
-  else await db.collection('estoqueMovimentos').doc(dados.estoqueMovimentos[parseInt(idx)]._docId).set(obj);
+  await salvarComCriadoEm('estoqueMovimentos',idx,obj,dados.estoqueMovimentos);
   bootstrap.Modal.getInstance(document.getElementById('modalEstoqueMov')).hide();
   document.getElementById('em-idx').value='';
   document.getElementById('modalEstoqueMovTitulo').textContent='Nova Entrada de Estoque';
@@ -4522,7 +4538,7 @@ function exportarClientes(formato) {
   if(formato === 'excel') {
     const wsData = [['ID','Nome','E-mail','WhatsApp','CPF','Instagram','Canal','CEP','Logradouro','Número','Complemento','Bairro','Cidade','UF','Observações']];
     lista.forEach(c => {
-      wsData.push([c.id,c.nome,c.email||'',c.whatsapp||'',c.cpf||'',c.instagram||'',c.canal||'',c.cep||'',c.logradouro||'',c.numero||'',c.complemento||'',c.bairro||'',c.cidade||'',c.estado||'',c.obs||'']);
+      wsData.push([c.id,c.nome,c.email||'',c.whatsapp||'',formatarCpfCnpj(c.cpf||''),c.instagram||'',c.canal||'',c.cep||'',c.logradouro||'',c.numero||'',c.complemento||'',c.bairro||'',c.cidade||'',c.estado||'',c.obs||'']);
     });
     const wb = XLSX.utils.book_new();
     const ws = XLSX.utils.aoa_to_sheet(wsData);
