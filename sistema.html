@@ -287,6 +287,11 @@ table.gestao tbody tr:hover .tbl-sticky-r{background:#1f1545}
         </select>
         <button class="btn btn-outline-secondary btn-sm" onclick="limparFiltroFiscal()">Limpar filtros</button>
       </div>
+      <div id="fiscal-export-xml" style="background:var(--cor-card);border:1px solid var(--cor-borda);border-radius:14px;padding:14px 20px;margin-bottom:20px;display:flex;align-items:center;gap:12px;flex-wrap:wrap">
+        <span style="font-size:12px;color:var(--cor-texto-suave);white-space:nowrap;font-weight:600"><i class="bi bi-file-earmark-zip me-1"></i>Exportar para a Contabilidade:</span>
+        <input type="month" class="form-control form-control-sm" id="fiscal-mes-xml" style="width:160px">
+        <button id="btn-baixar-xmls" class="btn btn-outline-success btn-sm" onclick="baixarXmlsDoMes()"><i class="bi bi-download me-1"></i>Baixar XMLs do Mês (.zip)</button>
+      </div>
       <div class="table-card">
         <div class="table-header"><h6 id="fiscal-titulo">Nossas Notas Fiscais (Saída)</h6></div>
         <div class="table-responsive"><table class="gestao" id="tabela-fiscal"><thead><tr>
@@ -2896,6 +2901,7 @@ function renderStatusNFe(p,i) {
     ${n.emailEnviadoEm?`<div style="margin-top:4px;color:#10B981"><i class="bi bi-envelope-check-fill me-1"></i>Email enviado em ${fmtDataHora(n.emailEnviadoEm)} para ${escHtml((n.emailEnviadoPara||[]).join(', '))}</div>`:''}
     <div style="margin-top:6px;display:flex;gap:8px;flex-wrap:wrap">
       ${n.danfe&&i!=null?`<button class="btn btn-outline-success btn-sm" style="font-size:11px" onclick="baixarDanfe(dados.pedidos[${i}].nfe)"><i class="bi bi-file-earmark-pdf me-1"></i>Baixar DANFe</button>`:''}
+      ${n.xml&&i!=null?`<button class="btn btn-outline-secondary btn-sm" style="font-size:11px" onclick="baixarXml(dados.pedidos[${i}].nfe)"><i class="bi bi-file-earmark-code me-1"></i>Baixar XML</button>`:''}
       ${n.status==='autorizado'&&n.ref&&i!=null?`<button id="nfe-btn-email-${i}" class="btn ${n.emailEnviadoEm?'btn-outline-secondary':'btn-outline-primary'} btn-sm" style="font-size:11px" onclick="enviarEmailNFe(${i})"><i class="bi bi-envelope${n.emailEnviadoEm?'-check':''} me-1"></i>${n.emailEnviadoEm?'Reenviar':'Enviar'} por E-mail</button>`:''}
       ${n.status==='autorizado'&&i!=null?`<button class="btn btn-outline-danger btn-sm" style="font-size:11px" onclick="cancelarNFe(${i})"><i class="bi bi-x-circle me-1"></i>Cancelar NF-e</button>`:''}
     </div>
@@ -2934,6 +2940,77 @@ function baixarDanfeAutomatico(n) {
 function baixarDanfePorDocId(docId) {
   const p=dados.pedidos.find(x=>x._docId===docId);
   if(p&&p.nfe) baixarDanfe(p.nfe);
+}
+
+function nomeArquivoXml(n) {
+  const d=new Date(n.emitidoEm||Date.now());
+  const dd=String(d.getDate()).padStart(2,'0');
+  const mm=String(d.getMonth()+1).padStart(2,'0');
+  return `NF-${n.numero}-${dd}-${mm}-${d.getFullYear()}-${n.pedidoNum}.xml`;
+}
+async function baixarXml(n) {
+  if(!n||!n.xml) return;
+  const nomeArquivo=nomeArquivoXml(n);
+  try {
+    const resp=await fetch(NFE_PROXY_URL,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({acao:'baixar_xml',ref:n.ref||n.pedidoNum||'xml',ambienteNota:n.ambiente,xml:n.xml,nomeArquivo})});
+    if(!resp.ok) throw new Error('proxy_falhou');
+    const blob=await resp.blob();
+    const url=URL.createObjectURL(blob);
+    const a=document.createElement('a');
+    a.href=url; a.download=nomeArquivo;
+    document.body.appendChild(a); a.click(); document.body.removeChild(a);
+    setTimeout(()=>URL.revokeObjectURL(url),5000);
+  } catch(e) {
+    const a=document.createElement('a');
+    a.href=(NFE_BASE_URLS[n.ambiente]||'')+n.xml; a.download=nomeArquivo; a.target='_blank'; a.rel='noopener';
+    document.body.appendChild(a); a.click(); document.body.removeChild(a);
+  }
+}
+
+// Busca na Focus NFe o caminho do XML de notas emitidas antes desse campo existir localmente, e grava no Firestore.
+async function garantirXmlNota(p) {
+  if(p.nfe && p.nfe.xml) return p.nfe.xml;
+  if(!p.nfe || !p.nfe.ref) return null;
+  try {
+    const resp=await fetch(NFE_PROXY_URL,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({acao:'consultar',ref:p.nfe.ref})});
+    const data=await resp.json();
+    const xmlPath=data.focus_resposta&&data.focus_resposta.caminho_xml_nota_fiscal;
+    if(!xmlPath) return null;
+    const nfeAtualizado={...p.nfe,xml:xmlPath};
+    await db.collection('pedidos').doc(p._docId).update({nfe:nfeAtualizado});
+    p.nfe=nfeAtualizado;
+    return xmlPath;
+  } catch(e) { return null; }
+}
+
+async function baixarXmlsDoMes() {
+  const mes=v('fiscal-mes-xml');
+  if(!mes) return alert('Selecione o mês de emissão das notas.');
+  const notas=dados.pedidos.filter(p=>p.nfe&&['autorizado','cancelado'].includes(p.nfe.status)&&(p.nfe.emitidoEm||'').slice(0,7)===mes);
+  if(!notas.length) return alert('Nenhuma NF-e emitida nesse mês.');
+  const btn=document.getElementById('btn-baixar-xmls');
+  const btnHtmlOriginal=btn?btn.innerHTML:'';
+  if(btn){btn.disabled=true;btn.innerHTML='<i class="bi bi-hourglass-split me-1"></i>Preparando...';}
+  try {
+    for(const p of notas) { if(!p.nfe.xml) await garantirXmlNota(p); }
+    const itens=notas.filter(p=>p.nfe.xml).map(p=>({caminho:p.nfe.xml,ambiente:p.nfe.ambiente,nomeArquivo:nomeArquivoXml(p.nfe)}));
+    if(!itens.length) return alert('Não foi possível localizar o XML dessas notas na Focus NFe.');
+    const faltantes=notas.length-itens.length;
+    const nomeZip=`XMLs-NFe-${mes}.zip`;
+    const resp=await fetch(NFE_PROXY_URL,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({acao:'baixar_xmls_zip',ref:'lote-'+mes,itens,nomeArquivo:nomeZip})});
+    if(!resp.ok) { const err=await resp.json().catch(()=>({})); throw new Error(err.erro||'Falha ao gerar o arquivo zip'); }
+    const blob=await resp.blob();
+    const url=URL.createObjectURL(blob);
+    const a=document.createElement('a');
+    a.href=url; a.download=nomeZip;
+    document.body.appendChild(a); a.click(); document.body.removeChild(a);
+    setTimeout(()=>URL.revokeObjectURL(url),5000);
+    if(faltantes>0) alert(`${itens.length} XML(s) baixado(s) com sucesso. ${faltantes} nota(s) não puderam ser incluídas (XML não encontrado na Focus NFe).`);
+  } catch(e) {
+    alert('Erro ao baixar os XMLs: '+e.message);
+  } finally {
+    if(btn){btn.disabled=false;btn.innerHTML=btnHtmlOriginal;}
+  }
 }
 
 function montarPayloadNFe(p) {
@@ -2996,7 +3073,7 @@ async function emitirNFe(i) {
     if(area) area.innerHTML=`<pre style="white-space:pre-wrap;font-size:11px;max-height:300px;overflow:auto;background:rgba(0,0,0,.2);padding:8px;border-radius:6px">${escHtml(JSON.stringify(data,null,2))}</pre>`;
     const cliente=dados.clientes.find(x=>x.id===p.clienteId);
     const detalheErros=Array.isArray(fr.erros)?fr.erros.map(er=>er.mensagem||JSON.stringify(er)).join(' | '):null;
-    const nfeInfo={ambiente:data.ambiente,ref,status:fr.status||fr.codigo||'erro',chave:fr.chave_nfe||null,numero:fr.numero||null,serie:fr.serie||null,danfe:fr.caminho_danfe||fr.url_danfe||null,mensagem:[fr.mensagem_sefaz||fr.mensagem,detalheErros].filter(Boolean).join(' — ')||null,emitidoEm:new Date().toISOString(),
+    const nfeInfo={ambiente:data.ambiente,ref,status:fr.status||fr.codigo||'erro',chave:fr.chave_nfe||null,numero:fr.numero||null,serie:fr.serie||null,danfe:fr.caminho_danfe||fr.url_danfe||null,xml:fr.caminho_xml_nota_fiscal||null,mensagem:[fr.mensagem_sefaz||fr.mensagem,detalheErros].filter(Boolean).join(' — ')||null,emitidoEm:new Date().toISOString(),
       naturezaOperacao:payload.natureza_operacao,valorTotal:payload.valor_total,pedidoNum:p.num,
       clienteId:p.clienteId,clienteNome:cliente?cliente.nome:'',clienteCpf:cliente?cliente.cpf:''};
     await db.collection('pedidos').doc(p._docId).update({nfe:nfeInfo});
@@ -3087,6 +3164,7 @@ function setFiscalTab(tab) {
   document.getElementById('fiscal-tab-entrada').style.color=tab==='entrada'?'#fff':'var(--cor-texto-suave)';
   document.getElementById('fiscal-titulo').textContent=tab==='saida'?'Nossas Notas Fiscais (Saída)':'Notas Fiscais de Fornecedores (Entrada)';
   document.getElementById('fiscal-status').style.display=tab==='saida'?'':'none';
+  document.getElementById('fiscal-export-xml').style.display=tab==='saida'?'':'none';
   renderFiscal();
 }
 function limparFiltroFiscal() {
@@ -3101,6 +3179,8 @@ function statusNFeLabel(status) {
   return m[status]||status||'—';
 }
 function renderFiscal() {
+  const campoMesXml=document.getElementById('fiscal-mes-xml');
+  if(campoMesXml&&!campoMesXml.value) campoMesXml.value=new Date().toISOString().slice(0,7);
   const de=v('fiscal-de'), ate=v('fiscal-ate'), busca=(v('fiscal-busca')||'').toLowerCase().trim(), statusF=v('fiscal-status');
   const tbody=document.querySelector('#tabela-fiscal tbody');
   const linhas=[];
@@ -3130,6 +3210,7 @@ function renderFiscal() {
         <td>${statusNFeLabel(p.nfe.status)}</td>
         <td style="white-space:nowrap">
           ${p.nfe.danfe?`<button class="btn-sm-action" style="color:#10B981;background:none;border:none" onclick="baixarDanfe(dados.pedidos[${i}].nfe)" title="Baixar DANFe"><i class="bi bi-file-earmark-pdf-fill"></i></button>`:''}
+          ${p.nfe.xml?`<button class="btn-sm-action" style="color:#9CA3AF;background:none;border:none" onclick="baixarXml(dados.pedidos[${i}].nfe)" title="Baixar XML"><i class="bi bi-file-earmark-code-fill"></i></button>`:''}
           <button class="btn-sm-action" style="color:#60A5FA" onclick="verPedido(${i})" title="Ver Pedido"><i class="bi bi-eye-fill"></i></button>
           ${p.nfe.status==='autorizado'?`<button class="btn-sm-action btn-delete" onclick="cancelarNFe(${i})" title="Cancelar NF-e"><i class="bi bi-x-circle-fill"></i></button>`:''}
         </td>
