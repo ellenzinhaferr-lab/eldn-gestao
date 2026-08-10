@@ -110,6 +110,8 @@ table.gestao tbody tr:last-child td{border-bottom:none}
 .empty-state i{font-size:40px;display:block;margin-bottom:12px;color:var(--cor-borda)}
 .toast-estoque{position:fixed;bottom:24px;right:24px;background:#1A1030;border:1px solid var(--cor-borda);border-radius:12px;padding:14px 18px;color:var(--cor-texto);font-size:13px;z-index:9999;display:flex;align-items:center;gap:10px;box-shadow:0 4px 24px rgba(0,0,0,.5);max-width:360px;animation:toastIn .3s ease}
 @keyframes toastIn{from{transform:translateY(16px);opacity:0}to{transform:translateY(0);opacity:1}}
+@keyframes spin{from{transform:rotate(0deg)}to{transform:rotate(360deg)}}
+.girando{animation:spin .8s linear infinite}
 .btn-ord-ativo{background:rgba(124,58,237,.25)!important;color:#fff!important;border-color:var(--cor-primaria)!important}
 .th-sort{cursor:pointer;user-select:none;white-space:nowrap}
 .th-sort:hover{color:var(--cor-secundaria)}
@@ -207,6 +209,7 @@ table.gestao tbody tr:hover .tbl-sticky-r{background:#1f1545}
     </div>
     <div style="display:flex;align-items:center;gap:12px">
       <span style="font-size:12px;color:var(--cor-texto-suave);" id="data-hoje"></span>
+      <button id="btn-atualizar" onclick="atualizarTela()" title="Atualizar dados desta tela" style="background:rgba(124,58,237,.15);border:1px solid var(--cor-borda);border-radius:8px;padding:6px 10px;cursor:pointer;color:var(--cor-texto-suave);font-size:16px;line-height:1;transition:all .15s" onmouseover="this.style.background='rgba(124,58,237,.25)'" onmouseout="this.style.background='rgba(124,58,237,.15)'"><i class="bi bi-arrow-clockwise" id="icon-atualizar"></i></button>
       <button id="btn-modo" onclick="toggleModo()" title="Alternar tema" style="background:rgba(124,58,237,.15);border:1px solid var(--cor-borda);border-radius:8px;padding:6px 10px;cursor:pointer;color:var(--cor-texto-suave);font-size:16px;line-height:1;transition:all .15s" onmouseover="this.style.background='rgba(124,58,237,.25)'" onmouseout="this.style.background='rgba(124,58,237,.15)'"><i class="bi bi-sun-fill"></i></button>
     </div>
   </div>
@@ -1373,6 +1376,37 @@ function setupListeners() {
 }
 
 function renderCurrentPage() { renderPage(currentPage); }
+
+async function atualizarTela() {
+  const icon = document.getElementById('icon-atualizar');
+  icon.classList.add('girando');
+  try {
+    const cols = ['clientes','pedidos','financeiro','compras','produtos','estoqueMovimentos','afiliados','trafegodiario','prospeccao'];
+    const configSnap = await db.collection('config').doc('main').get({ source: 'server' });
+    if (configSnap.exists) dados.config = configSnap.data();
+    await Promise.all(cols.map(async col => {
+      const snap = await db.collection(col).get({ source: 'server' });
+      dados[col] = snap.docs.map(d => ({ ...d.data(), _docId: d.id }));
+    }));
+    renderCurrentPage();
+    fixarStickyHeaders(currentPage);
+    mostrarToastAtualizado();
+  } catch (e) {
+    console.error(e);
+    mostrarToastAtualizado('Não foi possível atualizar agora. Tente de novo.', true);
+  } finally {
+    icon.classList.remove('girando');
+  }
+}
+function mostrarToastAtualizado(msg, erro) {
+  const t = document.getElementById('toast-estoque');
+  const icon = erro ? 'bi-exclamation-circle-fill' : 'bi-check-circle-fill';
+  const cor = erro ? '#EF4444' : '#10B981';
+  t.innerHTML = `<i class="bi ${icon}" style="color:${cor};font-size:20px"></i><span>${msg || 'Tela atualizada com os dados mais recentes.'}</span>`;
+  t.style.display = 'flex';
+  clearTimeout(t._timer);
+  t._timer = setTimeout(() => t.style.display = 'none', 2800);
+}
 
 // ============================================================
 // HELPERS
