@@ -3587,9 +3587,16 @@ async function salvarFinanceiro() {
     const isParcelamento = v('f-recorrente-tipo')==='parcelamento';
     const meses=Math.min(60,Math.max(2,parseInt(v('f-recorrente-meses'))||12));
     const descBase=obj.desc;
+    const idxAtual = idx===''?-1:parseInt(idx);
     const batch=db.batch();
+    // Evita duplicar a série: apaga lançamentos "Prevista" já gerados antes para essa mesma despesa recorrente
+    dados.financeiro.forEach((f,i)=>{
+      if(i!==idxAtual && f._docId && f.situacao==='Prevista' && f.tipo===obj.tipo && (f.desc===descBase || f.desc.startsWith(descBase+' (Parcela'))){
+        batch.delete(db.collection('financeiro').doc(f._docId));
+      }
+    });
     const refPrimeiro = idx===''?db.collection('financeiro').doc():db.collection('financeiro').doc(dados.financeiro[parseInt(idx)]._docId);
-    const item0 = isParcelamento ? {...obj, parcela:1, totalParcelas:meses, desc:`${descBase} (Parcela 1/${meses})`} : obj;
+    const item0 = isParcelamento ? {...obj, parcela:1, totalParcelas:meses, desc:`${descBase} (Parcela 1/${meses})`} : {...obj};
     if(idx==='') item0.criadoEm=firebase.firestore.FieldValue.serverTimestamp();
     else if(dados.financeiro[parseInt(idx)].criadoEm) item0.criadoEm=dados.financeiro[parseInt(idx)].criadoEm;
     batch.set(refPrimeiro, item0);
