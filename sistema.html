@@ -277,6 +277,7 @@ table.gestao tbody tr:hover .tbl-sticky-r{background:#1f1545}
         <div style="display:flex;border:1px solid var(--cor-borda);border-radius:8px;overflow:hidden">
           <button id="fiscal-tab-saida" class="btn btn-sm" style="border-radius:0;border:none;background:rgba(124,58,237,.25);color:#fff;font-size:12px;padding:5px 12px" onclick="setFiscalTab('saida')">Nossas Notas (Saída)</button>
           <button id="fiscal-tab-entrada" class="btn btn-sm" style="border-radius:0;border:none;background:none;color:var(--cor-texto-suave);font-size:12px;padding:5px 12px" onclick="setFiscalTab('entrada')">Notas de Fornecedores (Entrada)</button>
+          <button id="fiscal-tab-servico" class="btn btn-sm" style="border-radius:0;border:none;background:none;color:var(--cor-texto-suave);font-size:12px;padding:5px 12px" onclick="setFiscalTab('servico')">Notas de Serviço (NFSe)</button>
         </div>
         <input type="date" class="form-control form-control-sm" id="fiscal-de" style="width:148px" onchange="renderFiscal()">
         <span style="color:var(--cor-texto-suave);font-size:12px">até</span>
@@ -284,11 +285,13 @@ table.gestao tbody tr:hover .tbl-sticky-r{background:#1f1545}
         <input type="text" class="input-search" id="fiscal-busca" placeholder="Buscar nome, CPF/CNPJ ou nº nota..." oninput="renderFiscal()" style="min-width:220px">
         <select class="form-select form-select-sm" id="fiscal-status" style="width:170px" onchange="renderFiscal()">
           <option value="">Todos os status</option>
+          <option value="rascunho">Rascunho</option>
           <option value="autorizado">Autorizada</option>
           <option value="cancelado">Cancelada</option>
           <option value="erro_autorizacao">Erro/Rejeitada</option>
         </select>
         <button class="btn btn-outline-secondary btn-sm" onclick="limparFiltroFiscal()">Limpar filtros</button>
+        <button id="fiscal-btn-nova-servico" class="btn btn-primary btn-sm" style="display:none" onclick="abrirModalNotaServico()"><i class="bi bi-plus-lg"></i> Nova Nota de Serviço</button>
       </div>
       <div id="fiscal-export-xml" style="background:var(--cor-card);border:1px solid var(--cor-borda);border-radius:14px;padding:14px 20px;margin-bottom:20px;display:flex;align-items:center;gap:12px;flex-wrap:wrap">
         <span style="font-size:12px;color:var(--cor-texto-suave);white-space:nowrap;font-weight:600"><i class="bi bi-file-earmark-zip me-1"></i>Exportar para a Contabilidade:</span>
@@ -895,6 +898,32 @@ table.gestao tbody tr:hover .tbl-sticky-r{background:#1f1545}
   <div class="modal-footer"><button class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancelar</button><button class="btn btn-primary" onclick="salvarFinanceiro()">Salvar</button></div>
 </div></div></div>
 
+<div class="modal fade" id="modalNotaServico" tabindex="-1"><div class="modal-dialog modal-lg"><div class="modal-content">
+  <div class="modal-header"><h5 class="modal-title" id="modalNotaServicoTitulo">Nova Nota de Serviço</h5><button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button></div>
+  <div class="modal-body"><input type="hidden" id="ns-idx"><div class="row g-3">
+    <div class="col-md-8"><label class="form-label">Tomador — nome/razão social *</label><input class="form-control" id="ns-tomador-nome"></div>
+    <div class="col-md-4"><label class="form-label">CPF/CNPJ *</label><input class="form-control" id="ns-tomador-doc" oninput="this.value=formatarCpfCnpj(this.value)"></div>
+    <div class="col-md-6"><label class="form-label">E-mail</label><input class="form-control" id="ns-tomador-email" type="email"></div>
+    <div class="col-md-6"><label class="form-label">Telefone</label><input class="form-control" id="ns-tomador-telefone" oninput="this.value=formatarTelefone(this.value)"></div>
+    <div class="col-12" style="font-size:12px;color:var(--cor-texto-suave)">Endereço do tomador (opcional)</div>
+    <div class="col-md-5"><input class="form-control" id="ns-end-logradouro" placeholder="Logradouro"></div>
+    <div class="col-md-2"><input class="form-control" id="ns-end-numero" placeholder="Número"></div>
+    <div class="col-md-3"><input class="form-control" id="ns-end-bairro" placeholder="Bairro"></div>
+    <div class="col-md-1"><input class="form-control" id="ns-end-uf" placeholder="UF" maxlength="2"></div>
+    <div class="col-md-1"><input class="form-control" id="ns-end-cep" placeholder="CEP"></div>
+    <div class="col-12"><label class="form-label">Descrição do serviço (discriminação) *</label><textarea class="form-control" id="ns-discriminacao" rows="2" placeholder="Ex: Suporte remoto a alunos de curso online, referente a agosto/2026"></textarea></div>
+    <div class="col-md-4"><label class="form-label">Valor do Serviço (R$) *</label><input class="form-control" id="ns-valor" type="text" inputmode="numeric" placeholder="0,00" oninput="mascaraMoeda(this)"></div>
+    <div class="col-md-4"><label class="form-label">Data de Emissão *</label><input class="form-control" id="ns-data" type="date"></div>
+    <div class="col-md-4"><label class="form-label">Item Lista Serviço (LC 116)</label><input class="form-control" id="ns-item-lista" value="8.02"><span style="font-size:11px;color:var(--cor-texto-suave)">8.02 = treinamento/instrução/orientação pedagógica</span></div>
+    <div class="col-md-4"><label class="form-label">CNAE do serviço</label><input class="form-control" id="ns-cnae" value="8599604"></div>
+    <div class="col-md-4"><label class="form-label">Alíquota ISS (%) *</label><input class="form-control" id="ns-aliquota" type="number" step="0.01" min="0" max="10"><span style="font-size:11px;color:#F59E0B">⚠️ Confirme no seu PGDAS-D ou com a contadora — depende do seu Anexo/Fator R no Simples Nacional</span></div>
+    <div class="col-md-4" style="display:flex;align-items:center">
+      <div class="form-check"><input class="form-check-input" type="checkbox" id="ns-iss-retido"><label class="form-check-label" for="ns-iss-retido">ISS retido pelo tomador</label></div>
+    </div>
+  </div></div>
+  <div class="modal-footer"><button class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancelar</button><button class="btn btn-primary" onclick="salvarNotaServico()">Salvar</button></div>
+</div></div></div>
+
 <div class="modal fade" id="modalCompra" tabindex="-1"><div class="modal-dialog modal-lg"><div class="modal-content">
   <div class="modal-header"><h5 class="modal-title">Nova Compra</h5><button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button></div>
   <div class="modal-body"><input type="hidden" id="cp-idx"><div class="row g-3">
@@ -1226,7 +1255,7 @@ const dadosPadrao = {
 // ============================================================
 // STATE
 // ============================================================
-let dados = { config:{canais:[]}, clientes:[], pedidos:[], financeiro:[], compras:[], produtos:[], estoqueMovimentos:[], afiliados:[], trafegodiario:[], prospeccao:[] };
+let dados = { config:{canais:[]}, clientes:[], pedidos:[], financeiro:[], compras:[], produtos:[], estoqueMovimentos:[], afiliados:[], trafegodiario:[], prospeccao:[], notasServico:[] };
 let currentPage = 'dashboard';
 let appReady = false;
 let finTab = 'todos';
@@ -1296,7 +1325,7 @@ async function seedIfEmpty() {
 // LISTENERS FIRESTORE
 // ============================================================
 function setupListeners() {
-  const cols = ['clientes','pedidos','financeiro','compras','produtos','estoqueMovimentos','afiliados','trafegodiario','prospeccao'];
+  const cols = ['clientes','pedidos','financeiro','compras','produtos','estoqueMovimentos','afiliados','trafegodiario','prospeccao','notasServico'];
   const loaded = new Set();
 
   unsubscribers.push(db.collection('config').doc('main').onSnapshot(doc => {
@@ -1381,7 +1410,7 @@ async function atualizarTela() {
   const icon = document.getElementById('icon-atualizar');
   icon.classList.add('girando');
   try {
-    const cols = ['clientes','pedidos','financeiro','compras','produtos','estoqueMovimentos','afiliados','trafegodiario','prospeccao'];
+    const cols = ['clientes','pedidos','financeiro','compras','produtos','estoqueMovimentos','afiliados','trafegodiario','prospeccao','notasServico'];
     const configSnap = await db.collection('config').doc('main').get({ source: 'server' });
     if (configSnap.exists) dados.config = configSnap.data();
     await Promise.all(cols.map(async col => {
@@ -3209,18 +3238,244 @@ async function enviarEmailNFe(i) {
 }
 
 // ============================================================
+// NFSe (Nota Fiscal de Serviço — Focus NFe via o mesmo proxy PHP)
+// ============================================================
+const NFSE_EMITENTE={cnpj:'59068669000168',inscricaoMunicipal:'1660614',codigoMunicipio:'3550308'};
+
+function abrirModalNotaServico() {
+  document.getElementById('ns-idx').value='';
+  document.getElementById('modalNotaServicoTitulo').textContent='Nova Nota de Serviço';
+  ['ns-tomador-nome','ns-tomador-doc','ns-tomador-email','ns-tomador-telefone','ns-end-logradouro','ns-end-numero','ns-end-bairro','ns-end-uf','ns-end-cep','ns-discriminacao','ns-valor','ns-aliquota'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
+  document.getElementById('ns-item-lista').value='8.02';
+  document.getElementById('ns-cnae').value='8599604';
+  document.getElementById('ns-data').value=new Date().toISOString().slice(0,10);
+  document.getElementById('ns-iss-retido').checked=false;
+  new bootstrap.Modal(document.getElementById('modalNotaServico')).show();
+}
+function editarNotaServico(i) {
+  const n=dados.notasServico[i];
+  document.getElementById('ns-idx').value=i;
+  document.getElementById('modalNotaServicoTitulo').textContent='Editar Nota de Serviço';
+  document.getElementById('ns-tomador-nome').value=n.tomadorNome||'';
+  document.getElementById('ns-tomador-doc').value=formatarCpfCnpj(n.tomadorDoc||'');
+  document.getElementById('ns-tomador-email').value=n.tomadorEmail||'';
+  document.getElementById('ns-tomador-telefone').value=formatarTelefone(n.tomadorTelefone||'');
+  const end=n.tomadorEndereco||{};
+  document.getElementById('ns-end-logradouro').value=end.logradouro||'';
+  document.getElementById('ns-end-numero').value=end.numero||'';
+  document.getElementById('ns-end-bairro').value=end.bairro||'';
+  document.getElementById('ns-end-uf').value=end.uf||'';
+  document.getElementById('ns-end-cep').value=end.cep||'';
+  document.getElementById('ns-discriminacao').value=n.discriminacao||'';
+  document.getElementById('ns-valor').value=fmtM(n.valorServicos);
+  document.getElementById('ns-data').value=n.dataEmissao||'';
+  document.getElementById('ns-item-lista').value=n.itemListaServico||'8.02';
+  document.getElementById('ns-cnae').value=n.codigoCnae||'8599604';
+  document.getElementById('ns-aliquota').value=n.aliquotaIss!=null?n.aliquotaIss:'';
+  document.getElementById('ns-iss-retido').checked=!!n.issRetido;
+  new bootstrap.Modal(document.getElementById('modalNotaServico')).show();
+}
+async function salvarNotaServico() {
+  const nome=v('ns-tomador-nome').trim();
+  const doc=v('ns-tomador-doc').replace(/\D/g,'');
+  if(!nome) return alert('Nome/razão social do tomador é obrigatório.');
+  if(doc.length!==11 && doc.length!==14) return alert('CPF/CNPJ do tomador é obrigatório e precisa ser válido (11 ou 14 dígitos).');
+  const discriminacao=v('ns-discriminacao').trim();
+  if(!discriminacao) return alert('Descrição do serviço é obrigatória.');
+  const valor=pFloat('ns-valor');
+  if(!valor||valor<=0) return alert('Valor do serviço é obrigatório.');
+  if(!v('ns-data')) return alert('Data de emissão é obrigatória.');
+  const aliquotaStr=v('ns-aliquota');
+  if(aliquotaStr==='') return alert('Alíquota de ISS é obrigatória — confirme o valor certo no seu PGDAS-D ou com a contadora antes de emitir.');
+  const idx=v('ns-idx');
+  const obj={
+    tomadorNome:nome, tomadorDoc:doc, tomadorEmail:v('ns-tomador-email').trim(), tomadorTelefone:v('ns-tomador-telefone').replace(/\D/g,''),
+    tomadorEndereco:{logradouro:v('ns-end-logradouro').trim(),numero:v('ns-end-numero').trim(),bairro:v('ns-end-bairro').trim(),uf:v('ns-end-uf').trim().toUpperCase(),cep:v('ns-end-cep').replace(/\D/g,'')},
+    discriminacao, valorServicos:valor, dataEmissao:v('ns-data'),
+    itemListaServico:v('ns-item-lista').trim()||'8.02', codigoCnae:v('ns-cnae').trim()||'8599604',
+    aliquotaIss:parseFloat(aliquotaStr), issRetido:document.getElementById('ns-iss-retido').checked
+  };
+  if(idx!==''&&dados.notasServico[parseInt(idx)].nfse) obj.nfse=dados.notasServico[parseInt(idx)].nfse;
+  await salvarComCriadoEm('notasServico',idx,obj,dados.notasServico);
+  bootstrap.Modal.getInstance(document.getElementById('modalNotaServico')).hide();
+  if(currentPage==='fiscal') renderFiscal();
+}
+
+function podeEmitirNFSe(n) {
+  if(!n.nfse) return true;
+  return !['autorizado','processando_autorizacao'].includes(n.nfse.status);
+}
+function montarPayloadNFSe(n) {
+  const doc=(n.tomadorDoc||'').replace(/\D/g,'');
+  if(doc.length!==11 && doc.length!==14) throw new Error('CPF/CNPJ do tomador ausente ou inválido');
+  if(!n.discriminacao) throw new Error('Descrição do serviço ausente');
+  if(!n.valorServicos||n.valorServicos<=0) throw new Error('Valor do serviço ausente');
+  if(n.aliquotaIss===undefined||n.aliquotaIss===null||isNaN(n.aliquotaIss)) throw new Error('Alíquota de ISS ausente — edite a nota e confirme o valor antes de emitir');
+  const tomador={razao_social:n.tomadorNome};
+  if(doc.length===14) tomador.cnpj=doc; else tomador.cpf=doc;
+  if(n.tomadorEmail) tomador.email=n.tomadorEmail;
+  if(n.tomadorTelefone) tomador.telefone=n.tomadorTelefone;
+  const end=n.tomadorEndereco||{};
+  if(end.logradouro) tomador.endereco={logradouro:end.logradouro,numero:end.numero||'S/N',bairro:end.bairro||'',uf:(end.uf||'').toUpperCase(),cep:(end.cep||'').replace(/\D/g,'')};
+  return {
+    data_emissao:new Date(n.dataEmissao+'T10:00:00').toISOString(),
+    natureza_operacao:'1',
+    optante_simples_nacional:true,
+    prestador:{cnpj:NFSE_EMITENTE.cnpj,inscricao_municipal:NFSE_EMITENTE.inscricaoMunicipal,codigo_municipio:NFSE_EMITENTE.codigoMunicipio},
+    tomador,
+    servico:{
+      valor_servicos:n.valorServicos, iss_retido:!!n.issRetido,
+      item_lista_servico:n.itemListaServico||'8.02', discriminacao:n.discriminacao,
+      codigo_municipio:NFSE_EMITENTE.codigoMunicipio, aliquota:Number(n.aliquotaIss)/100,
+      codigo_cnae:n.codigoCnae||'8599604'
+    }
+  };
+}
+function renderBotaoEmitirNFSe(n,i) {
+  if(podeEmitirNFSe(n)) {
+    return `<button class="btn ${NFE_AMBIENTE_ATUAL==='producao'?'btn-danger':'btn-outline-warning'} btn-sm" onclick="emitirNFSe(${i})"><i class="bi bi-receipt me-1"></i>Emitir NFSe ${NFE_AMBIENTE_ATUAL==='producao'?'(REAL)':'(Homologação/Teste)'}</button>`;
+  }
+  if(n.nfse.status==='processando_autorizacao') {
+    return `<button id="nfse-btn-consultar-${i}" class="btn btn-outline-warning btn-sm" onclick="consultarNFSe(${i})"><i class="bi bi-arrow-repeat me-1"></i>Atualizar Status</button>`;
+  }
+  return `<button class="btn btn-outline-secondary btn-sm" disabled title="NFSe já emitida"><i class="bi bi-check-circle me-1"></i>NFSe já emitida</button>`;
+}
+function nomeArquivoNFSe(n,ext) {
+  const d=new Date(n.emitidoEm||Date.now());
+  const dd=String(d.getDate()).padStart(2,'0');
+  const mm=String(d.getMonth()+1).padStart(2,'0');
+  return `NFSe-${n.numero||'sn'}-${dd}-${mm}-${d.getFullYear()}.${ext}`;
+}
+async function baixarDanfse(n) {
+  if(!n||!n.danfse) return;
+  const nomeArquivo=nomeArquivoNFSe(n,'pdf');
+  try {
+    const resp=await fetch(NFE_PROXY_URL,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({acao:'baixar_danfse',ref:n.ref||'danfse',url:n.danfse,nomeArquivo})});
+    if(!resp.ok) throw new Error('proxy_falhou');
+    const blob=await resp.blob();
+    const url=URL.createObjectURL(blob);
+    const a=document.createElement('a');
+    a.href=url; a.download=nomeArquivo;
+    document.body.appendChild(a); a.click(); document.body.removeChild(a);
+    setTimeout(()=>URL.revokeObjectURL(url),5000);
+  } catch(e) {
+    const a=document.createElement('a');
+    a.href=n.danfse; a.download=nomeArquivo; a.target='_blank'; a.rel='noopener';
+    document.body.appendChild(a); a.click(); document.body.removeChild(a);
+  }
+}
+async function baixarXmlNFSe(n) {
+  if(!n||!n.xml) return;
+  const nomeArquivo=nomeArquivoNFSe(n,'xml');
+  try {
+    const resp=await fetch(NFE_PROXY_URL,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({acao:'baixar_xml',ref:n.ref||'xml',ambienteNota:n.ambiente,xml:n.xml,nomeArquivo})});
+    if(!resp.ok) throw new Error('proxy_falhou');
+    const blob=await resp.blob();
+    const url=URL.createObjectURL(blob);
+    const a=document.createElement('a');
+    a.href=url; a.download=nomeArquivo;
+    document.body.appendChild(a); a.click(); document.body.removeChild(a);
+    setTimeout(()=>URL.revokeObjectURL(url),5000);
+  } catch(e) {
+    const a=document.createElement('a');
+    a.href=(NFE_BASE_URLS[n.ambiente]||'')+n.xml; a.download=nomeArquivo; a.target='_blank'; a.rel='noopener';
+    document.body.appendChild(a); a.click(); document.body.removeChild(a);
+  }
+}
+function renderStatusNFSe(n,i) {
+  if(!n.nfse) return '';
+  const s=n.nfse;
+  const cor=s.status==='autorizado'?'#10B981':(s.status==='erro_autorizacao'||s.status==='rejeitado'?'#EF4444':(s.status==='cancelado'?'#9D8EC4':'#F59E0B'));
+  return `<div style="margin-top:8px;font-size:12px;color:var(--cor-texto-suave)">
+    ${s.numero?`<div style="font-size:13px;margin-bottom:2px">NFSe nº <strong style="color:var(--cor-texto)">${s.numero}</strong>${s.codigoVerificacao?' — Verificação: '+escHtml(s.codigoVerificacao):''}</div>`:''}
+    Última tentativa (${s.ambiente}): <strong style="color:${cor}">${statusNFeLabel(s.status)}</strong>${s.mensagem?' — '+escHtml(s.mensagem):''}
+    <div style="margin-top:6px;display:flex;gap:8px;flex-wrap:wrap">
+      ${s.danfse?`<button class="btn btn-outline-success btn-sm" style="font-size:11px" onclick="baixarDanfse(dados.notasServico[${i}].nfse)"><i class="bi bi-file-earmark-pdf me-1"></i>Baixar DANFSe</button>`:''}
+      ${s.xml?`<button class="btn btn-outline-secondary btn-sm" style="font-size:11px" onclick="baixarXmlNFSe(dados.notasServico[${i}].nfse)"><i class="bi bi-file-earmark-code me-1"></i>Baixar XML</button>`:''}
+      ${s.status==='autorizado'?`<button class="btn btn-outline-danger btn-sm" style="font-size:11px" onclick="cancelarNFSe(${i})"><i class="bi bi-x-circle me-1"></i>Cancelar NFSe</button>`:''}
+    </div>
+  </div>`;
+}
+async function emitirNFSe(i) {
+  const n=dados.notasServico[i];
+  if(!podeEmitirNFSe(n)) return alert('Essa nota já tem uma NFSe emitida/em processamento.');
+  let payload;
+  try { payload=montarPayloadNFSe(n); }
+  catch(e) { return alert('Não foi possível montar a NFSe: '+e.message); }
+  const msgConfirm=NFE_AMBIENTE_ATUAL==='producao'
+    ?`⚠️ ATENÇÃO: isso vai emitir uma NFSe REAL, com valor fiscal e legal, para ${n.tomadorNome}, no valor de ${moeda(n.valorServicos)}. Não é possível desfazer facilmente. Confirma a emissão?`
+    :`Emitir NFSe de HOMOLOGAÇÃO (ambiente de teste, sem valor fiscal) para ${n.tomadorNome}?`;
+  if(!confirm(msgConfirm)) return;
+  const ref=('serv'+(n._docId||i)+'-'+Date.now()).replace(/[^a-zA-Z0-9_-]/g,'');
+  try {
+    const resp=await fetch(NFE_PROXY_URL,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({acao:'emitir_nfse',ref,payload})});
+    const data=await resp.json();
+    const fr=data.focus_resposta||{};
+    const detalheErros=Array.isArray(fr.erros)?fr.erros.map(er=>er.mensagem||JSON.stringify(er)).join(' | '):null;
+    const nfseInfo={ambiente:data.ambiente,ref,status:fr.status||fr.codigo||'erro',numero:fr.numero||null,codigoVerificacao:fr.codigo_verificacao||null,danfse:fr.url_danfse||null,xml:fr.caminho_xml_nota_fiscal||null,mensagem:[fr.mensagem_sefaz||fr.mensagem,detalheErros].filter(Boolean).join(' — ')||null,emitidoEm:new Date().toISOString(),valorTotal:payload.servico.valor_servicos,tomadorNome:n.tomadorNome,tomadorDoc:n.tomadorDoc};
+    await db.collection('notasServico').doc(n._docId).update({nfse:nfseInfo});
+    dados.notasServico[i].nfse=nfseInfo;
+    if(currentPage==='fiscal') renderFiscal();
+    alert('Resposta da Focus NFe:\n\n'+JSON.stringify(data,null,2));
+  } catch(e) {
+    alert('Erro ao chamar o proxy: '+e.message);
+  }
+}
+async function consultarNFSe(i) {
+  const n=dados.notasServico[i];
+  if(!n.nfse||!n.nfse.ref) return;
+  try {
+    const resp=await fetch(NFE_PROXY_URL,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({acao:'consultar_nfse',ref:n.nfse.ref})});
+    const data=await resp.json();
+    const fr=data.focus_resposta||{};
+    const detalheErros=Array.isArray(fr.erros)?fr.erros.map(er=>er.mensagem||JSON.stringify(er)).join(' | '):null;
+    const nfseInfo={...n.nfse,status:fr.status||n.nfse.status,numero:fr.numero||n.nfse.numero,codigoVerificacao:fr.codigo_verificacao||n.nfse.codigoVerificacao,danfse:fr.url_danfse||n.nfse.danfse,xml:fr.caminho_xml_nota_fiscal||n.nfse.xml,mensagem:[fr.mensagem_sefaz||fr.mensagem,detalheErros].filter(Boolean).join(' — ')||n.nfse.mensagem};
+    await db.collection('notasServico').doc(n._docId).update({nfse:nfseInfo});
+    dados.notasServico[i].nfse=nfseInfo;
+    if(currentPage==='fiscal') renderFiscal();
+  } catch(e) {
+    alert('Erro ao consultar: '+e.message);
+  }
+}
+async function cancelarNFSe(i) {
+  const n=dados.notasServico[i];
+  if(!n.nfse||n.nfse.status!=='autorizado') return alert('Essa nota não está autorizada — não há o que cancelar.');
+  let justificativa=prompt('Motivo do cancelamento (mínimo 15 caracteres):');
+  if(justificativa===null) return;
+  justificativa=justificativa.trim();
+  if(justificativa.length<15||justificativa.length>255) return alert('A justificativa precisa ter entre 15 e 255 caracteres.');
+  if(!confirm(`Confirma o cancelamento da NFSe nº ${n.nfse.numero}? Essa ação não pode ser desfeita.\n\nAtenção: algumas prefeituras não permitem cancelamento via webservice.`)) return;
+  try {
+    const resp=await fetch(NFE_PROXY_URL,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({acao:'cancelar_nfse',ref:n.nfse.ref,justificativa})});
+    const data=await resp.json();
+    const fr=data.focus_resposta||{};
+    const nfseInfo={...n.nfse,status:fr.status||n.nfse.status,mensagem:fr.mensagem_sefaz||fr.mensagem||n.nfse.mensagem,canceladoEm:new Date().toISOString()};
+    await db.collection('notasServico').doc(n._docId).update({nfse:nfseInfo});
+    dados.notasServico[i].nfse=nfseInfo;
+    alert('Resposta da Focus NFe:\n\n'+JSON.stringify(data,null,2));
+    if(currentPage==='fiscal') renderFiscal();
+  } catch(e) {
+    alert('Erro ao cancelar: '+e.message);
+  }
+}
+
+// ============================================================
 // FISCAL (tela de consulta — Nossas Notas x Notas de Fornecedores)
 // ============================================================
 let fiscalTab='saida';
 function setFiscalTab(tab) {
   fiscalTab=tab;
-  document.getElementById('fiscal-tab-saida').style.background=tab==='saida'?'rgba(124,58,237,.25)':'none';
-  document.getElementById('fiscal-tab-saida').style.color=tab==='saida'?'#fff':'var(--cor-texto-suave)';
-  document.getElementById('fiscal-tab-entrada').style.background=tab==='entrada'?'rgba(124,58,237,.25)':'none';
-  document.getElementById('fiscal-tab-entrada').style.color=tab==='entrada'?'#fff':'var(--cor-texto-suave)';
-  document.getElementById('fiscal-titulo').textContent=tab==='saida'?'Nossas Notas Fiscais (Saída)':'Notas Fiscais de Fornecedores (Entrada)';
-  document.getElementById('fiscal-status').style.display=tab==='saida'?'':'none';
+  ['saida','entrada','servico'].forEach(t=>{
+    const btn=document.getElementById('fiscal-tab-'+t);
+    if(!btn) return;
+    btn.style.background=tab===t?'rgba(124,58,237,.25)':'none';
+    btn.style.color=tab===t?'#fff':'var(--cor-texto-suave)';
+  });
+  const titulos={saida:'Nossas Notas Fiscais (Saída)',entrada:'Notas Fiscais de Fornecedores (Entrada)',servico:'Notas de Serviço (NFSe)'};
+  document.getElementById('fiscal-titulo').textContent=titulos[tab];
+  document.getElementById('fiscal-status').style.display=tab==='entrada'?'none':'';
   document.getElementById('fiscal-export-xml').style.display=tab==='saida'?'':'none';
+  document.getElementById('fiscal-btn-nova-servico').style.display=tab==='servico'?'':'none';
   renderFiscal();
 }
 function limparFiltroFiscal() {
@@ -3272,7 +3527,7 @@ function renderFiscal() {
         </td>
       </tr>`});
     });
-  } else {
+  } else if(fiscalTab==='entrada') {
     dados.compras.forEach(c=>{
       if(!c.nf) return;
       const dataC=c.data||'';
@@ -3291,6 +3546,38 @@ function renderFiscal() {
         <td style="color:var(--cor-verde);font-weight:600">${moeda(valor)}</td>
         <td>Registrada</td>
         <td></td>
+      </tr>`});
+    });
+  } else if(fiscalTab==='servico') {
+    dados.notasServico.forEach((n,i)=>{
+      const dataRef=(n.nfse&&n.nfse.emitidoEm)?n.nfse.emitidoEm.split('T')[0]:(n.dataEmissao||'');
+      if(de&&dataRef<de) return;
+      if(ate&&dataRef>ate) return;
+      const statusAtual=n.nfse?n.nfse.status:'rascunho';
+      if(statusF&&statusAtual!==statusF) return;
+      if(busca&&!((n.tomadorNome||'').toLowerCase().includes(busca)||(n.tomadorDoc||'').includes(busca)||((n.nfse&&n.nfse.numero)||'').includes(busca))) return;
+      const acoes=[];
+      if(n.nfse&&n.nfse.danfse) acoes.push(`<button class="btn-sm-action" style="color:#10B981;background:none;border:none" onclick="baixarDanfse(dados.notasServico[${i}].nfse)" title="Baixar DANFSe"><i class="bi bi-file-earmark-pdf-fill"></i></button>`);
+      if(n.nfse&&n.nfse.xml) acoes.push(`<button class="btn-sm-action" style="color:#9CA3AF;background:none;border:none" onclick="baixarXmlNFSe(dados.notasServico[${i}].nfse)" title="Baixar XML"><i class="bi bi-file-earmark-code-fill"></i></button>`);
+      if(podeEmitirNFSe(n)) {
+        acoes.push(`<button class="btn-sm-action" style="color:#60A5FA;background:none;border:none" onclick="editarNotaServico(${i})" title="Editar"><i class="bi bi-pencil-fill"></i></button>`);
+        acoes.push(`<button class="btn ${NFE_AMBIENTE_ATUAL==='producao'?'btn-danger':'btn-outline-warning'} btn-sm" style="font-size:11px" onclick="emitirNFSe(${i})">Emitir NFSe</button>`);
+      } else if(n.nfse.status==='processando_autorizacao') {
+        acoes.push(`<button class="btn btn-outline-warning btn-sm" style="font-size:11px" onclick="consultarNFSe(${i})">Atualizar Status</button>`);
+      } else if(n.nfse.status==='autorizado') {
+        acoes.push(`<button class="btn-sm-action btn-delete" onclick="cancelarNFSe(${i})" title="Cancelar NFSe"><i class="bi bi-x-circle-fill"></i></button>`);
+      }
+      linhas.push({data:dataRef||'',html:`<tr>
+        <td>Prestação de serviços</td>
+        <td style="font-family:monospace">${n.nfse&&n.nfse.numero?n.nfse.numero:'—'}</td>
+        <td>—</td>
+        <td>—</td>
+        <td>${n.tomadorDoc?formatarCpfCnpj(n.tomadorDoc):'—'}</td>
+        <td style="font-weight:600;color:#fff">${escHtml(n.tomadorNome||'—')}</td>
+        <td>${dataRef?fmtData(dataRef):'—'}</td>
+        <td style="color:var(--cor-verde);font-weight:600">${moeda(n.valorServicos)}</td>
+        <td>${n.nfse?statusNFeLabel(n.nfse.status):'📝 Rascunho'}</td>
+        <td style="white-space:nowrap">${acoes.join('')}</td>
       </tr>`});
     });
   }
@@ -4683,7 +4970,7 @@ function importarBackup() {
     try{ bk=JSON.parse(await file.text()); } catch(err){ return alert('Arquivo inválido. Selecione um backup JSON gerado pelo sistema.'); }
     const meta=bk._backup?.geradoEm||'data desconhecida';
     if(!confirm(`Importar backup de ${meta}?\n\nOs registros do backup serão ADICIONADOS ao sistema.\n\nPara restauração completa, use "Limpar Dados" antes de importar.`)) return;
-    const cols=['clientes','pedidos','financeiro','compras','estoqueMovimentos','produtos','afiliados','trafegodiario'];
+    const cols=['clientes','pedidos','financeiro','compras','estoqueMovimentos','produtos','afiliados','trafegodiario','notasServico'];
     let total=0;
     for(const col of cols){
       if(bk[col]&&Array.isArray(bk[col])){
