@@ -2540,6 +2540,12 @@ async function salvarPedido() {
   const existingRec=idx!==''?dados.pedidos[parseInt(idx)]?.statusRecebimento:null;
   const statusRecebimento=existingRec==='Recebido'?'Recebido':(getPrazoRecebimento(v('p-canal'),v('p-pagto'))>0?'A receber':'Recebido');
   const obj={data:v('p-data'),num,canal:v('p-canal'),clienteId:parseInt(v('p-cliente'))||null,endereco:v('p-endereco'),itens,frete:parseFloat((v('p-frete')||'0').replace(',','.'))||0,pagto:v('p-pagto'),liquido:parseFloat((v('p-liquido')||'0').replace(',','.'))||0,status:statusSalvo,dataRecebimento,statusRecebimento,rastreio:v('p-rastreio'),linkRastreio:v('p-link-rastreio'),obs:v('p-obs')};
+  // Preserva campos preenchidos por fluxos separados (NF-e, Melhor Envio) — o formulário de edição não os carrega,
+  // e salvarComCriadoEm usa .set() que sobrescreve o documento inteiro. Sem isso, editar um pedido apaga a nota fiscal.
+  if(idx!==''){
+    const orig=dados.pedidos[parseInt(idx)]||{};
+    ['nfe','melhorEnvio'].forEach(k=>{ if(orig[k]!==undefined) obj[k]=orig[k]; });
+  }
   await salvarComCriadoEm('pedidos',idx,obj,dados.pedidos);
   bootstrap.Modal.getInstance(document.getElementById('modalPedido')).hide();
   document.getElementById('p-idx').value='';
