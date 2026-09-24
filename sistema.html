@@ -2652,8 +2652,36 @@ function renderStatusMelhorEnvio(p,i) {
     <div style="margin-top:6px;display:flex;gap:8px;flex-wrap:wrap">
       ${m.linkEtiqueta?`<a href="${escHtml(m.linkEtiqueta)}" target="_blank" class="btn btn-outline-success btn-sm" style="font-size:11px"><i class="bi bi-file-earmark-pdf me-1"></i>Baixar Etiqueta</a>`:''}
       <button class="btn btn-outline-info btn-sm" style="font-size:11px" onclick="atualizarRastreioMelhorEnvio(${i})"><i class="bi bi-arrow-repeat me-1"></i>Atualizar Rastreio</button>
+      <button class="btn btn-outline-warning btn-sm" style="font-size:11px" onclick="liberarNovaEtiquetaMelhorEnvio(${i})" title="Use depois de cancelar a etiqueta no painel do Melhor Envio"><i class="bi bi-arrow-counterclockwise me-1"></i>Etiqueta cancelada — gerar nova</button>
     </div>
   </div>`;
+}
+// Depois que a etiqueta foi cancelada no painel do Melhor Envio, libera o pedido pra cotar/gerar de novo.
+// Confere o status na API antes (evita pagar 2 etiquetas se a antiga ainda estiver valendo) e guarda
+// a etiqueta antiga em melhorEnvio.etiquetasAnteriores como histórico.
+async function liberarNovaEtiquetaMelhorEnvio(i) {
+  const p=dados.pedidos[i];
+  const m=p.melhorEnvio;
+  if(!m||!m.orderId) return;
+  const mapa=await buscarRastreioLote([m.orderId]);
+  const statusAtual=mapa[m.orderId]?.status||'desconhecido';
+  if(!['canceled','cancelled','expired'].includes(statusAtual)) {
+    if(!confirm(`Atenção: o Melhor Envio ainda mostra essa etiqueta com status "${statusAtual}" (não "cancelada").\n\nSe o cancelamento ainda está em processamento, tudo bem continuar. Mas se a etiqueta antiga ainda estiver valendo, você vai pagar 2 fretes pro mesmo pedido.\n\nDeseja liberar o pedido pra gerar uma nova etiqueta mesmo assim?`)) return;
+  } else if(!confirm(`A etiqueta antiga está cancelada no Melhor Envio. Liberar o pedido ${p.num} pra cotar o frete e gerar uma nova etiqueta?`)) return;
+  const anteriores=[...(m.etiquetasAnteriores||[]),{
+    orderId:m.orderId,linkEtiqueta:m.linkEtiqueta||null,etiquetaGeradaEm:m.etiquetaGeradaEm||null,
+    cotacao:m.cotacaoEscolhida||null,rastreio:p.rastreio||null,statusNoCancelamento:statusAtual,liberadaEm:new Date().toISOString()
+  }];
+  const {orderId,linkEtiqueta,etiquetaGeradaEm,...resto}=m;
+  const melhorEnvio={...resto,etiquetasAnteriores:anteriores};
+  try {
+    await db.collection('pedidos').doc(p._docId).update({melhorEnvio,rastreio:'',linkRastreio:''});
+    dados.pedidos[i].melhorEnvio=melhorEnvio;
+    dados.pedidos[i].rastreio='';
+    dados.pedidos[i].linkRastreio='';
+    verPedido(i);
+    if(currentPage==='pedidos') renderPedidos();
+  } catch(e) { alert('Erro ao liberar o pedido: '+e.message); }
 }
 async function gerarEtiquetaMelhorEnvio(i) {
   const p=dados.pedidos[i];
