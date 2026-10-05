@@ -3019,6 +3019,7 @@ function renderStatusNFe(p,i) {
     Última tentativa (${n.ambiente}): <strong style="color:${cor}">${statusNFeLabel(n.status)}</strong>${n.chave?' — Chave: '+n.chave:''}${n.mensagem?' — '+escHtml(n.mensagem):''}
     ${n.emailEnviadoEm?`<div style="margin-top:4px;color:#10B981"><i class="bi bi-envelope-check-fill me-1"></i>Email enviado em ${fmtDataHora(n.emailEnviadoEm)} para ${escHtml((n.emailEnviadoPara||[]).join(', '))}</div>`:''}
     <div style="margin-top:6px;display:flex;gap:8px;flex-wrap:wrap">
+      ${n.status==='processando_autorizacao'&&n.ref&&i!=null?`<button id="nfe-btn-atualizar-${i}" class="btn btn-outline-warning btn-sm" style="font-size:11px" onclick="atualizarStatusNFe(${i})"><i class="bi bi-arrow-clockwise me-1"></i>Atualizar status</button>`:''}
       ${n.danfe&&i!=null?`<button class="btn btn-outline-success btn-sm" style="font-size:11px" onclick="baixarDanfe(dados.pedidos[${i}].nfe)"><i class="bi bi-file-earmark-pdf me-1"></i>Baixar DANFe</button>`:''}
       ${n.xml&&i!=null?`<button class="btn btn-outline-secondary btn-sm" style="font-size:11px" onclick="baixarXml(dados.pedidos[${i}].nfe)"><i class="bi bi-file-earmark-code me-1"></i>Baixar XML</button>`:''}
       ${n.status==='autorizado'&&n.ref&&i!=null?`<button id="nfe-btn-email-${i}" class="btn ${n.emailEnviadoEm?'btn-outline-secondary':'btn-outline-primary'} btn-sm" style="font-size:11px" onclick="enviarEmailNFe(${i})"><i class="bi bi-envelope${n.emailEnviadoEm?'-check':''} me-1"></i>${n.emailEnviadoEm?'Reenviar':'Enviar'} por E-mail</button>`:''}
@@ -3198,14 +3199,51 @@ async function emitirNFe(i) {
     await db.collection('pedidos').doc(p._docId).update({nfe:nfeInfo});
     dados.pedidos[i].nfe=nfeInfo;
     baixarDanfeAutomatico(nfeInfo);
-    const statusArea=document.getElementById('nfe-status-'+i);
-    if(statusArea) statusArea.innerHTML=renderStatusNFe(dados.pedidos[i],i);
-    const btnArea=document.getElementById('nfe-btn-'+i);
-    if(btnArea) btnArea.innerHTML=renderBotaoEmitirNFe(dados.pedidos[i],i);
-    if(currentPage==='pedidos') renderPedidos();
-    if(currentPage==='fiscal') renderFiscal();
+    atualizarTelasNFe(i);
+    // SEFAZ às vezes demora: a Focus devolve "processando" e a autorização sai segundos depois. Consulta de novo sozinho.
+    if(nfeInfo.status==='processando_autorizacao') {
+      for(let t=0;t<6&&dados.pedidos[i].nfe.status==='processando_autorizacao';t++) {
+        await new Promise(r=>setTimeout(r,5000));
+        await atualizarStatusNFe(i,true);
+      }
+    }
   } catch(e) {
     if(area) area.innerHTML='Erro ao chamar o proxy: '+e.message;
+  }
+}
+
+function atualizarTelasNFe(i) {
+  const statusArea=document.getElementById('nfe-status-'+i);
+  if(statusArea) statusArea.innerHTML=renderStatusNFe(dados.pedidos[i],i);
+  const btnArea=document.getElementById('nfe-btn-'+i);
+  if(btnArea) btnArea.innerHTML=renderBotaoEmitirNFe(dados.pedidos[i],i);
+  if(currentPage==='pedidos') renderPedidos();
+  if(currentPage==='fiscal') renderFiscal();
+}
+
+// Consulta na Focus NFe o status atual de uma nota que ficou "processando" e grava o resultado no pedido.
+async function atualizarStatusNFe(i,silencioso) {
+  const p=dados.pedidos[i];
+  if(!p||!p.nfe||!p.nfe.ref) return;
+  const btn=document.getElementById('nfe-btn-atualizar-'+i);
+  if(btn){btn.disabled=true;btn.innerHTML='<i class="bi bi-hourglass-split me-1"></i>Consultando...';}
+  try {
+    const resp=await fetch(NFE_PROXY_URL,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({acao:'consultar',ref:p.nfe.ref})});
+    const data=await resp.json();
+    const fr=data.focus_resposta||{};
+    if(!fr.status) throw new Error(fr.mensagem||'resposta sem status');
+    const detalheErros=Array.isArray(fr.erros)?fr.erros.map(er=>er.mensagem||JSON.stringify(er)).join(' | '):null;
+    const nfeInfo={...p.nfe,status:fr.status,chave:fr.chave_nfe||p.nfe.chave||null,numero:fr.numero||p.nfe.numero||null,serie:fr.serie||p.nfe.serie||null,
+      danfe:fr.caminho_danfe||p.nfe.danfe||null,xml:fr.caminho_xml_nota_fiscal||p.nfe.xml||null,
+      mensagem:[fr.mensagem_sefaz||fr.mensagem,detalheErros].filter(Boolean).join(' — ')||p.nfe.mensagem||null};
+    await db.collection('pedidos').doc(p._docId).update({nfe:nfeInfo});
+    dados.pedidos[i].nfe=nfeInfo;
+    if(nfeInfo.status==='autorizado') baixarDanfeAutomatico(nfeInfo);
+    atualizarTelasNFe(i);
+    if(!silencioso&&nfeInfo.status==='processando_autorizacao') alert('A SEFAZ ainda está processando essa nota. Tente de novo em alguns minutos.');
+  } catch(e) {
+    if(btn){btn.disabled=false;btn.innerHTML='<i class="bi bi-arrow-clockwise me-1"></i>Atualizar status';}
+    if(!silencioso) alert('Não foi possível consultar a nota: '+e.message);
   }
 }
 
