@@ -3682,7 +3682,9 @@ function verPedido(i) {
   const canal=(dados.config.canais||[]).find(c=>c.nome===p.canal)||{taxa:0,taxaFixa:0};
   const pagtoConfig=(dados.config.formasPagto||[]).find(f=>f.nome===p.pagto)||{taxa:0,taxaFixa:0};
   const pagtoEfetivo=canal.incluiPagamento?{taxa:0,taxaFixa:0}:pagtoConfig;
-  const taxaCanal=bruto*(canal.taxa||0)+(canal.taxaFixa||0);
+  let taxaCanal; // taxa fixa por item, igual ao modal
+  if((canal.taxaFixa||0)>0){taxaCanal=itens.reduce((s,it)=>{const sub=it.qtd*it.preco;return sub>0?s+sub*(canal.taxa||0)+(canal.taxaFixa||0)*it.qtd:s;},0);if((p.frete||0)>0)taxaCanal+=(p.frete||0)*(canal.taxa||0);}
+  else taxaCanal=bruto*(canal.taxa||0);
   const taxaPagto=bruto*(pagtoEfetivo.taxa||0)+(pagtoEfetivo.taxaFixa||0);
   const liq=p.liquido!=null?p.liquido:bruto-taxaCanal-taxaPagto;
   document.getElementById('modalVerPedidoTitulo').textContent=`Pedido ${p.num}`;
