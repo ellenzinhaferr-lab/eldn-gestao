@@ -988,6 +988,10 @@ table.gestao tbody tr:hover .tbl-sticky-r{background:#1f1545}
       <div class="col-md-3"><label class="form-label">Altura (cm)</label><input class="form-control" id="pr-altura" type="number" step="1" min="0" placeholder="10"></div>
       <div class="col-md-3"><label class="form-label">Largura (cm)</label><input class="form-control" id="pr-largura" type="number" step="1" min="0" placeholder="15"></div>
       <div class="col-md-3"><label class="form-label">Comprimento (cm)</label><input class="form-control" id="pr-comprimento" type="number" step="1" min="0" placeholder="20"></div>
+      <div class="col-12"><div class="form-check form-switch mb-0">
+        <input class="form-check-input" type="checkbox" id="pr-substitui-envio">
+        <label class="form-check-label" for="pr-substitui-envio" style="font-size:13px;cursor:pointer">Order bump: peso e medidas deste item já incluem o produto principal<br><span style="color:var(--cor-texto-suave);font-size:11px">no frete, este item substitui o pacote do produto principal em vez de somar mais um pacote</span></label>
+      </div></div>
     </div></div>
     <div class="col-12" style="border-top:1px solid var(--cor-borda);padding-top:12px;margin-top:4px"><small style="color:var(--cor-secundaria);font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:1px"><i class="bi bi-receipt me-1"></i>Dados Fiscais (NF-e)</small></div>
     <div class="col-md-4"><label class="form-label">NCM</label><input class="form-control" id="pr-ncm" placeholder="4901.10.00" maxlength="10"></div>
@@ -2240,7 +2244,7 @@ function abrirModal(tipo) {
   const ids={cliente:'modalCliente',pedido:'modalPedido',financeiro:'modalFinanceiro',compra:'modalCompra',produto:'modalProduto',afiliado:'modalAfiliado',canal:'modalCanal',formapagto:'modalFormaPagto',usuario:'modalUsuario'};
   if(tipo==='pedido') preencherSelectsPedido();
   if(tipo==='compra') preencherSelectsCompra();
-  if(tipo==='produto'){document.getElementById('pr-idx').value='';document.getElementById('modalProdutoTitulo').textContent='Novo Produto';document.getElementById('btn-duplicar-produto').style.display='none';}
+  if(tipo==='produto'){document.getElementById('pr-idx').value='';document.getElementById('pr-substitui-envio').checked=false;document.getElementById('modalProdutoTitulo').textContent='Novo Produto';document.getElementById('btn-duplicar-produto').style.display='none';}
   if(tipo==='financeiro'){document.getElementById('f-idx').value='';document.getElementById('f-recorrente').checked=false;document.getElementById('f-recorrente-tipo').value='assinatura';document.getElementById('f-recorrente-wrap').style.display='block';toggleRecorrenteFinanceiro();}
   if(tipo==='usuario'){document.getElementById('u-nome').value='';document.getElementById('u-email').value='';document.getElementById('u-senha').value='';document.getElementById('u-msg').style.display='none';document.getElementById('btn-salvar-usuario').disabled=false;document.getElementById('btn-salvar-usuario').textContent='Criar Usuário';}
   new bootstrap.Modal(document.getElementById(ids[tipo])).show();
@@ -2583,28 +2587,36 @@ async function verificarSaldoMelhorEnvio() {
 // Só o CEP fica aqui (não é dado sensível, é a origem pra cálculo de frete). O restante do remetente
 // (nome, CPF/CNPJ, endereço completo) fica só no proxy PHP do servidor — nunca no sistema.html público.
 const ME_REMETENTE_CEP='08080220';
+// Itens físicos que viram pacote no frete. Itens digitais ficam de fora.
+// Order bump (produto com substituiEnvio): o peso/medidas dele já incluem o produto principal,
+// então cada unidade do bump "absorve" uma unidade de outro item físico do pedido (não soma 2 pacotes).
+function itensEnvioPedido(p) {
+  const itens=getPedidoItens(p).map(it=>({it,prod:dados.produtos.find(x=>x.sku===it.sku),qtd:it.qtd||0,valor:it.preco||0}))
+    .filter(x=>x.prod&&!x.prod.digital&&x.qtd>0);
+  const bumps=itens.filter(x=>x.prod.substituiEnvio), principais=itens.filter(x=>!x.prod.substituiEnvio);
+  bumps.forEach(b=>{
+    let falta=b.qtd;
+    principais.forEach(m=>{
+      const abs=Math.min(falta,m.qtd);
+      if(abs>0){m.qtd-=abs;falta-=abs;b.valor+=m.valor*abs/b.qtd;}
+    });
+  });
+  return itens.filter(x=>x.qtd>0);
+}
+function temDimensoes(prod) { return prod.peso>0 && prod.altura>0 && prod.largura>0 && prod.comprimento>0; }
 function podeCotarFrete(p,cliente) {
   if(!cliente||!cliente.cep||cliente.cep.replace(/\D/g,'').length!==8) return false;
-  // Considera só os itens físicos do pedido — itens digitais não entram no frete e não têm peso/dimensões.
-  const itensFisicos=getPedidoItens(p).filter(it=>{
-    const prod=dados.produtos.find(x=>x.sku===it.sku);
-    return prod && !prod.digital;
-  });
+  const itensFisicos=itensEnvioPedido(p);
   if(!itensFisicos.length) return false;
-  return itensFisicos.every(it=>{
-    const prod=dados.produtos.find(x=>x.sku===it.sku);
-    return prod.peso>0 && prod.altura>0 && prod.largura>0 && prod.comprimento>0;
-  });
+  return itensFisicos.every(x=>temDimensoes(x.prod));
 }
 function montarProdutosEnvio(p) {
-  return getPedidoItens(p).map(it=>{
-    const prod=dados.produtos.find(x=>x.sku===it.sku);
-    if(!prod||prod.digital) return null;
-    if(!(prod.peso>0)||!(prod.altura>0)||!(prod.largura>0)||!(prod.comprimento>0)) {
+  return itensEnvioPedido(p).map(({it,prod,qtd,valor})=>{
+    if(!temDimensoes(prod)) {
       throw new Error(`Produto ${it.sku} sem peso/dimensões cadastrados — edite o produto antes de cotar o frete`);
     }
-    return {id:it.sku,width:prod.largura,height:prod.altura,length:prod.comprimento,weight:prod.peso,insurance_value:it.preco,quantity:it.qtd};
-  }).filter(Boolean);
+    return {id:it.sku,width:prod.largura,height:prod.altura,length:prod.comprimento,weight:prod.peso,insurance_value:valor,quantity:qtd};
+  });
 }
 function montarDestinatarioEnvio(cliente) {
   return {
@@ -2617,10 +2629,8 @@ function montarDestinatarioEnvio(cliente) {
 }
 function montarVolumesEnvio(p) {
   const vols=[];
-  getPedidoItens(p).forEach(it=>{
-    const prod=dados.produtos.find(x=>x.sku===it.sku);
-    if(!prod||prod.digital) return;
-    for(let n=0;n<it.qtd;n++) vols.push({height:prod.altura,width:prod.largura,length:prod.comprimento,weight:prod.peso});
+  itensEnvioPedido(p).forEach(({prod,qtd})=>{
+    for(let n=0;n<qtd;n++) vols.push({height:prod.altura,width:prod.largura,length:prod.comprimento,weight:prod.peso});
   });
   return vols;
 }
@@ -4133,6 +4143,7 @@ function editarProduto(i) {
   document.getElementById('pr-altura').value=p.altura||'';
   document.getElementById('pr-largura').value=p.largura||'';
   document.getElementById('pr-comprimento').value=p.comprimento||'';
+  document.getElementById('pr-substitui-envio').checked=!!p.substituiEnvio;
   document.getElementById('pr-ncm').value=p.ncm||'';
   document.getElementById('pr-csosn').value=p.csosn||'';
   document.getElementById('pr-icms').value=p.icms||'Isento';
@@ -4171,12 +4182,14 @@ async function salvarProduto() {
     custo:isDigital?0:pFloat('pr-custo'),frete:isDigital?0:pFloat('pr-frete'),
     peso:isDigital?0:(parseFloat(v('pr-peso'))||0),altura:isDigital?0:(parseInt(v('pr-altura'))||0),
     largura:isDigital?0:(parseInt(v('pr-largura'))||0),comprimento:isDigital?0:(parseInt(v('pr-comprimento'))||0),
+    substituiEnvio:isDigital?false:document.getElementById('pr-substitui-envio').checked,
     ncm:v('pr-ncm').trim(),csosn:v('pr-csosn').trim(),icms:v('pr-icms'),obs:v('pr-obs')};
   if(idx==='') await db.collection('produtos').add(obj);
   else await db.collection('produtos').doc(dados.produtos[parseInt(idx)]._docId).set(obj);
   bootstrap.Modal.getInstance(document.getElementById('modalProduto')).hide();
   document.getElementById('pr-idx').value='';
   document.getElementById('pr-digital').checked=false;
+  document.getElementById('pr-substitui-envio').checked=false;
   toggleDigitalProduto();
   document.getElementById('modalProdutoTitulo').textContent='Novo Produto';
 }
