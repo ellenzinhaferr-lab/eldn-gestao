@@ -1454,10 +1454,16 @@ function migrarLiquidoPedidos() {
     if(bruto<=0||!p._docId) return;
     const pagtoConfig=(dados.config.formasPagto||[]).find(f=>f.nome===p.pagto)||{taxa:0,taxaFixa:0};
     const pagtoEfetivo=canal.incluiPagamento?{taxa:0,taxaFixa:0}:pagtoConfig;
-    const taxaCanal=bruto*(canal.taxa||0)+(canal.taxaFixa||0);
+    // Mesma regra do modal (calcularValorPedido): taxa fixa do canal é cobrada por item/transação (ex: bump Hotmart = +R$1)
+    let taxaCanal;
+    if((canal.taxaFixa||0)>0){
+      taxaCanal=getPedidoItens(p).reduce((s,it)=>{const sub=(it.qtd||0)*(it.preco||0);return sub>0?s+sub*(canal.taxa||0)+(canal.taxaFixa||0)*(it.qtd||0):s;},0);
+      if((p.frete||0)>0) taxaCanal+=(p.frete||0)*(canal.taxa||0);
+    } else taxaCanal=bruto*(canal.taxa||0);
     const taxaPagto=bruto*(pagtoEfetivo.taxa||0)+(pagtoEfetivo.taxaFixa||0);
     const liquidoCorreto=parseFloat((bruto-taxaCanal-taxaPagto).toFixed(2));
-    if(p.liquido==null||Math.abs(p.liquido-liquidoCorreto)>0.01) {
+    // Só preenche pedido sem líquido. Pedido com líquido salvo (pelo modal ou ajuste manual) não é regravado.
+    if(p.liquido==null) {
       db.collection('pedidos').doc(p._docId).update({liquido:liquidoCorreto});
     }
   });
