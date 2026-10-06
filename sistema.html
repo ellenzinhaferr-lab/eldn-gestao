@@ -995,7 +995,7 @@ table.gestao tbody tr:hover .tbl-sticky-r{background:#1f1545}
     <div class="col-md-4"><label class="form-label">Situação ICMS</label><select class="form-select" id="pr-icms"><option>Isento</option><option>Tributado</option></select></div>
     <div class="col-12"><label class="form-label">Observações</label><textarea class="form-control" id="pr-obs" rows="2"></textarea></div>
   </div></div>
-  <div class="modal-footer"><button class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancelar</button><button class="btn btn-primary" onclick="salvarProduto()">Salvar Produto</button></div>
+  <div class="modal-footer"><button class="btn btn-outline-info me-auto" id="btn-duplicar-produto" style="display:none" onclick="duplicarProduto()" title="Cria um novo produto com os mesmos dados para você ajustar"><i class="bi bi-copy me-1"></i>Duplicar</button><button class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancelar</button><button class="btn btn-primary" onclick="salvarProduto()">Salvar Produto</button></div>
 </div></div></div>
 
 <div class="modal fade" id="modalAfiliado" tabindex="-1"><div class="modal-dialog"><div class="modal-content">
@@ -2240,6 +2240,7 @@ function abrirModal(tipo) {
   const ids={cliente:'modalCliente',pedido:'modalPedido',financeiro:'modalFinanceiro',compra:'modalCompra',produto:'modalProduto',afiliado:'modalAfiliado',canal:'modalCanal',formapagto:'modalFormaPagto',usuario:'modalUsuario'};
   if(tipo==='pedido') preencherSelectsPedido();
   if(tipo==='compra') preencherSelectsCompra();
+  if(tipo==='produto'){document.getElementById('pr-idx').value='';document.getElementById('modalProdutoTitulo').textContent='Novo Produto';document.getElementById('btn-duplicar-produto').style.display='none';}
   if(tipo==='financeiro'){document.getElementById('f-idx').value='';document.getElementById('f-recorrente').checked=false;document.getElementById('f-recorrente-tipo').value='assinatura';document.getElementById('f-recorrente-wrap').style.display='block';toggleRecorrenteFinanceiro();}
   if(tipo==='usuario'){document.getElementById('u-nome').value='';document.getElementById('u-email').value='';document.getElementById('u-senha').value='';document.getElementById('u-msg').style.display='none';document.getElementById('btn-salvar-usuario').disabled=false;document.getElementById('btn-salvar-usuario').textContent='Criar Usuário';}
   new bootstrap.Modal(document.getElementById(ids[tipo])).show();
@@ -4137,12 +4138,32 @@ function editarProduto(i) {
   document.getElementById('pr-icms').value=p.icms||'Isento';
   document.getElementById('pr-obs').value=p.obs||'';
   document.getElementById('modalProdutoTitulo').textContent='Editar Produto';
+  document.getElementById('btn-duplicar-produto').style.display='';
   new bootstrap.Modal(document.getElementById('modalProduto')).show();
+}
+function proximoSkuVariacao(sku) {
+  const base=sku.replace(/-V\d+$/i,'');
+  const usados=new Set(dados.produtos.map(p=>(p.sku||'').toUpperCase()));
+  let n=2;
+  while(usados.has(`${base}-V${n}`.toUpperCase())) n++;
+  return `${base}-V${n}`;
+}
+function duplicarProduto() {
+  // Transforma o formulário aberto num produto novo, com os mesmos dados
+  document.getElementById('pr-idx').value='';
+  document.getElementById('pr-sku').value=proximoSkuVariacao(v('pr-sku').trim());
+  document.getElementById('pr-nome').value=v('pr-nome').trim()+' (variação)';
+  document.getElementById('modalProdutoTitulo').textContent='Nova Variação (cópia)';
+  document.getElementById('btn-duplicar-produto').style.display='none';
+  const nome=document.getElementById('pr-nome');
+  nome.focus();nome.select();
 }
 async function salvarProduto() {
   const sku=v('pr-sku').trim(), nome=v('pr-nome').trim();
   if(!sku||!nome) return alert('SKU e Nome são obrigatórios');
   const idx=v('pr-idx');
+  const skuRepetido=dados.produtos.some((p,i)=>(p.sku||'').toUpperCase()===sku.toUpperCase()&&String(i)!==idx);
+  if(skuRepetido) return alert(`Já existe um produto com o SKU "${sku}". Use um SKU diferente para a variação.`);
   const isDigital=document.getElementById('pr-digital').checked;
   const obj={sku,nome,categoria:v('pr-categoria'),fornecedor:v('pr-fornecedor'),digital:isDigital,
     preco:pFloat('pr-preco'),
