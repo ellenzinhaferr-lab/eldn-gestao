@@ -2535,7 +2535,7 @@ async function salvarPedido() {
     const sku=document.getElementById('item-sku-'+i)?.value||'';
     const desc=document.getElementById('item-desc-'+i)?.value||'';
     const qtd=parseFloat(document.getElementById('item-qtd-'+i)?.value)||0;
-    const preco=parseFloat(document.getElementById('item-preco-'+i)?.value)||0;
+    const preco=pFloat('item-preco-'+i); // campo usa vírgula ("109,90"); parseFloat direto cortava os centavos
     if(sku||desc) itens.push({sku,desc,qtd,preco});
   });
   if(!itens.length) return alert('Adicione pelo menos um item ao pedido');
