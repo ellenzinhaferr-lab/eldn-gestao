@@ -340,8 +340,13 @@ table.gestao tbody tr:hover .tbl-sticky-r{background:#1f1545}
           <input type="number" min="1" max="31" class="form-control form-control-sm" id="fin-cartao-venc" style="width:64px" onchange="salvarCartaoFin()">
         </div>
       </div>
+      <div id="fin-abas-mes" style="display:flex;gap:4px;align-items:flex-end;overflow-x:auto;border-bottom:2px solid var(--cor-borda);margin-bottom:16px;padding-bottom:0"></div>
       <div class="kpi-grid" id="kpi-financeiro"></div>
-      <div class="table-card">
+      <div class="table-card" id="fin-resumo-ano-card" style="display:none">
+        <div class="table-header"><h6 id="fin-resumo-ano-titulo">Panorama do Ano</h6><span style="font-size:12px;color:var(--cor-texto-suave)">Clique em um mês para abrir os lançamentos</span></div>
+        <div class="table-responsive"><table class="gestao" id="tabela-fin-resumo"><thead><tr><th>Mês</th><th>Entradas recebidas</th><th>Entradas previstas</th><th>Saídas pagas</th><th>Saídas a pagar</th><th>Saldo do mês</th><th>Saldo acumulado</th><th>Parcelas/recorr.</th></tr></thead><tbody></tbody></table></div>
+      </div>
+      <div class="table-card" id="fin-lancamentos-card">
         <div class="table-header" style="flex-wrap:wrap;gap:8px;">
           <h6>Lançamentos Financeiros</h6>
           <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
@@ -1968,6 +1973,7 @@ function aplicarPeriodoFin(modo) {
 function navegarMesFin(delta) {
   if(!finFiltro.de) _initFinFiltro();
   const [y,m]=finFiltro.de.split('-').map(Number);
+  if(finFiltro.modo==='anoResumo') return abrirResumoAnoFin(y+delta);
   const d=new Date(y,m-1+delta,1);
   const yy=d.getFullYear(), mm=String(d.getMonth()+1).padStart(2,'0');
   const ult=new Date(yy,d.getMonth()+1,0).getDate();
@@ -1979,6 +1985,70 @@ function navegarMesFin(delta) {
   renderFinanceiro();
 }
 
+// Abas estilo planilha: uma por mês + panorama do ano
+function abrirAbaMesFin(y, m) {
+  const ult=new Date(y,m,0).getDate();
+  const mm=String(m).padStart(2,'0');
+  finFiltro.de=`${y}-${mm}-01`;
+  finFiltro.ate=`${y}-${mm}-${String(ult).padStart(2,'0')}`;
+  const hoje=new Date();
+  const diff=(y-hoje.getFullYear())*12+(m-1-hoje.getMonth());
+  finFiltro.modo=diff===0?'mes':diff===-1?'mesant':diff===1?'mesprox':'navmes';
+  renderFinanceiro();
+}
+function abrirResumoAnoFin(y) {
+  finFiltro.de=`${y}-01-01`;
+  finFiltro.ate=`${y}-12-31`;
+  finFiltro.modo='anoResumo';
+  renderFinanceiro();
+}
+function finTotaisMes(arr, recMap) {
+  const real=f=>!f.situacao||f.situacao==='Realizada';
+  const soma=fn=>arr.filter(fn).reduce((t,f)=>t+f.valor,0);
+  const entR=soma(f=>f.tipo==='Entrada'&&real(f)), entP=soma(f=>f.tipo==='Entrada'&&!real(f));
+  const saiR=soma(f=>f.tipo==='Saída'&&real(f)), saiP=soma(f=>f.tipo==='Saída'&&!real(f));
+  return {entR,entP,saiR,saiP,saldo:entR+entP-saiR-saiP,nRec:recMap?arr.filter(f=>recMap.has(f)).length:0,n:arr.length};
+}
+function renderAbasMesFin(recMap) {
+  const el=document.getElementById('fin-abas-mes'); if(!el) return;
+  const ano=parseInt(finFiltro.de.slice(0,4));
+  const de=finFiltro.de, ate=finFiltro.ate;
+  const hojeYm=new Date().toISOString().slice(0,7);
+  const nomes=['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
+  const estilo=(ativo,atual)=>`border:1px solid var(--cor-borda);border-bottom:none;border-radius:10px 10px 0 0;padding:6px 12px;min-width:78px;text-align:center;cursor:pointer;font-size:12px;line-height:1.3;white-space:nowrap;${ativo?'background:var(--cor-secundaria);color:#fff;font-weight:700;':'background:var(--cor-card);color:var(--cor-texto);'}${atual&&!ativo?'box-shadow:inset 0 3px 0 var(--cor-secundaria);':''}`;
+  let html=`<button class="btn btn-sm" style="border:none;color:var(--cor-texto-suave);padding:6px 6px" onclick="abrirAbaMesFin(${ano-1},12)" title="Ano anterior"><i class="bi bi-chevron-double-left"></i></button>`;
+  html+=`<div style="${estilo(finFiltro.modo==='anoResumo',false)}" onclick="abrirResumoAnoFin(${ano})"><i class="bi bi-grid-3x3-gap me-1"></i><b>Ano ${ano}</b><div style="font-size:10px;opacity:.8">panorama</div></div>`;
+  nomes.forEach((n,i)=>{
+    const ym=`${ano}-${String(i+1).padStart(2,'0')}`;
+    const arr=dados.financeiro.filter(f=>(finDataRef(f)||'').slice(0,7)===ym);
+    const t=finTotaisMes(arr);
+    const ativo=finFiltro.modo!=='anoResumo' && ym>=de.slice(0,7) && ym<=ate.slice(0,7);
+    const corSaldo=ativo?'#fff':(t.saldo>=0?'#10B981':'#EF4444');
+    html+=`<div style="${estilo(ativo,ym===hojeYm)}" onclick="abrirAbaMesFin(${ano},${i+1})" title="${t.n} lançamentos">${n}${ym===hojeYm?' •':''}<div style="font-size:10px;font-weight:600;color:${corSaldo}">${arr.length?moeda(t.saldo):'—'}</div></div>`;
+  });
+  html+=`<button class="btn btn-sm" style="border:none;color:var(--cor-texto-suave);padding:6px 6px" onclick="abrirAbaMesFin(${ano+1},1)" title="Próximo ano"><i class="bi bi-chevron-double-right"></i></button>`;
+  el.innerHTML=html;
+}
+function renderResumoAnoFin(recMap) {
+  const ano=parseInt(finFiltro.de.slice(0,4));
+  document.getElementById('fin-resumo-ano-titulo').textContent=`Panorama de ${ano}`;
+  const hojeYm=new Date().toISOString().slice(0,7);
+  let acum=0;
+  const tot={entR:0,entP:0,saiR:0,saiP:0,saldo:0,nRec:0};
+  const linhas=[];
+  for(let i=1;i<=12;i++){
+    const ym=`${ano}-${String(i).padStart(2,'0')}`;
+    const t=finTotaisMes(dados.financeiro.filter(f=>(finDataRef(f)||'').slice(0,7)===ym),recMap);
+    acum+=t.saldo;
+    Object.keys(tot).forEach(k=>tot[k]+=t[k]);
+    const nome=new Date(ano,i-1,1).toLocaleDateString('pt-BR',{month:'long'});
+    const v=(x,cor)=>x?`<span style="color:${cor};font-weight:600">${moeda(x)}</span>`:'<span style="color:var(--cor-texto-suave)">—</span>';
+    linhas.push(`<tr style="cursor:pointer;${ym===hojeYm?'background:rgba(124,58,237,.08)':''}" onclick="abrirAbaMesFin(${ano},${i})"><td style="font-weight:700;text-transform:capitalize">${nome}${ym===hojeYm?' <span style="font-size:10px;color:var(--cor-secundaria)">(atual)</span>':''}</td><td>${v(t.entR,'#10B981')}</td><td>${v(t.entP,'#F59E0B')}</td><td>${v(t.saiR,'#EF4444')}</td><td>${v(t.saiP,'#F59E0B')}</td><td style="font-weight:700;color:${t.saldo>=0?'#10B981':'#EF4444'}">${t.n?moeda(t.saldo):'—'}</td><td style="color:${acum>=0?'#10B981':'#EF4444'}">${moeda(acum)}</td><td>${t.nRec||'—'}</td></tr>`);
+  }
+  linhas.push(`<tr style="border-top:2px solid var(--cor-borda);font-weight:800"><td>Total do ano</td><td style="color:#10B981">${moeda(tot.entR)}</td><td style="color:#F59E0B">${moeda(tot.entP)}</td><td style="color:#EF4444">${moeda(tot.saiR)}</td><td style="color:#F59E0B">${moeda(tot.saiP)}</td><td style="color:${tot.saldo>=0?'#10B981':'#EF4444'}">${moeda(tot.saldo)}</td><td></td><td>${tot.nRec||'—'}</td></tr>`);
+  document.querySelector('#tabela-fin-resumo tbody').innerHTML=linhas.join('');
+}
+
 function setFinBase(base) {
   finBase=base;
   try { localStorage.setItem('finBaseV2',base); } catch(e) {}
@@ -1988,11 +2058,11 @@ function setFinBase(base) {
 // Cartão de crédito: dia de fechamento e vencimento da fatura (ficam em config/main)
 function finCartaoDias() {
   const c=dados.config||{};
-  return {fech:parseInt(c.cartaoFechamento)||4, venc:parseInt(c.cartaoVencimento)||11};
+  return {fech:parseInt(c.cartaoFechamento)||11, venc:parseInt(c.cartaoVencimento)||14};
 }
 async function salvarCartaoFin() {
-  const fech=Math.min(31,Math.max(1,parseInt(document.getElementById('fin-cartao-fech').value)||4));
-  const venc=Math.min(31,Math.max(1,parseInt(document.getElementById('fin-cartao-venc').value)||11));
+  const fech=Math.min(31,Math.max(1,parseInt(document.getElementById('fin-cartao-fech').value)||11));
+  const venc=Math.min(31,Math.max(1,parseInt(document.getElementById('fin-cartao-venc').value)||14));
   dados.config.cartaoFechamento=fech; dados.config.cartaoVencimento=venc;
   await db.collection('config').doc('main').update({cartaoFechamento:fech,cartaoVencimento:venc});
   renderFinanceiro();
@@ -3980,10 +4050,16 @@ function renderFinanceiro() {
     const b=document.getElementById('fp-'+m);
     if(b) b.classList.toggle('ativo',m===finFiltro.modo);
   });
-  const labelModos={mes2:'Este Mês + Próximo',mes:'Este Mês',mesant:'Mês Anterior',mesprox:'Próximo Mês',ano:'Este Ano',tudo:'Todo o Período',custom:'Período Personalizado',navmes:''};
+  const labelModos={mes2:'Este Mês + Próximo',mes:'Este Mês',mesant:'Mês Anterior',mesprox:'Próximo Mês',ano:'Este Ano',tudo:'Todo o Período',custom:'Período Personalizado',navmes:'',anoResumo:'Panorama do Ano'};
   document.getElementById('fin-periodo-label').textContent=labelModos[finFiltro.modo]||'';
   const nomeMes=ym=>{const [y,m]=ym.split('-').map(Number);return new Date(y,m-1,1).toLocaleDateString('pt-BR',{month:'long',year:'numeric'});};
-  document.getElementById('fin-mes-nav').textContent=de.slice(0,7)===ate.slice(0,7)?nomeMes(de.slice(0,7)):`${fmtData(de)} – ${fmtData(ate)}`;
+  document.getElementById('fin-mes-nav').textContent=finFiltro.modo==='anoResumo'?`Ano ${de.slice(0,4)}`:de.slice(0,7)===ate.slice(0,7)?nomeMes(de.slice(0,7)):`${fmtData(de)} – ${fmtData(ate)}`;
+  const recMapAbas=finMapaRecorrencia();
+  renderAbasMesFin(recMapAbas);
+  const isResumo=finFiltro.modo==='anoResumo';
+  document.getElementById('fin-resumo-ano-card').style.display=isResumo?'':'none';
+  document.getElementById('fin-lancamentos-card').style.display=isResumo?'none':'';
+  if(isResumo) renderResumoAnoFin(recMapAbas);
   ['data','venc'].forEach(b=>{const el=document.getElementById('fb-'+b);if(el)el.classList.toggle('ativo',b===finBase);});
   const cd=finCartaoDias();
   document.getElementById('fin-cartao-fech').value=cd.fech;
