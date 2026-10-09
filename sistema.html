@@ -973,10 +973,11 @@ table.gestao tbody tr:hover .tbl-sticky-r{background:#1f1545}
     <div class="col-md-5"><label class="form-label">Data *</label><input class="form-control" id="em-data" type="date"></div>
     <div class="col-md-7"><label class="form-label">Produto *</label><select class="form-select" id="em-sku"><option value="">— Selecione —</option></select></div>
     <div class="col-12"><label class="form-label">Descrição *</label><input class="form-control" id="em-desc" placeholder="Ex: Kits montados — Lote Maio, Entrada gráfica 50 livros..."></div>
+    <div class="col-md-8"><label class="form-label">Tipo *</label><select class="form-select" id="em-tipo"><option value="entrada">Entrada (chegou mercadoria)</option><option value="saida">Saída / ajuste (perda, brinde, contagem menor)</option></select></div>
     <div class="col-md-4"><label class="form-label">Quantidade *</label><input class="form-control" id="em-qtd" type="number" min="1" value="1"></div>
     <div class="col-12"><label class="form-label">Observações</label><textarea class="form-control" id="em-obs" rows="2"></textarea></div>
   </div></div>
-  <div class="modal-footer"><button class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancelar</button><button class="btn btn-success" onclick="salvarEstoqueMov()"><i class="bi bi-arrow-down-circle me-1"></i>Registrar Entrada</button></div>
+  <div class="modal-footer"><button class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancelar</button><button class="btn btn-success" onclick="salvarEstoqueMov()"><i class="bi bi-arrow-down-up me-1"></i>Registrar</button></div>
 </div></div></div>
 
 <div class="modal fade" id="modalVerEstoqueMov" tabindex="-1"><div class="modal-dialog"><div class="modal-content">
@@ -1000,8 +1001,16 @@ table.gestao tbody tr:hover .tbl-sticky-r{background:#1f1545}
     </div>
     <div class="col-md-4"><label class="form-label">Preço de Venda (R$)</label><input class="form-control" id="pr-preco" type="text" inputmode="numeric" value="0,00" placeholder="0,00" oninput="mascaraMoeda(this)"></div>
     <div id="pr-estoque-section" class="col-12"><div class="row g-3">
-      <div class="col-md-3"><label class="form-label">Qtd Mín.</label><input class="form-control" id="pr-estmin" type="number" value="5"></div>
-      <div class="col-md-3"><label class="form-label">Est. Inicial</label><input class="form-control" id="pr-estini" type="number" value="0"></div>
+      <div class="col-12" style="background:rgba(124,58,237,.06);border:1px solid var(--cor-borda);border-radius:10px;padding:12px 14px">
+        <div class="row g-2 align-items-end">
+          <div class="col-md-8"><label class="form-label"><i class="bi bi-diagram-3 me-1"></i>De qual estoque este produto sai?</label>
+            <select class="form-select" id="pr-estoque-de" onchange="toggleEstoqueDeProduto()"></select></div>
+          <div class="col-md-4" id="pr-estoque-qtd-wrap"><label class="form-label">Unidades por venda</label><input class="form-control" id="pr-estoque-qtd" type="number" min="1" value="1"></div>
+          <div class="col-12"><small style="color:var(--cor-texto-suave);font-size:11px">Use para kits, order bump e outras formas de vender o mesmo livro: escolha o produto principal (ex: Livro Físico) e cada venda deste produto baixa do estoque dele. Ex: kit com 2 livros = 2 unidades por venda.</small></div>
+        </div>
+      </div>
+      <div class="col-md-3 pr-estoque-proprio"><label class="form-label">Qtd Mín.</label><input class="form-control" id="pr-estmin" type="number" value="5"></div>
+      <div class="col-md-3 pr-estoque-proprio"><label class="form-label">Est. Inicial</label><input class="form-control" id="pr-estini" type="number" value="0"></div>
       <div class="col-md-3"><label class="form-label">Custo Unit. (R$)</label><input class="form-control" id="pr-custo" type="text" inputmode="numeric" value="0,00" oninput="mascaraMoeda(this)"></div>
       <div class="col-md-3"><label class="form-label">Frete Unit. (R$)</label><input class="form-control" id="pr-frete" type="text" inputmode="numeric" value="0,00" oninput="mascaraMoeda(this)"></div>
       <div class="col-12" style="border-top:1px solid var(--cor-borda);padding-top:12px;margin-top:4px"><small style="color:var(--cor-secundaria);font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:1px"><i class="bi bi-box-seam me-1"></i>Dados de Envio (Melhor Envio)</small></div>
@@ -2243,7 +2252,7 @@ function renderDashboard() {
   document.querySelector('#tabela-ultimos-pedidos tbody').innerHTML=pedsPeriodo.length?pedsPeriodo.map(p=>`<tr><td style="font-weight:600;color:#fff">${p.num}</td><td>${nomeCliente(p.clienteId)}</td><td style="max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${getPedidoDesc(p)}</td><td style="color:var(--cor-verde);font-weight:600">${moeda(getPedidoTotal(p))}</td><td>${badgeCanal(p.canal)}</td></tr>`).join(''):'<tr><td colspan="5"><div class="empty-state"><i class="bi bi-inbox"></i>Nenhum pedido no período</div></td></tr>';
 
   // Estoque em alerta (sempre global)
-  const alerta=calcEstoque().filter(e=>!e.digital&&e.saldo<=e.min);
+  const alerta=calcEstoque().filter(e=>!e.digital&&!e.compartilhado&&e.saldo<=e.min);
   document.querySelector('#tabela-estoque-alerta tbody').innerHTML=alerta.length?alerta.map(e=>{const cor=e.saldo<=0?'status-critico':'status-alerta';return `<tr><td>${e.nome}</td><td class="${cor}" style="font-weight:700">${e.saldo}</td><td>${e.min}</td><td class="${cor}">${e.saldo<=0?'🔴 Zerado':'🟡 Baixo'}</td></tr>`;}).join(''):`<tr><td colspan="4"><div class="empty-state"><i class="bi bi-check-circle" style="color:var(--cor-verde)"></i>Estoque OK</div></td></tr>`;
 }
 
@@ -2459,7 +2468,7 @@ function abrirModal(tipo) {
   const ids={cliente:'modalCliente',pedido:'modalPedido',financeiro:'modalFinanceiro',compra:'modalCompra',produto:'modalProduto',afiliado:'modalAfiliado',canal:'modalCanal',formapagto:'modalFormaPagto',usuario:'modalUsuario'};
   if(tipo==='pedido') preencherSelectsPedido();
   if(tipo==='compra') preencherSelectsCompra();
-  if(tipo==='produto'){document.getElementById('pr-idx').value='';document.getElementById('pr-substitui-envio').checked=false;document.getElementById('modalProdutoTitulo').textContent='Novo Produto';document.getElementById('btn-duplicar-produto').style.display='none';}
+  if(tipo==='produto'){preencherEstoqueDeProduto('', '');document.getElementById('pr-estoque-qtd').value=1;document.getElementById('pr-idx').value='';document.getElementById('pr-substitui-envio').checked=false;document.getElementById('modalProdutoTitulo').textContent='Novo Produto';document.getElementById('btn-duplicar-produto').style.display='none';}
   if(tipo==='financeiro'){document.getElementById('f-idx').value='';document.getElementById('f-recorrente').checked=false;document.getElementById('f-recorrente-tipo').value='assinatura';document.getElementById('f-recorrente-wrap').style.display='block';toggleRecorrenteFinanceiro();}
   if(tipo==='usuario'){document.getElementById('u-nome').value='';document.getElementById('u-email').value='';document.getElementById('u-senha').value='';document.getElementById('u-msg').style.display='none';document.getElementById('btn-salvar-usuario').disabled=false;document.getElementById('btn-salvar-usuario').textContent='Criar Usuário';}
   new bootstrap.Modal(document.getElementById(ids[tipo])).show();
@@ -2773,7 +2782,8 @@ async function salvarPedido() {
   itens.forEach(it=>{
     if(it.sku&&statusSalvo!=='Cancelado'&&statusSalvo!=='Devolvido'){
       const est=calcEstoque().find(e=>e.sku===it.sku);
-      if(est) mostrarToastEstoque(`<strong>${est.nome}</strong> &nbsp;-${it.qtd} unid. &nbsp;|&nbsp; Saldo: <strong>${est.saldo}</strong>`,'saida');
+      if(est&&est.compartilhado) mostrarToastEstoque(`<strong>${est.baseNome}</strong> &nbsp;-${it.qtd*est.qtdPorVenda} unid. (${est.nome}) &nbsp;|&nbsp; Saldo: <strong>${est.baseSaldo}</strong>`,'saida');
+      else if(est) mostrarToastEstoque(`<strong>${est.nome}</strong> &nbsp;-${it.qtd} unid. &nbsp;|&nbsp; Saldo: <strong>${est.saldo}</strong>`,'saida');
     }
   });
 }
@@ -4370,6 +4380,18 @@ function renderProdutos() {
   document.querySelector('#tabela-produtos tbody').innerHTML=lista.length?lista.map(p=>{const i=dados.produtos.indexOf(p);return `<tr><td style="font-family:monospace;color:var(--cor-secundaria)">${p.sku}</td><td style="font-weight:600;color:#fff">${p.nome}</td><td>${badgeCategoria(p.categoria)}</td><td>${p.fornecedor||'—'}</td><td>${moeda(p.custo)}</td><td>${moeda(p.frete)}</td><td>${moeda((p.custo||0)+(p.frete||0))}</td><td style="color:var(--cor-verde);font-weight:700">${moeda(p.preco)}</td><td style="white-space:nowrap"><button class="btn-sm-action btn-edit" onclick="editarProduto(${i})"><i class="bi bi-pencil-fill"></i></button><button class="btn-sm-action btn-delete" onclick="deletar('produtos',${i})"><i class="bi bi-trash-fill"></i></button></td></tr>`}).join(''):'<tr><td colspan="9"><div class="empty-state"><i class="bi bi-bookmark"></i>Nenhum produto cadastrado</div></td></tr>';
   atualizarThSort('produtos',s.col,s.dir);
 }
+// Estoque compartilhado: produto (kit, order bump...) que baixa do estoque de outro produto principal
+function preencherEstoqueDeProduto(valor, skuAtual) {
+  const opts=dados.produtos.filter(p=>!p.digital&&!p.estoqueDe&&p.sku!==skuAtual);
+  document.getElementById('pr-estoque-de').innerHTML='<option value="">Estoque próprio (este é o produto principal)</option>'+opts.map(p=>`<option value="${p.sku}">Baixa do estoque de: ${p.nome} (${p.sku})</option>`).join('');
+  document.getElementById('pr-estoque-de').value=valor||'';
+  toggleEstoqueDeProduto();
+}
+function toggleEstoqueDeProduto() {
+  const ligado=!!v('pr-estoque-de');
+  document.getElementById('pr-estoque-qtd-wrap').style.display=ligado?'':'none';
+  document.querySelectorAll('.pr-estoque-proprio').forEach(el=>el.style.display=ligado?'none':'');
+}
 function toggleDigitalProduto() {
   const isDigital=document.getElementById('pr-digital').checked;
   document.getElementById('pr-estoque-section').style.display=isDigital?'none':'';
@@ -4405,6 +4427,8 @@ function editarProduto(i) {
   document.getElementById('pr-csosn').value=p.csosn||'';
   document.getElementById('pr-icms').value=p.icms||'Isento';
   document.getElementById('pr-obs').value=p.obs||'';
+  preencherEstoqueDeProduto(p.estoqueDe||'', p.sku);
+  document.getElementById('pr-estoque-qtd').value=p.estoqueQtd||1;
   document.getElementById('modalProdutoTitulo').textContent='Editar Produto';
   document.getElementById('btn-duplicar-produto').style.display='';
   new bootstrap.Modal(document.getElementById('modalProduto')).show();
@@ -4433,7 +4457,13 @@ async function salvarProduto() {
   const skuRepetido=dados.produtos.some((p,i)=>(p.sku||'').toUpperCase()===sku.toUpperCase()&&String(i)!==idx);
   if(skuRepetido) return alert(`Já existe um produto com o SKU "${sku}". Use um SKU diferente para a variação.`);
   const isDigital=document.getElementById('pr-digital').checked;
-  const obj={sku,nome,categoria:v('pr-categoria'),fornecedor:v('pr-fornecedor'),digital:isDigital,
+  const estoqueDe=isDigital?'':v('pr-estoque-de');
+  const skuAntigo=idx===''?'':dados.produtos[parseInt(idx)].sku;
+  if(!estoqueDe && skuAntigo && dados.produtos.some(p=>p.estoqueDe===skuAntigo) && skuAntigo!==sku)
+    return alert(`Outros produtos baixam do estoque de "${skuAntigo}". Para trocar o SKU, primeiro altere esses produtos.`);
+  if(estoqueDe && skuAntigo && dados.produtos.some(p=>p.estoqueDe===skuAntigo))
+    return alert('Este produto é o estoque principal de outros produtos, então não pode baixar de outro estoque.');
+  const obj={estoqueDe,estoqueQtd:estoqueDe?Math.max(1,parseInt(v('pr-estoque-qtd'))||1):1,sku,nome,categoria:v('pr-categoria'),fornecedor:v('pr-fornecedor'),digital:isDigital,
     preco:pFloat('pr-preco'),
     estMin:isDigital?0:parseInt(v('pr-estmin'))||0,estIni:isDigital?0:parseInt(v('pr-estini'))||0,
     custo:isDigital?0:pFloat('pr-custo'),frete:isDigital?0:pFloat('pr-frete'),
@@ -4454,15 +4484,34 @@ async function salvarProduto() {
 // ============================================================
 // ESTOQUE
 // ============================================================
+// Produto principal de estoque: o próprio, ou o informado em "De qual estoque este produto sai?"
+function getProdutoBaseEstoque(p) {
+  if(!p||!p.estoqueDe) return null;
+  const base=dados.produtos.find(x=>x.sku===p.estoqueDe&&!x.digital);
+  return base||null;
+}
 function calcEstoque() {
+  const ativos=dados.pedidos.filter(pd=>pd.status!=='Cancelado'&&pd.status!=='Devolvido');
+  const devolvidos=dados.pedidos.filter(pd=>pd.status==='Devolvido');
+  const qtdSku=(peds,sku)=>peds.reduce((s,pd)=>s+getPedidoItens(pd).filter(it=>it.sku===sku).reduce((a,it)=>a+it.qtd,0),0);
+  const movSku=sku=>dados.estoqueMovimentos.filter(m=>m.sku===sku).reduce((s,m)=>s+(m.qtd||0),0);
+  const proprio={};
+  // 1) produtos com estoque próprio: somam o próprio + tudo dos produtos ligados a eles (× unidades por venda)
+  dados.produtos.forEach(p=>{
+    if(p.digital||getProdutoBaseEstoque(p)) return;
+    const ligados=dados.produtos.filter(x=>!x.digital&&x.estoqueDe===p.sku);
+    let entradas=movSku(p.sku), vendido=qtdSku(ativos,p.sku), devolvido=qtdSku(devolvidos,p.sku);
+    ligados.forEach(l=>{const q=l.estoqueQtd||1;entradas+=movSku(l.sku)*q;vendido+=qtdSku(ativos,l.sku)*q;devolvido+=qtdSku(devolvidos,l.sku)*q;});
+    proprio[p.sku]={sku:p.sku,nome:p.nome,min:p.estMin||0,entradas,vendido,devolvido,saldo:entradas-vendido+devolvido,ligados:ligados.map(l=>l.nome)};
+  });
   return dados.produtos.map(p=>{
     if(p.digital) return {sku:p.sku,nome:p.nome,min:0,entradas:0,vendido:0,devolvido:0,saldo:Infinity,digital:true};
-    const entradas=dados.estoqueMovimentos.filter(m=>m.sku===p.sku).reduce((s,m)=>s+(m.qtd||0),0);
-    const vendido=dados.pedidos.filter(pd=>pd.status!=='Cancelado'&&pd.status!=='Devolvido')
-      .reduce((s,pd)=>s+getPedidoItens(pd).filter(it=>it.sku===p.sku).reduce((a,it)=>a+it.qtd,0),0);
-    const devolvido=dados.pedidos.filter(pd=>pd.status==='Devolvido')
-      .reduce((s,pd)=>s+getPedidoItens(pd).filter(it=>it.sku===p.sku).reduce((a,it)=>a+it.qtd,0),0);
-    return {sku:p.sku,nome:p.nome,min:p.estMin||0,entradas,vendido,devolvido,saldo:entradas-vendido+devolvido};
+    const base=getProdutoBaseEstoque(p);
+    if(!base) return proprio[p.sku];
+    // 2) produtos ligados: mostram as próprias vendas e quantas unidades ainda dá pra vender com o estoque do principal
+    const b=proprio[base.sku], q=p.estoqueQtd||1;
+    return {sku:p.sku,nome:p.nome,min:Math.ceil((b.min||0)/q),entradas:0,vendido:qtdSku(ativos,p.sku),devolvido:qtdSku(devolvidos,p.sku),
+      saldo:Math.floor(b.saldo/q),compartilhado:true,baseNome:base.nome,baseSku:base.sku,baseSaldo:b.saldo,qtdPorVenda:q};
   });
 }
 function renderEstoque() {
@@ -4474,7 +4523,11 @@ function renderEstoque() {
     else{va=(a[s.col]||'').toString().toLowerCase();vb=(b[s.col]||'').toString().toLowerCase();}
     return compararSort(va,vb,s.dir);
   });
-  document.querySelector('#tabela-estoque tbody').innerHTML=lista.length?lista.map(e=>{let status,cor,saldoTxt;if(e.digital){status='♾ Digital';cor='status-ok';saldoTxt='∞';}else if(e.saldo<=0){status='🔴 Zerado';cor='status-critico';saldoTxt=e.saldo;}else if(e.saldo<=e.min){status='🟡 Baixo';cor='status-alerta';saldoTxt=e.saldo;}else{status='🟢 OK';cor='status-ok';saldoTxt=e.saldo;}return `<tr><td style="font-family:monospace;color:var(--cor-secundaria);font-size:12px">${e.sku}</td><td style="font-weight:600;color:#fff">${e.nome}</td><td style="text-align:center;color:#3B82F6;font-weight:600">${e.digital?'—':'+'+e.entradas}</td><td style="text-align:center;color:#EF4444;font-weight:600">${e.digital?'—':'−'+e.vendido}</td><td style="text-align:center;color:var(--cor-texto-suave)">${e.digital?'—':(e.devolvido>0?'↩'+e.devolvido:'—')}</td><td style="font-weight:700;font-size:16px;text-align:center" class="${cor}">${saldoTxt}</td><td class="${cor}" style="font-weight:600">${status}</td></tr>`;}).join(''):'<tr><td colspan="7"><div class="empty-state"><i class="bi bi-archive"></i>Nenhum produto</div></td></tr>';
+  document.querySelector('#tabela-estoque tbody').innerHTML=lista.length?lista.map(e=>{let status,cor,saldoTxt;if(e.digital){status='♾ Digital';cor='status-ok';saldoTxt='∞';}else if(e.saldo<=0){status='🔴 Zerado';cor='status-critico';saldoTxt=e.saldo;}else if(e.saldo<=e.min){status='🟡 Baixo';cor='status-alerta';saldoTxt=e.saldo;}else{status='🟢 OK';cor='status-ok';saldoTxt=e.saldo;}
+    const sub=e.compartilhado?`<div style="font-size:11px;font-weight:500;color:var(--cor-texto-suave)"><i class="bi bi-link-45deg"></i> sai do estoque de <b>${e.baseNome}</b>${e.qtdPorVenda>1?` (${e.qtdPorVenda} un. por venda)`:''}</div>`:(e.ligados&&e.ligados.length?`<div style="font-size:11px;font-weight:500;color:var(--cor-texto-suave)"><i class="bi bi-diagram-3"></i> estoque principal — inclui vendas de: ${e.ligados.join(', ')}</div>`:'');
+    const entradasTxt=e.digital?'—':e.compartilhado?'<span style="color:var(--cor-texto-suave);font-weight:400">no principal</span>':'+'+e.entradas;
+    if(e.compartilhado) saldoTxt=`${e.saldo}<div style="font-size:10px;font-weight:500;color:var(--cor-texto-suave)">vendas possíveis</div>`;
+    return `<tr${e.compartilhado?' style="opacity:.85"':''}><td style="font-family:monospace;color:var(--cor-secundaria);font-size:12px">${e.sku}</td><td style="font-weight:600;color:#fff">${e.nome}${sub}</td><td style="text-align:center;color:#3B82F6;font-weight:600">${entradasTxt}</td><td style="text-align:center;color:#EF4444;font-weight:600">${e.digital?'—':'−'+e.vendido}</td><td style="text-align:center;color:var(--cor-texto-suave)">${e.digital?'—':(e.devolvido>0?'↩'+e.devolvido:'—')}</td><td style="font-weight:700;font-size:16px;text-align:center" class="${cor}">${saldoTxt}</td><td class="${cor}" style="font-weight:600">${status}</td></tr>`;}).join(''):'<tr><td colspan="7"><div class="empty-state"><i class="bi bi-archive"></i>Nenhum produto</div></td></tr>';
   atualizarThSort('estoque',s.col,s.dir);
   renderMovimentosEstoque();
 }
@@ -4487,15 +4540,21 @@ function renderMovimentosEstoque() {
     return compararSort(va,vb,s.dir,a,b);
   });
   const nomeProd=sku=>{ const p=dados.produtos.find(x=>x.sku===sku); return p?p.nome:sku; };
-  document.querySelector('#tabela-est-mov tbody').innerHTML=lista.length?lista.map(m=>{const ri=dados.estoqueMovimentos.indexOf(m);return `<tr><td>${fmtData(m.data)}</td><td><span style="font-family:monospace;font-size:11px;color:var(--cor-secundaria)">${m.sku}</span><br><span style="font-size:12px">${nomeProd(m.sku)}</span></td><td>${m.desc||'—'}</td><td style="text-align:center;font-weight:700;color:#3B82F6">+${m.qtd}</td><td style="font-size:12px;color:var(--cor-texto-suave)">${m.obs||'—'}</td><td style="white-space:nowrap"><button class="btn-sm-action" style="color:#60A5FA" onclick="verEstoqueMov(${ri})" title="Visualizar"><i class="bi bi-eye-fill"></i></button><button class="btn-sm-action btn-edit" onclick="editarEstoqueMov(${ri})" title="Editar"><i class="bi bi-pencil-fill"></i></button><button class="btn-sm-action btn-delete" onclick="deletar('estoqueMovimentos',${ri})" title="Excluir"><i class="bi bi-trash-fill"></i></button></td></tr>`;}).join(''):'<tr><td colspan="6"><div class="empty-state"><i class="bi bi-arrow-down-up"></i>Nenhuma movimentação registrada</div></td></tr>';
+  document.querySelector('#tabela-est-mov tbody').innerHTML=lista.length?lista.map(m=>{const ri=dados.estoqueMovimentos.indexOf(m);return `<tr><td>${fmtData(m.data)}</td><td><span style="font-family:monospace;font-size:11px;color:var(--cor-secundaria)">${m.sku}</span><br><span style="font-size:12px">${nomeProd(m.sku)}</span></td><td>${m.desc||'—'}</td><td style="text-align:center;font-weight:700;color:${m.qtd<0?'#EF4444':'#3B82F6'}">${m.qtd<0?'−'+Math.abs(m.qtd):'+'+m.qtd}</td><td style="font-size:12px;color:var(--cor-texto-suave)">${m.obs||'—'}</td><td style="white-space:nowrap"><button class="btn-sm-action" style="color:#60A5FA" onclick="verEstoqueMov(${ri})" title="Visualizar"><i class="bi bi-eye-fill"></i></button><button class="btn-sm-action btn-edit" onclick="editarEstoqueMov(${ri})" title="Editar"><i class="bi bi-pencil-fill"></i></button><button class="btn-sm-action btn-delete" onclick="deletar('estoqueMovimentos',${ri})" title="Excluir"><i class="bi bi-trash-fill"></i></button></td></tr>`;}).join(''):'<tr><td colspan="6"><div class="empty-state"><i class="bi bi-arrow-down-up"></i>Nenhuma movimentação registrada</div></td></tr>';
   atualizarThSort('estoqueMovimentos',s.col,s.dir);
 }
 
+// Movimentação só nos produtos com estoque próprio (kits/order bumps baixam do principal)
+function opcoesEstoqueMov(skuAtual) {
+  const lista=dados.produtos.filter(p=>!p.digital&&(!getProdutoBaseEstoque(p)||p.sku===skuAtual));
+  return '<option value="">— Selecione —</option>'+lista.map(p=>`<option value="${p.sku}">${p.sku} — ${p.nome}</option>`).join('');
+}
 function abrirModalEstoqueMov() {
   document.getElementById('em-idx').value='';
   document.getElementById('modalEstoqueMovTitulo').textContent='Nova Entrada de Estoque';
   document.getElementById('em-data').value=new Date().toISOString().split('T')[0];
-  document.getElementById('em-sku').innerHTML='<option value="">— Selecione —</option>'+dados.produtos.map(p=>`<option value="${p.sku}">${p.sku} — ${p.nome}</option>`).join('');
+  document.getElementById('em-sku').innerHTML=opcoesEstoqueMov('');
+  document.getElementById('em-tipo').value='entrada';
   document.getElementById('em-desc').value='';
   document.getElementById('em-qtd').value=1;
   document.getElementById('em-obs').value='';
@@ -4505,11 +4564,12 @@ function editarEstoqueMov(i) {
   const m=dados.estoqueMovimentos[i];
   document.getElementById('em-idx').value=i;
   document.getElementById('modalEstoqueMovTitulo').textContent='Editar Movimentação';
-  document.getElementById('em-sku').innerHTML='<option value="">— Selecione —</option>'+dados.produtos.map(p=>`<option value="${p.sku}">${p.sku} — ${p.nome}</option>`).join('');
+  document.getElementById('em-sku').innerHTML=opcoesEstoqueMov(m.sku);
+  document.getElementById('em-tipo').value=(m.qtd||0)<0?'saida':'entrada';
   document.getElementById('em-data').value=m.data||'';
   document.getElementById('em-sku').value=m.sku||'';
   document.getElementById('em-desc').value=m.desc||'';
-  document.getElementById('em-qtd').value=m.qtd||1;
+  document.getElementById('em-qtd').value=Math.abs(m.qtd||1);
   document.getElementById('em-obs').value=m.obs||'';
   new bootstrap.Modal(document.getElementById('modalEstoqueMov')).show();
 }
@@ -4519,7 +4579,7 @@ function verEstoqueMov(i) {
   document.getElementById('ver-est-mov-body').innerHTML=`
     <div class="row g-2" style="font-size:14px">
       <div class="col-6"><span style="color:var(--cor-texto-suave)">Data</span><div style="font-weight:600">${fmtData(m.data)}</div></div>
-      <div class="col-6"><span style="color:var(--cor-texto-suave)">Quantidade</span><div style="font-weight:700;font-size:20px;color:#3B82F6">+${m.qtd}</div></div>
+      <div class="col-6"><span style="color:var(--cor-texto-suave)">Quantidade</span><div style="font-weight:700;font-size:20px;color:${m.qtd<0?'#EF4444':'#3B82F6'}">${m.qtd<0?'−'+Math.abs(m.qtd):'+'+m.qtd}</div></div>
       <div class="col-12"><span style="color:var(--cor-texto-suave)">Produto</span><div><span style="font-family:monospace;font-size:11px;color:var(--cor-secundaria)">${m.sku}</span> ${nomeProd}</div></div>
       <div class="col-12"><span style="color:var(--cor-texto-suave)">Descrição</span><div>${m.desc||'—'}</div></div>
       ${m.obs?`<div class="col-12"><span style="color:var(--cor-texto-suave)">Observações</span><div>${m.obs}</div></div>`:''}
@@ -4533,7 +4593,7 @@ async function salvarEstoqueMov() {
   if(!desc) return alert('Descrição é obrigatória');
   if(qtd<1) return alert('Quantidade deve ser maior que zero');
   const idx=v('em-idx');
-  const obj={data:v('em-data'),sku,desc,qtd,obs:v('em-obs')};
+  const obj={data:v('em-data'),sku,desc,qtd:v('em-tipo')==='saida'?-qtd:qtd,obs:v('em-obs')};
   await salvarComCriadoEm('estoqueMovimentos',idx,obj,dados.estoqueMovimentos);
   bootstrap.Modal.getInstance(document.getElementById('modalEstoqueMov')).hide();
   document.getElementById('em-idx').value='';
