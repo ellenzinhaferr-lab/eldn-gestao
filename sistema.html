@@ -312,6 +312,7 @@ table.gestao tbody tr:hover .tbl-sticky-r{background:#1f1545}
       <div style="background:var(--cor-card);border:1px solid var(--cor-borda);border-radius:14px;padding:14px 20px;margin-bottom:20px;display:flex;align-items:center;gap:12px;flex-wrap:wrap">
         <span style="font-size:12px;color:var(--cor-texto-suave);white-space:nowrap;font-weight:600"><i class="bi bi-funnel me-1"></i>Período:</span>
         <div style="display:flex;gap:6px;flex-wrap:wrap">
+          <button class="dp-btn" id="fp-mes2" onclick="aplicarPeriodoFin('mes2')">Este Mês + Próximo</button>
           <button class="dp-btn" id="fp-mes" onclick="aplicarPeriodoFin('mes')">Este Mês</button>
           <button class="dp-btn" id="fp-mesant" onclick="aplicarPeriodoFin('mesant')">Mês Ant.</button>
           <button class="dp-btn" id="fp-mesprox" onclick="aplicarPeriodoFin('mesprox')">Próximo Mês</button>
@@ -1919,17 +1920,19 @@ function _initFinFiltro() {
   const hoje = new Date();
   const y = hoje.getFullYear();
   const m = String(hoje.getMonth()+1).padStart(2,'0');
-  const ult=new Date(y,hoje.getMonth()+1,0).getDate();
+  const fim=new Date(y,hoje.getMonth()+2,0);
   finFiltro.de = `${y}-${m}-01`;
-  finFiltro.ate = `${y}-${m}-${String(ult).padStart(2,'0')}`;
-  finFiltro.modo = 'mes';
+  finFiltro.ate = `${fim.getFullYear()}-${String(fim.getMonth()+1).padStart(2,'0')}-${String(fim.getDate()).padStart(2,'0')}`;
+  finFiltro.modo = 'mes2';
 }
 
 function aplicarPeriodoFin(modo) {
   const hoje = new Date();
   const y = hoje.getFullYear();
   const m = String(hoje.getMonth()+1).padStart(2,'0');
-  if(modo==='mes') {
+  if(modo==='mes2') {
+    _initFinFiltro();
+  } else if(modo==='mes') {
     const ult=new Date(y,hoje.getMonth()+1,0).getDate();
     finFiltro.de=`${y}-${m}-01`;
     finFiltro.ate=`${y}-${m}-${String(ult).padStart(2,'0')}`;
@@ -3973,11 +3976,11 @@ function renderFinanceiro() {
   const de=finFiltro.de, ate=finFiltro.ate;
   document.getElementById('fin-de').value=de;
   document.getElementById('fin-ate').value=ate;
-  ['mes','mesant','mesprox','ano','tudo'].forEach(m=>{
+  ['mes2','mes','mesant','mesprox','ano','tudo'].forEach(m=>{
     const b=document.getElementById('fp-'+m);
     if(b) b.classList.toggle('ativo',m===finFiltro.modo);
   });
-  const labelModos={mes:'Este Mês',mesant:'Mês Anterior',mesprox:'Próximo Mês',ano:'Este Ano',tudo:'Todo o Período',custom:'Período Personalizado',navmes:''};
+  const labelModos={mes2:'Este Mês + Próximo',mes:'Este Mês',mesant:'Mês Anterior',mesprox:'Próximo Mês',ano:'Este Ano',tudo:'Todo o Período',custom:'Período Personalizado',navmes:''};
   document.getElementById('fin-periodo-label').textContent=labelModos[finFiltro.modo]||'';
   const nomeMes=ym=>{const [y,m]=ym.split('-').map(Number);return new Date(y,m-1,1).toLocaleDateString('pt-BR',{month:'long',year:'numeric'});};
   document.getElementById('fin-mes-nav').textContent=de.slice(0,7)===ate.slice(0,7)?nomeMes(de.slice(0,7)):`${fmtData(de)} – ${fmtData(ate)}`;
@@ -4013,7 +4016,7 @@ function renderFinanceiro() {
   // Agrupa por mês (pela data escolhida em "Considerar o mês pela")
   const porMes={};
   lista.forEach(f=>{const k=(finDataRef(f)||'').slice(0,7);(porMes[k]=porMes[k]||[]).push(f);});
-  const dirMeses=s.col==='data'?s.dir:'desc';
+  const dirMeses=finFiltro.modo==='mes2'?'asc':(s.col==='data'?s.dir:'desc'); // mês atual em cima, próximo embaixo
   const meses=Object.keys(porMes).sort((a,b)=>dirMeses==='asc'?a.localeCompare(b):b.localeCompare(a));
   const pill=(txt,cor)=>`<span style="color:${cor};font-weight:700">${txt}</span>`;
   const linhaMes=k=>{
