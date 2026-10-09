@@ -333,6 +333,10 @@ table.gestao tbody tr:hover .tbl-sticky-r{background:#1f1545}
           <span style="font-size:12px;color:var(--cor-texto-suave);font-weight:600"><i class="bi bi-calendar3 me-1"></i>Considerar o mês pela:</span>
           <button class="dp-btn" id="fb-data" onclick="setFinBase('data')">Data do lançamento</button>
           <button class="dp-btn" id="fb-venc" onclick="setFinBase('venc')">Data de vencimento (quando o dinheiro sai)</button>
+          <span style="font-size:12px;color:var(--cor-texto-suave);font-weight:600;margin-left:auto"><i class="bi bi-credit-card me-1"></i>Cartão de crédito: fecha dia</span>
+          <input type="number" min="1" max="31" class="form-control form-control-sm" id="fin-cartao-fech" style="width:64px" onchange="salvarCartaoFin()">
+          <span style="font-size:12px;color:var(--cor-texto-suave);font-weight:600">vence dia</span>
+          <input type="number" min="1" max="31" class="form-control form-control-sm" id="fin-cartao-venc" style="width:64px" onchange="salvarCartaoFin()">
         </div>
       </div>
       <div class="kpi-grid" id="kpi-financeiro"></div>
@@ -1274,7 +1278,7 @@ let currentPage = 'dashboard';
 let appReady = false;
 let finTab = 'todos';
 let finFiltro = {de:'', ate:'', modo:'mes'};
-let finBase = (()=>{ try { return localStorage.getItem('finBase')||'data'; } catch(e) { return 'data'; } })();
+let finBase = (()=>{ try { return localStorage.getItem('finBaseV2')||'venc'; } catch(e) { return 'venc'; } })();
 const unsubscribers = [];
 let dashFiltro = {de:'', ate:'', modo:'mes'};
 
@@ -1974,12 +1978,39 @@ function navegarMesFin(delta) {
 
 function setFinBase(base) {
   finBase=base;
-  try { localStorage.setItem('finBase',base); } catch(e) {}
+  try { localStorage.setItem('finBaseV2',base); } catch(e) {}
   renderFinanceiro();
 }
 
+// Cartão de crédito: dia de fechamento e vencimento da fatura (ficam em config/main)
+function finCartaoDias() {
+  const c=dados.config||{};
+  return {fech:parseInt(c.cartaoFechamento)||4, venc:parseInt(c.cartaoVencimento)||11};
+}
+async function salvarCartaoFin() {
+  const fech=Math.min(31,Math.max(1,parseInt(document.getElementById('fin-cartao-fech').value)||4));
+  const venc=Math.min(31,Math.max(1,parseInt(document.getElementById('fin-cartao-venc').value)||11));
+  dados.config.cartaoFechamento=fech; dados.config.cartaoVencimento=venc;
+  await db.collection('config').doc('main').update({cartaoFechamento:fech,cartaoVencimento:venc});
+  renderFinanceiro();
+}
+function finIsCartaoCredito(f) { return f.tipo==='Saída' && /cart[aã]o\s*(de\s*)?cr[eé]dito/i.test(f.forma||''); }
+// Compra antes do fechamento entra na fatura que fecha no mesmo mês; no dia do fechamento ou depois, na do mês seguinte
+function finVencFatura(dataStr) {
+  if(!dataStr) return '';
+  const {fech,venc}=finCartaoDias();
+  const [y,m,d]=dataStr.split('-').map(Number);
+  let mes=m-1+(d>=fech?1:0);
+  if(venc<=fech) mes+=1;
+  const ult=new Date(y,mes+1,0).getDate();
+  const dt=new Date(y,mes,Math.min(venc,ult));
+  return `${dt.getFullYear()}-${String(dt.getMonth()+1).padStart(2,'0')}-${String(dt.getDate()).padStart(2,'0')}`;
+}
+// Vencimento efetivo: fatura do cartão para cartão de crédito, senão o vencimento informado
+function finVencEfetivo(f) { return finIsCartaoCredito(f) ? finVencFatura(f.data) : (f.vencimento||''); }
+
 // Data que define em qual mês o lançamento aparece
-function finDataRef(f) { return finBase==='venc' ? (f.vencimento||f.data) : f.data; }
+function finDataRef(f) { return finBase==='venc' ? (finVencEfetivo(f)||f.data) : f.data; }
 
 // Identifica parcelamentos e assinaturas recorrentes → {pos, total, faltam, tipo}
 function finMapaRecorrencia() {
@@ -3951,6 +3982,9 @@ function renderFinanceiro() {
   const nomeMes=ym=>{const [y,m]=ym.split('-').map(Number);return new Date(y,m-1,1).toLocaleDateString('pt-BR',{month:'long',year:'numeric'});};
   document.getElementById('fin-mes-nav').textContent=de.slice(0,7)===ate.slice(0,7)?nomeMes(de.slice(0,7)):`${fmtData(de)} – ${fmtData(ate)}`;
   ['data','venc'].forEach(b=>{const el=document.getElementById('fb-'+b);if(el)el.classList.toggle('ativo',b===finBase);});
+  const cd=finCartaoDias();
+  document.getElementById('fin-cartao-fech').value=cd.fech;
+  document.getElementById('fin-cartao-venc').value=cd.venc;
 
   const finPeriodo=dados.financeiro.filter(f=>{const d=finDataRef(f);return d>=de&&d<=ate;});
   const totalEntradas=finPeriodo.filter(f=>f.tipo==='Entrada'&&(!f.situacao||f.situacao==='Realizada')).reduce((s,f)=>s+f.valor,0);
@@ -4007,8 +4041,9 @@ function renderFinanceiro() {
     const isPrev=f.situacao==='Prevista';
     const rowStyle=isPrev?'background:rgba(245,158,11,.04)':'';
     const badgeSit=isPrev?`<span style="background:rgba(245,158,11,.15);color:#F59E0B;padding:2px 8px;border-radius:12px;font-size:11px;font-weight:600">Prevista</span>`:`<span style="background:rgba(16,185,129,.12);color:#10B981;padding:2px 8px;border-radius:12px;font-size:11px;font-weight:600">Realizada</span>`;
-    const overdue=isPrev&&f.tipo==='Saída'&&f.vencimento&&f.vencimento<hoje;
-    const vencCell=f.vencimento?`<span style="${overdue?'color:#EF4444;font-weight:700':''}">${fmtData(f.vencimento)}${overdue?' ⚠️':''}</span>`:'—';
+    const vEf=finVencEfetivo(f);
+    const overdue=isPrev&&f.tipo==='Saída'&&vEf&&vEf<hoje;
+    const vencCell=vEf?`<span style="${overdue?'color:#EF4444;font-weight:700':''}">${fmtData(vEf)}${overdue?' ⚠️':''}</span>${finIsCartaoCredito(f)?'<div style="font-size:10px;color:var(--cor-texto-suave)"><i class="bi bi-credit-card"></i> fatura</div>':''}`:'—';
     const btnSit=isPrev?`<button class="btn-sm-action" style="color:#10B981" onclick="marcarRealizada(${ri})" title="Marcar como Realizada"><i class="bi bi-check-circle"></i></button>`:`<button class="btn-sm-action" style="color:#F59E0B;opacity:.7" onclick="desmarcarRealizada(${ri})" title="Desfazer (voltar para Prevista)"><i class="bi bi-arrow-counterclockwise"></i></button>`;
     return `<tr style="${rowStyle}"><td>${fmtData(f.data)}</td><td>${badgeSit}</td><td>${vencCell}</td><td>${badgeTipo(f.tipo)}</td><td style="font-weight:600;color:#fff">${f.desc}</td><td style="color:var(--cor-texto-suave)">${f.categoria}</td><td style="font-weight:700;color:${f.tipo==='Entrada'?'#10B981':'#EF4444'}">${moeda(f.valor)}</td><td>${recCell}</td><td>${f.forma||'—'}</td><td style="white-space:nowrap">${btnSit}<button class="btn-sm-action btn-edit" onclick="editarFinanceiro(${ri})"><i class="bi bi-pencil-fill"></i></button><button class="btn-sm-action btn-delete" onclick="deletar('financeiro',${ri})"><i class="bi bi-trash-fill"></i></button></td></tr>`;
   }).join('')).join(''):'<tr><td colspan="10"><div class="empty-state"><i class="bi bi-cash-stack"></i>Nenhum lançamento</div></td></tr>';
