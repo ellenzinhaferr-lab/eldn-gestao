@@ -234,6 +234,7 @@ table.gestao tbody tr:hover .tbl-sticky-r{background:#1f1545}
         </div>
         <span id="dash-periodo-label" style="font-size:12px;color:var(--cor-secundaria);font-weight:600"></span>
       </div>
+      <div id="dash-abas-mes" style="display:flex;gap:4px;align-items:flex-end;overflow-x:auto;border-bottom:2px solid var(--cor-borda);margin-bottom:16px"></div>
       <div class="kpi-grid" id="kpi-container"></div>
       <div class="row g-3 mb-3">
         <div class="col-lg-6"><div class="chart-card"><h6 id="dash-titulo-mensal"><i class="bi bi-bar-chart-fill me-2" style="color:var(--cor-secundaria)"></i>Receita por Mês (R$)</h6><canvas id="chartReceita" height="110"></canvas></div></div>
@@ -1552,6 +1553,7 @@ function showPage(id) {
   document.getElementById('page-title').textContent = titulo;
   document.getElementById('page-sub').textContent = sub;
   if(id==='financeiro') _initFinFiltro(); // sempre abre na aba do mês atual
+  if(id==='dashboard') _initDashFiltro();
   renderPage(id);
   fixarStickyHeaders(id);
 }
@@ -2113,8 +2115,48 @@ function finMapaRecorrencia() {
   return mapa;
 }
 
+// Abas estilo planilha no Dashboard: uma por mês + ano inteiro
+function abrirAbaMesDash(y, m) {
+  const mm=String(m).padStart(2,'0');
+  dashFiltro.de=`${y}-${mm}-01`;
+  dashFiltro.ate=`${y}-${mm}-${String(new Date(y,m,0).getDate()).padStart(2,'0')}`;
+  const hoje=new Date();
+  const diff=(y-hoje.getFullYear())*12+(m-1-hoje.getMonth());
+  dashFiltro.modo=diff===0?'mes':diff===-1?'mesant':diff===1?'mesprox':'navmes';
+  if(diff===0) dashFiltro.ate=hoje.toISOString().split('T')[0];
+  renderDashboard();
+}
+function abrirAnoDash(y) {
+  dashFiltro.de=`${y}-01-01`;
+  dashFiltro.ate=`${y}-12-31`;
+  dashFiltro.modo='anoAba';
+  renderDashboard();
+}
+function renderAbasMesDash() {
+  const el=document.getElementById('dash-abas-mes'); if(!el) return;
+  const de=dashFiltro.de, ate=dashFiltro.ate;
+  const ano=parseInt(de.slice(0,4));
+  const hojeYm=new Date().toISOString().slice(0,7);
+  const nomes=['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
+  const isAno=dashFiltro.modo==='anoAba';
+  const estilo=(ativo,atual)=>`border:1px solid var(--cor-borda);border-bottom:none;border-radius:10px 10px 0 0;padding:6px 12px;min-width:78px;text-align:center;cursor:pointer;font-size:12px;line-height:1.3;white-space:nowrap;${ativo?'background:var(--cor-secundaria);color:#fff;font-weight:700;':'background:var(--cor-card);color:var(--cor-texto);'}${atual&&!ativo?'box-shadow:inset 0 3px 0 var(--cor-secundaria);':''}`;
+  const vendasAno=dados.pedidos.filter(p=>(p.data||'').startsWith(ano+'-')&&p.status!=='Cancelado'&&p.status!=='Devolvido');
+  let html=`<button class="btn btn-sm" style="border:none;color:var(--cor-texto-suave);padding:6px" onclick="abrirAbaMesDash(${ano-1},12)" title="Ano anterior"><i class="bi bi-chevron-double-left"></i></button>`;
+  html+=`<div style="${estilo(isAno,false)}" onclick="abrirAnoDash(${ano})"><i class="bi bi-grid-3x3-gap me-1"></i><b>Ano ${ano}</b><div style="font-size:10px;font-weight:600">${moeda(vendasAno.reduce((s,p)=>s+getPedidoTotal(p),0))}</div></div>`;
+  nomes.forEach((n,i)=>{
+    const ym=`${ano}-${String(i+1).padStart(2,'0')}`;
+    const peds=vendasAno.filter(p=>p.data.slice(0,7)===ym);
+    const total=peds.reduce((s,p)=>s+getPedidoTotal(p),0);
+    const ativo=!isAno && ym>=de.slice(0,7) && ym<=ate.slice(0,7);
+    html+=`<div style="${estilo(ativo,ym===hojeYm)}" onclick="abrirAbaMesDash(${ano},${i+1})" title="${peds.length} pedido(s) ativo(s)">${n}${ym===hojeYm?' •':''}<div style="font-size:10px;font-weight:600;color:${ativo?'#fff':'#10B981'}">${peds.length?moeda(total):'—'}</div></div>`;
+  });
+  html+=`<button class="btn btn-sm" style="border:none;color:var(--cor-texto-suave);padding:6px" onclick="abrirAbaMesDash(${ano+1},1)" title="Próximo ano"><i class="bi bi-chevron-double-right"></i></button>`;
+  el.innerHTML=html;
+}
+
 function renderDashboard() {
   if(!dashFiltro.de) _initDashFiltro();
+  renderAbasMesDash();
 
   const de=dashFiltro.de, ate=dashFiltro.ate;
   document.getElementById('dash-de').value=de;
@@ -2125,12 +2167,12 @@ function renderDashboard() {
     const b=document.getElementById('dp-'+m);
     if(b) b.classList.toggle('ativo',m===dashFiltro.modo);
   });
-  const labelModos={mes:'Este Mês',mesant:'Mês Anterior',mesprox:'Próximo Mês',ano:'Este Ano',tudo:'Todo o Período',custom:'Período Personalizado'};
+  const labelModos={mes:'Este Mês',mesant:'Mês Anterior',mesprox:'Próximo Mês',ano:'Este Ano',tudo:'Todo o Período',custom:'Período Personalizado',anoAba:`Ano ${de.slice(0,4)}`,navmes:new Date(de+'T12:00').toLocaleDateString('pt-BR',{month:'long',year:'numeric'})};
   document.getElementById('dash-periodo-label').textContent=labelModos[dashFiltro.modo]||'';
 
-  // Dados filtrados
+  // Dados filtrados (financeiro usa o mesmo critério da aba Financeiro: vencimento / fatura do cartão)
   const pedsFiltro=dados.pedidos.filter(p=>p.data>=de&&p.data<=ate);
-  const finFiltro=dados.financeiro.filter(f=>f.data>=de&&f.data<=ate);
+  const finFiltro=dados.financeiro.filter(f=>{const d=finDataRef(f);return d>=de&&d<=ate;});
   const ativos=pedsFiltro.filter(p=>p.status!=='Cancelado'&&p.status!=='Devolvido');
 
   const totalVendas=ativos.reduce((s,p)=>s+getPedidoTotal(p),0);
