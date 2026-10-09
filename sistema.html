@@ -1551,6 +1551,7 @@ function showPage(id) {
   const [titulo,sub] = pageTitles[id];
   document.getElementById('page-title').textContent = titulo;
   document.getElementById('page-sub').textContent = sub;
+  if(id==='financeiro') _initFinFiltro(); // sempre abre na aba do mês atual
   renderPage(id);
   fixarStickyHeaders(id);
 }
@@ -1925,10 +1926,10 @@ function _initFinFiltro() {
   const hoje = new Date();
   const y = hoje.getFullYear();
   const m = String(hoje.getMonth()+1).padStart(2,'0');
-  const fim=new Date(y,hoje.getMonth()+2,0);
+  const ult=new Date(y,hoje.getMonth()+1,0).getDate();
   finFiltro.de = `${y}-${m}-01`;
-  finFiltro.ate = `${fim.getFullYear()}-${String(fim.getMonth()+1).padStart(2,'0')}-${String(fim.getDate()).padStart(2,'0')}`;
-  finFiltro.modo = 'mes2';
+  finFiltro.ate = `${y}-${m}-${String(ult).padStart(2,'0')}`;
+  finFiltro.modo = 'mes';
 }
 
 function aplicarPeriodoFin(modo) {
@@ -1936,7 +1937,9 @@ function aplicarPeriodoFin(modo) {
   const y = hoje.getFullYear();
   const m = String(hoje.getMonth()+1).padStart(2,'0');
   if(modo==='mes2') {
-    _initFinFiltro();
+    const fim=new Date(y,hoje.getMonth()+2,0);
+    finFiltro.de=`${y}-${m}-01`;
+    finFiltro.ate=`${fim.getFullYear()}-${String(fim.getMonth()+1).padStart(2,'0')}-${String(fim.getDate()).padStart(2,'0')}`;
   } else if(modo==='mes') {
     const ult=new Date(y,hoje.getMonth()+1,0).getDate();
     finFiltro.de=`${y}-${m}-01`;
