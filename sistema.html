@@ -324,6 +324,16 @@ table.gestao tbody tr:hover .tbl-sticky-r{background:#1f1545}
           <input type="date" class="form-control form-control-sm" id="fin-ate" style="width:148px" onchange="aplicarPeriodoFin('custom')">
         </div>
         <span id="fin-periodo-label" style="font-size:12px;color:var(--cor-secundaria);font-weight:600"></span>
+        <div style="display:flex;gap:6px;align-items:center;margin-left:auto">
+          <button class="dp-btn" onclick="navegarMesFin(-1)" title="Mês anterior"><i class="bi bi-chevron-left"></i></button>
+          <span id="fin-mes-nav" style="min-width:150px;text-align:center;font-weight:700;font-size:14px;text-transform:capitalize"></span>
+          <button class="dp-btn" onclick="navegarMesFin(1)" title="Próximo mês"><i class="bi bi-chevron-right"></i></button>
+        </div>
+        <div style="display:flex;gap:6px;align-items:center;width:100%;flex-wrap:wrap">
+          <span style="font-size:12px;color:var(--cor-texto-suave);font-weight:600"><i class="bi bi-calendar3 me-1"></i>Considerar o mês pela:</span>
+          <button class="dp-btn" id="fb-data" onclick="setFinBase('data')">Data do lançamento</button>
+          <button class="dp-btn" id="fb-venc" onclick="setFinBase('venc')">Data de vencimento (quando o dinheiro sai)</button>
+        </div>
       </div>
       <div class="kpi-grid" id="kpi-financeiro"></div>
       <div class="table-card">
@@ -339,7 +349,7 @@ table.gestao tbody tr:hover .tbl-sticky-r{background:#1f1545}
             <button class="btn btn-primary btn-sm" onclick="abrirModal('financeiro')"><i class="bi bi-plus-lg"></i> Novo</button>
           </div>
         </div>
-        <div class="table-responsive"><table class="gestao" id="tabela-financeiro"><thead><tr><th class="th-sort" data-col="data" onclick="sortBy('financeiro','data',renderFinanceiro)">Data</th><th>Situação</th><th>Vencimento</th><th class="th-sort" data-col="tipo" onclick="sortBy('financeiro','tipo',renderFinanceiro)">Tipo</th><th class="th-sort" data-col="desc" onclick="sortBy('financeiro','desc',renderFinanceiro)">Descrição</th><th class="th-sort" data-col="categoria" onclick="sortBy('financeiro','categoria',renderFinanceiro)">Categoria</th><th class="th-sort" data-col="valor" onclick="sortBy('financeiro','valor',renderFinanceiro)">Valor</th><th>Forma Pgto</th><th></th></tr></thead><tbody></tbody></table></div>
+        <div class="table-responsive"><table class="gestao" id="tabela-financeiro"><thead><tr><th class="th-sort" data-col="data" onclick="sortBy('financeiro','data',renderFinanceiro)">Data</th><th>Situação</th><th>Vencimento</th><th class="th-sort" data-col="tipo" onclick="sortBy('financeiro','tipo',renderFinanceiro)">Tipo</th><th class="th-sort" data-col="desc" onclick="sortBy('financeiro','desc',renderFinanceiro)">Descrição</th><th class="th-sort" data-col="categoria" onclick="sortBy('financeiro','categoria',renderFinanceiro)">Categoria</th><th class="th-sort" data-col="valor" onclick="sortBy('financeiro','valor',renderFinanceiro)">Valor</th><th>Recorrência</th><th>Forma Pgto</th><th></th></tr></thead><tbody></tbody></table></div>
       </div>
     </div>
 
@@ -1264,6 +1274,7 @@ let currentPage = 'dashboard';
 let appReady = false;
 let finTab = 'todos';
 let finFiltro = {de:'', ate:'', modo:'mes'};
+let finBase = (()=>{ try { return localStorage.getItem('finBase')||'data'; } catch(e) { return 'data'; } })();
 const unsubscribers = [];
 let dashFiltro = {de:'', ate:'', modo:'mes'};
 
@@ -1498,7 +1509,7 @@ function toggleRecorrenteFinanceiro() {
 function mascaraCEP(el) { let x=el.value.replace(/\D/g,''); if(x.length>5) x=x.slice(0,5)+'-'+x.slice(5,8); el.value=x; }
 async function buscarCEP() { const cep=v('c-cep').replace(/\D/g,''); if(cep.length!==8) return; try { const r=await fetch(`https://viacep.com.br/ws/${cep}/json/`); const d=await r.json(); if(!d.erro){ document.getElementById('c-logradouro').value=d.logradouro||''; document.getElementById('c-bairro').value=d.bairro||''; document.getElementById('c-cidade').value=d.localidade||''; document.getElementById('c-estado').value=d.uf||''; document.getElementById('c-numero').focus(); } } catch(e){} }
 async function buscarCEPProsp() { const cep=document.getElementById('prosp-cep').value.replace(/\D/g,''); if(cep.length!==8) return; try { const r=await fetch(`https://viacep.com.br/ws/${cep}/json/`); const d=await r.json(); if(!d.erro){ document.getElementById('prosp-logradouro').value=d.logradouro||''; document.getElementById('prosp-bairro').value=d.bairro||''; document.getElementById('prosp-cidade').value=d.localidade||''; document.getElementById('prosp-uf').value=d.uf||''; document.getElementById('prosp-numero').focus(); } } catch(e){} }
-function filtrarTabela(id, termo) { const t=document.getElementById(id); const rows=t.querySelectorAll('tbody tr'); const low=termo.toLowerCase(); rows.forEach(r=>{ r.style.display=r.textContent.toLowerCase().includes(low)?'':'none'; }); }
+function filtrarTabela(id, termo) { const t=document.getElementById(id); const rows=t.querySelectorAll('tbody tr'); const low=termo.toLowerCase(); rows.forEach(r=>{ if(r.dataset.grupo){ r.style.display=''; return; } r.style.display=r.textContent.toLowerCase().includes(low)?'':'none'; }); }
 function nextNumPedido() { if (!dados.pedidos.length) return 'PED-01'; const nums=dados.pedidos.map(p=>{const m=p.num.match(/PED-(\d+)/);return m?parseInt(m[1]):0;}); return `PED-${String(Math.max(...nums)+1).padStart(2,'0')}`; }
 
 // ============================================================
@@ -1944,6 +1955,55 @@ function aplicarPeriodoFin(modo) {
   }
   finFiltro.modo=modo;
   renderFinanceiro();
+}
+
+// Navega mês a mês a partir do mês que está na data "De"
+function navegarMesFin(delta) {
+  if(!finFiltro.de) _initFinFiltro();
+  const [y,m]=finFiltro.de.split('-').map(Number);
+  const d=new Date(y,m-1+delta,1);
+  const yy=d.getFullYear(), mm=String(d.getMonth()+1).padStart(2,'0');
+  const ult=new Date(yy,d.getMonth()+1,0).getDate();
+  finFiltro.de=`${yy}-${mm}-01`;
+  finFiltro.ate=`${yy}-${mm}-${String(ult).padStart(2,'0')}`;
+  const hoje=new Date();
+  const diff=(yy-hoje.getFullYear())*12+(d.getMonth()-hoje.getMonth());
+  finFiltro.modo=diff===0?'mes':diff===-1?'mesant':diff===1?'mesprox':'navmes';
+  renderFinanceiro();
+}
+
+function setFinBase(base) {
+  finBase=base;
+  try { localStorage.setItem('finBase',base); } catch(e) {}
+  renderFinanceiro();
+}
+
+// Data que define em qual mês o lançamento aparece
+function finDataRef(f) { return finBase==='venc' ? (f.vencimento||f.data) : f.data; }
+
+// Identifica parcelamentos e assinaturas recorrentes → {pos, total, faltam, tipo}
+function finMapaRecorrencia() {
+  const grupos={};
+  dados.financeiro.forEach(f=>{
+    const descBase=(f.desc||'').replace(/\s*\(Parcela \d+\/\d+\)\s*$/,'');
+    const key=f.totalParcelas ? `P|${f.tipo}|${descBase}|${f.totalParcelas}` : `R|${f.tipo}|${descBase}|${f.valor}`;
+    (grupos[key]=grupos[key]||[]).push(f);
+  });
+  const mapa=new Map();
+  Object.entries(grupos).forEach(([key,arr])=>{
+    if(arr.length<2 && !arr[0].totalParcelas) return;
+    const ord=[...arr].sort((a,b)=>(a.data||'').localeCompare(b.data||''));
+    // assinatura: só conta se cada lançamento cai num mês diferente (evita juntar 2 compras iguais no mesmo mês)
+    if(key.startsWith('R|') && new Set(ord.map(f=>(f.data||'').slice(0,7))).size!==ord.length) return;
+    const parcelado=key.startsWith('P|');
+    ord.forEach((f,i)=>{
+      const pos=parcelado?(f.parcela||i+1):i+1;
+      const total=parcelado?f.totalParcelas:ord.length;
+      const faltam=ord.filter((g,j)=>j>i && g.situacao==='Prevista').length;
+      mapa.set(f,{pos,total,faltam,parcelado});
+    });
+  });
+  return mapa;
 }
 
 function renderDashboard() {
@@ -3886,10 +3946,13 @@ function renderFinanceiro() {
     const b=document.getElementById('fp-'+m);
     if(b) b.classList.toggle('ativo',m===finFiltro.modo);
   });
-  const labelModos={mes:'Este Mês',mesant:'Mês Anterior',mesprox:'Próximo Mês',ano:'Este Ano',tudo:'Todo o Período',custom:'Período Personalizado'};
+  const labelModos={mes:'Este Mês',mesant:'Mês Anterior',mesprox:'Próximo Mês',ano:'Este Ano',tudo:'Todo o Período',custom:'Período Personalizado',navmes:''};
   document.getElementById('fin-periodo-label').textContent=labelModos[finFiltro.modo]||'';
+  const nomeMes=ym=>{const [y,m]=ym.split('-').map(Number);return new Date(y,m-1,1).toLocaleDateString('pt-BR',{month:'long',year:'numeric'});};
+  document.getElementById('fin-mes-nav').textContent=de.slice(0,7)===ate.slice(0,7)?nomeMes(de.slice(0,7)):`${fmtData(de)} – ${fmtData(ate)}`;
+  ['data','venc'].forEach(b=>{const el=document.getElementById('fb-'+b);if(el)el.classList.toggle('ativo',b===finBase);});
 
-  const finPeriodo=dados.financeiro.filter(f=>f.data>=de&&f.data<=ate);
+  const finPeriodo=dados.financeiro.filter(f=>{const d=finDataRef(f);return d>=de&&d<=ate;});
   const totalEntradas=finPeriodo.filter(f=>f.tipo==='Entrada'&&(!f.situacao||f.situacao==='Realizada')).reduce((s,f)=>s+f.valor,0);
   const totalSaidas=finPeriodo.filter(f=>f.tipo==='Saída'&&(!f.situacao||f.situacao==='Realizada')).reduce((s,f)=>s+f.valor,0);
   const totalPrevisto=finPeriodo.filter(f=>f.situacao==='Prevista'&&f.tipo==='Saída').reduce((s,f)=>s+f.valor,0);
@@ -3912,16 +3975,43 @@ function renderFinanceiro() {
     return compararSort(va,vb,s.dir,a,b);
   });
   const hoje=new Date().toISOString().split('T')[0];
-  document.querySelector('#tabela-financeiro tbody').innerHTML=lista.length?lista.map(f=>{
+  const recMap=finMapaRecorrencia();
+  // Agrupa por mês (pela data escolhida em "Considerar o mês pela")
+  const porMes={};
+  lista.forEach(f=>{const k=(finDataRef(f)||'').slice(0,7);(porMes[k]=porMes[k]||[]).push(f);});
+  const dirMeses=s.col==='data'?s.dir:'desc';
+  const meses=Object.keys(porMes).sort((a,b)=>dirMeses==='asc'?a.localeCompare(b):b.localeCompare(a));
+  const pill=(txt,cor)=>`<span style="color:${cor};font-weight:700">${txt}</span>`;
+  const linhaMes=k=>{
+    const arr=porMes[k];
+    const soma=fn=>arr.filter(fn).reduce((t,f)=>t+f.valor,0);
+    const real=f=>!f.situacao||f.situacao==='Realizada';
+    const entR=soma(f=>f.tipo==='Entrada'&&real(f)), entP=soma(f=>f.tipo==='Entrada'&&!real(f));
+    const saiR=soma(f=>f.tipo==='Saída'&&real(f)), saiP=soma(f=>f.tipo==='Saída'&&!real(f));
+    const nRec=arr.filter(f=>recMap.has(f)).length;
+    const nPrev=arr.filter(f=>!real(f)).length;
+    const partes=[
+      `${arr.length} lançamento${arr.length>1?'s':''}`,
+      `Entradas: ${pill(moeda(entR),'#10B981')}${entP?` + ${pill(moeda(entP),'#F59E0B')} previstas`:''}`,
+      `Saídas: ${pill(moeda(saiR),'#EF4444')} pagas${saiP?` + ${pill(moeda(saiP),'#F59E0B')} a pagar`:''}`,
+      `Saldo do mês: ${pill(moeda(entR+entP-saiR-saiP),(entR+entP-saiR-saiP)>=0?'#10B981':'#EF4444')}`,
+    ];
+    if(nPrev) partes.push(`${nPrev} prevista${nPrev>1?'s':''}`);
+    if(nRec) partes.push(`<i class="bi bi-arrow-repeat"></i> ${nRec} parcela${nRec>1?'s':''}/recorrência${nRec>1?'s':''}`);
+    return `<tr data-grupo="${k}"><td colspan="10" style="background:rgba(124,58,237,.12);padding:10px 14px;font-size:12px;color:var(--cor-texto-suave)"><span style="font-size:14px;font-weight:800;color:var(--cor-secundaria);text-transform:capitalize;margin-right:14px"><i class="bi bi-calendar-month me-1"></i>${k?nomeMes(k):'Sem data'}</span>${partes.join(' &nbsp;·&nbsp; ')}</td></tr>`;
+  };
+  document.querySelector('#tabela-financeiro tbody').innerHTML=lista.length?meses.map(k=>linhaMes(k)+porMes[k].map(f=>{
     const ri=dados.financeiro.indexOf(f);
+    const rec=recMap.get(f);
+    const recCell=rec?`<span title="${rec.faltam?`Ainda faltam ${rec.faltam} prevista${rec.faltam>1?'s':''} depois desta`:'Última da série'}" style="background:rgba(124,58,237,.12);color:var(--cor-secundaria);padding:2px 8px;border-radius:12px;font-size:11px;font-weight:600;white-space:nowrap"><i class="bi bi-arrow-repeat"></i> ${rec.parcelado?'Parcela':'Mês'} ${rec.pos}/${rec.total}</span>${rec.faltam?`<div style="font-size:10px;color:var(--cor-texto-suave);margin-top:2px">faltam ${rec.faltam}</div>`:''}`:'—';
     const isPrev=f.situacao==='Prevista';
     const rowStyle=isPrev?'background:rgba(245,158,11,.04)':'';
     const badgeSit=isPrev?`<span style="background:rgba(245,158,11,.15);color:#F59E0B;padding:2px 8px;border-radius:12px;font-size:11px;font-weight:600">Prevista</span>`:`<span style="background:rgba(16,185,129,.12);color:#10B981;padding:2px 8px;border-radius:12px;font-size:11px;font-weight:600">Realizada</span>`;
     const overdue=isPrev&&f.tipo==='Saída'&&f.vencimento&&f.vencimento<hoje;
     const vencCell=f.vencimento?`<span style="${overdue?'color:#EF4444;font-weight:700':''}">${fmtData(f.vencimento)}${overdue?' ⚠️':''}</span>`:'—';
     const btnSit=isPrev?`<button class="btn-sm-action" style="color:#10B981" onclick="marcarRealizada(${ri})" title="Marcar como Realizada"><i class="bi bi-check-circle"></i></button>`:`<button class="btn-sm-action" style="color:#F59E0B;opacity:.7" onclick="desmarcarRealizada(${ri})" title="Desfazer (voltar para Prevista)"><i class="bi bi-arrow-counterclockwise"></i></button>`;
-    return `<tr style="${rowStyle}"><td>${fmtData(f.data)}</td><td>${badgeSit}</td><td>${vencCell}</td><td>${badgeTipo(f.tipo)}</td><td style="font-weight:600;color:#fff">${f.desc}</td><td style="color:var(--cor-texto-suave)">${f.categoria}</td><td style="font-weight:700;color:${f.tipo==='Entrada'?'#10B981':'#EF4444'}">${moeda(f.valor)}</td><td>${f.forma||'—'}</td><td style="white-space:nowrap">${btnSit}<button class="btn-sm-action btn-edit" onclick="editarFinanceiro(${ri})"><i class="bi bi-pencil-fill"></i></button><button class="btn-sm-action btn-delete" onclick="deletar('financeiro',${ri})"><i class="bi bi-trash-fill"></i></button></td></tr>`;
-  }).join(''):'<tr><td colspan="9"><div class="empty-state"><i class="bi bi-cash-stack"></i>Nenhum lançamento</div></td></tr>';
+    return `<tr style="${rowStyle}"><td>${fmtData(f.data)}</td><td>${badgeSit}</td><td>${vencCell}</td><td>${badgeTipo(f.tipo)}</td><td style="font-weight:600;color:#fff">${f.desc}</td><td style="color:var(--cor-texto-suave)">${f.categoria}</td><td style="font-weight:700;color:${f.tipo==='Entrada'?'#10B981':'#EF4444'}">${moeda(f.valor)}</td><td>${recCell}</td><td>${f.forma||'—'}</td><td style="white-space:nowrap">${btnSit}<button class="btn-sm-action btn-edit" onclick="editarFinanceiro(${ri})"><i class="bi bi-pencil-fill"></i></button><button class="btn-sm-action btn-delete" onclick="deletar('financeiro',${ri})"><i class="bi bi-trash-fill"></i></button></td></tr>`;
+  }).join('')).join(''):'<tr><td colspan="10"><div class="empty-state"><i class="bi bi-cash-stack"></i>Nenhum lançamento</div></td></tr>';
   atualizarThSort('financeiro',s.col,s.dir);
 }
 async function marcarRealizada(i) {
