@@ -3913,7 +3913,7 @@ function verPedido(i) {
     <div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:18px;align-items:center">
       <div style="flex:1;min-width:120px"><div style="font-size:11px;color:var(--cor-texto-suave);text-transform:uppercase;letter-spacing:1px">Data</div><div style="font-weight:600;color:#fff;font-size:15px">${fmtData(p.data)}</div></div>
       <div style="flex:1;min-width:120px"><div style="font-size:11px;color:var(--cor-texto-suave);text-transform:uppercase;letter-spacing:1px">Canal</div><div style="margin-top:4px">${badgeCanal(p.canal)}</div></div>
-      <div style="flex:1;min-width:120px"><div style="font-size:11px;color:var(--cor-texto-suave);text-transform:uppercase;letter-spacing:1px">Status</div><div style="margin-top:4px">${badgeStatus(p.status)}</div></div>
+      <div style="flex:1;min-width:120px"><div style="font-size:11px;color:var(--cor-texto-suave);text-transform:uppercase;letter-spacing:1px">Status</div><div style="margin-top:4px;display:flex;align-items:center;gap:6px"><select class="form-select form-select-sm" id="ver-pedido-status-${i}" style="max-width:160px" onchange="atualizarStatusPedido(${i},this.value)">${['Pendente','Em separação','Enviado','Entregue','Cancelado','Devolvido'].map(s=>`<option${s===p.status?' selected':''}>${s}</option>`).join('')}</select><span id="ver-pedido-status-ok-${i}" style="font-size:12px"></span></div></div>
       ${p.rastreio?`<div style="flex:2;min-width:200px"><div style="font-size:11px;color:var(--cor-texto-suave);text-transform:uppercase;letter-spacing:1px">Rastreio</div><div style="display:flex;align-items:center;gap:8px;margin-top:4px;flex-wrap:wrap"><span style="font-weight:600;color:var(--cor-azul);font-size:14px;font-family:monospace">${escHtml(p.rastreio)}</span>${p.linkRastreio?`<a href="${escHtml(p.linkRastreio)}" target="_blank" class="btn btn-outline-secondary btn-sm" style="font-size:11px;padding:2px 8px"><i class="bi bi-box-arrow-up-right me-1"></i>Abrir link</a>`:''}` +
       `<button class="btn btn-outline-info btn-sm" style="font-size:11px;padding:2px 8px" onclick="consultarRastreioView('${escHtml(p.rastreio)}')"><i class="bi bi-search me-1"></i>Consultar</button></div></div>`:''}
     </div>
@@ -3965,6 +3965,26 @@ function verPedido(i) {
     </div>`:''}
   `;
   bootstrap.Modal.getOrCreateInstance(document.getElementById('modalVerPedido')).show();
+}
+
+// Troca de status direto na tela do pedido. Usa .update() só no campo status para não mexer em NF-e/Melhor Envio.
+async function atualizarStatusPedido(i,novo) {
+  const p=dados.pedidos[i];
+  const sel=document.getElementById('ver-pedido-status-'+i);
+  const ok=document.getElementById('ver-pedido-status-ok-'+i);
+  const anterior=p.status;
+  if(novo===anterior) return;
+  if((novo==='Cancelado'||novo==='Devolvido')&&!confirm(`Mudar o pedido ${p.num} para "${novo}"? Os itens voltam para o estoque.`)) { sel.value=anterior; return; }
+  sel.disabled=true; ok.innerHTML='<span style="color:var(--cor-texto-suave)">Salvando...</span>';
+  try {
+    await db.collection('pedidos').doc(p._docId).update({status:novo});
+    dados.pedidos[i].status=novo;
+    ok.innerHTML='<span style="color:#10B981"><i class="bi bi-check-circle-fill"></i> Salvo</span>';
+    if(currentPage==='pedidos') renderPedidos();
+  } catch(e) {
+    sel.value=anterior; ok.innerHTML='';
+    alert('Erro ao atualizar status: '+e.message);
+  } finally { sel.disabled=false; }
 }
 
 function _urlMelhorEnvio(codigo) {
