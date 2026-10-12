@@ -2924,7 +2924,7 @@ async function gerarEtiquetaMelhorEnvio(i) {
   const cliente=dados.clientes.find(x=>x.id===p.clienteId);
   if(!cliente) return alert('Pedido sem cliente vinculado.');
   if(!p.melhorEnvio||!p.melhorEnvio.cotacaoEscolhida) return alert('Escolha uma cotação de frete antes de gerar a etiqueta.');
-  if(p.melhorEnvio.orderId) return alert('Esse pedido já tem uma etiqueta gerada.');
+  if(p.melhorEnvio.orderId||p.melhorEnvio.etiquetaManual) return alert('Esse pedido já tem uma etiqueta gerada.');
   const docCliente=(cliente.cpf||'').replace(/\D/g,'');
   if(docCliente.length!==11) return alert('O cliente precisa ter um CPF válido cadastrado (11 dígitos) pra gerar a etiqueta.');
   let cartPayload;
@@ -2972,7 +2972,7 @@ async function gerarEtiquetaMelhorEnvio(i) {
 }
 // Pedidos com frete Melhor Envio já escolhido, mas ainda sem etiqueta gerada — candidatos ao lote.
 function pedidosProntosParaLote() {
-  return dados.pedidos.map((p,i)=>({p,i})).filter(({p})=>p.melhorEnvio&&p.melhorEnvio.cotacaoEscolhida&&!p.melhorEnvio.orderId);
+  return dados.pedidos.map((p,i)=>({p,i})).filter(({p})=>p.melhorEnvio&&p.melhorEnvio.cotacaoEscolhida&&!p.melhorEnvio.orderId&&!p.melhorEnvio.etiquetaManual);
 }
 // Itens que ficaram presos no carrinho do Melhor Envio (ex: aba fechada no meio de um lote, sem pagar) — bloqueiam
 // novas tentativas pra o mesmo pedido porque a NF-e já está "reservada" nesse item pendente.
@@ -3175,6 +3175,10 @@ function renderBotaoCotarFrete(p,i,cliente) {
   const m=p.melhorEnvio;
   if(m&&m.orderId) {
     return `<div style="font-size:12px">Etiqueta já gerada pra esse pedido (transportadora ${escHtml(m.cotacaoEscolhida.transportadora)}).</div>`;
+  }
+  // Etiqueta comprada direto no painel do Melhor Envio — sem orderId no sistema, mas não pode ser gerada de novo.
+  if(m&&m.etiquetaManual) {
+    return `<div style="font-size:12px">Etiqueta gerada fora do sistema (painel do Melhor Envio) em ${fmtData(m.etiquetaManual.split('T')[0])}${m.cotacaoEscolhida?` — ${escHtml(m.cotacaoEscolhida.transportadora)}`:''}.</div>`;
   }
   if(m&&m.cotacaoEscolhida) {
     const c=m.cotacaoEscolhida;
