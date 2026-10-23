@@ -178,6 +178,7 @@ table.gestao tbody tr:hover .tbl-sticky-r{background:#1f1545}
     <div class="nav-item"><button class="nav-link" onclick="showPage('fluxo')"><i class="bi bi-bar-chart-fill"></i> Fluxo de Caixa</button></div>
     <div class="nav-item"><button class="nav-link" onclick="showPage('compras')"><i class="bi bi-cart-fill"></i> Compras</button></div>
     <div class="nav-item"><button class="nav-link" onclick="showPage('produtos')"><i class="bi bi-bookmark-fill"></i> Produtos</button></div>
+    <div class="nav-item"><button class="nav-link" onclick="showPage('papelaria')"><i class="bi bi-scissors"></i> Papelaria</button></div>
     <div class="nav-item"><button class="nav-link" onclick="showPage('estoque')"><i class="bi bi-archive-fill"></i> Estoque</button></div>
     <div class="nav-item"><button class="nav-link" onclick="showPage('canais')"><i class="bi bi-share-fill"></i> Canais</button></div>
     <div class="nav-item"><button class="nav-link" onclick="showPage('afiliados')"><i class="bi bi-person-check-fill"></i> Afiliados</button></div>
@@ -423,6 +424,19 @@ table.gestao tbody tr:hover .tbl-sticky-r{background:#1f1545}
       <div class="table-card">
         <div class="table-header"><h6>Afiliados & Comissões</h6><button class="btn btn-primary btn-sm" onclick="abrirModal('afiliado')"><i class="bi bi-plus-lg"></i> Novo</button></div>
         <div class="table-responsive"><table class="gestao" id="tabela-afiliados"><thead><tr><th class="th-sort" data-col="cod" onclick="sortBy('afiliados','cod',renderAfiliados)">Cód.</th><th class="th-sort" data-col="nome" onclick="sortBy('afiliados','nome',renderAfiliados)">Nome</th><th>Produtos</th><th class="th-sort" data-col="canal" onclick="sortBy('afiliados','canal',renderAfiliados)">Canal</th><th class="th-sort" data-col="comissao" onclick="sortBy('afiliados','comissao',renderAfiliados)">Comissão %</th><th>Total (R$)</th><th class="th-sort" data-col="forma" onclick="sortBy('afiliados','forma',renderAfiliados)">Forma Pgto</th><th></th></tr></thead><tbody></tbody></table></div>
+      </div>
+    </div>
+
+    <!-- PAPELARIA -->
+    <div class="page" id="pg-papelaria">
+      <div class="kpi-grid" id="kpi-papelaria"></div>
+      <div class="table-card">
+        <div class="table-header"><h6>Produtos de Papelaria (custo e margem)</h6><button class="btn btn-primary btn-sm" onclick="abrirModalPapProduto()"><i class="bi bi-plus-lg"></i> Novo Produto</button></div>
+        <div class="table-responsive"><table class="gestao" id="tabela-papelariaProdutos"><thead><tr><th class="th-sort" data-col="nome" onclick="sortBy('papelariaProdutos','nome',renderPapelaria)">Produto</th><th>Materiais</th><th class="th-sort" data-col="custo" onclick="sortBy('papelariaProdutos','custo',renderPapelaria)">Custo Total</th><th class="th-sort" data-col="preco" onclick="sortBy('papelariaProdutos','preco',renderPapelaria)">Preço Venda</th><th>Canal / Taxas</th><th class="th-sort" data-col="lucro" onclick="sortBy('papelariaProdutos','lucro',renderPapelaria)">Lucro</th><th class="th-sort" data-col="margem" onclick="sortBy('papelariaProdutos','margem',renderPapelaria)">Margem</th><th></th></tr></thead><tbody></tbody></table></div>
+      </div>
+      <div class="table-card" style="margin-top:20px">
+        <div class="table-header"><h6>Materiais de Papelaria</h6><button class="btn btn-primary btn-sm" onclick="abrirModalPapMaterial()"><i class="bi bi-plus-lg"></i> Novo Material</button></div>
+        <div class="table-responsive"><table class="gestao" id="tabela-papelariaMateriais"><thead><tr><th class="th-sort" data-col="nome" onclick="sortBy('papelariaMateriais','nome',renderPapelaria)">Material</th><th class="th-sort" data-col="categoria" onclick="sortBy('papelariaMateriais','categoria',renderPapelaria)">Categoria</th><th>Embalagem comprada</th><th class="th-sort" data-col="custoUnit" onclick="sortBy('papelariaMateriais','custoUnit',renderPapelaria)">Custo por unidade</th><th class="th-sort" data-col="fornecedor" onclick="sortBy('papelariaMateriais','fornecedor',renderPapelaria)">Fornecedor</th><th>Usado em</th><th></th></tr></thead><tbody></tbody></table></div>
       </div>
     </div>
 
@@ -1046,6 +1060,41 @@ table.gestao tbody tr:hover .tbl-sticky-r{background:#1f1545}
   <div class="modal-footer"><button class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancelar</button><button class="btn btn-primary" onclick="salvarAfiliado()">Salvar</button></div>
 </div></div></div>
 
+<div class="modal fade" id="modalPapMaterial" tabindex="-1"><div class="modal-dialog"><div class="modal-content">
+  <div class="modal-header"><h5 class="modal-title" id="modalPapMaterialTitulo">Novo Material</h5><button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button></div>
+  <div class="modal-body"><input type="hidden" id="pm-idx"><div class="row g-3">
+    <div class="col-md-7"><label class="form-label">Nome do Material *</label><input class="form-control" id="pm-nome" placeholder="Ex: Papel couchê 180g A4"></div>
+    <div class="col-md-5"><label class="form-label">Categoria</label><input class="form-control" id="pm-categoria" list="pm-categorias" placeholder="Papéis, Fitas..."><datalist id="pm-categorias"><option>Papéis</option><option>Adesivos</option><option>Fitas e Laços</option><option>Embalagens</option><option>Tintas e Impressão</option><option>Encadernação</option><option>Acessórios</option></datalist></div>
+    <div class="col-md-4"><label class="form-label">Valor pago (R$) *</label><input class="form-control" id="pm-custo" type="text" inputmode="numeric" placeholder="0,00" oninput="mascaraMoeda(this);calcPapMaterial()"></div>
+    <div class="col-md-4"><label class="form-label">Qtd. que veio *</label><input class="form-control" id="pm-qtd" type="number" step="any" min="0" value="1" oninput="calcPapMaterial()"></div>
+    <div class="col-md-4"><label class="form-label">Unidade</label><select class="form-select" id="pm-unidade" onchange="calcPapMaterial()"><option>unidade</option><option>folha</option><option>metro</option><option>cm</option><option>ml</option><option>grama</option><option>par</option></select></div>
+    <div class="col-12"><div id="pm-resumo" style="background:rgba(16,185,129,.08);border:1px solid rgba(16,185,129,.3);border-radius:10px;padding:10px 14px;font-size:13px"></div></div>
+    <div class="col-md-6"><label class="form-label">Fornecedor</label><input class="form-control" id="pm-fornecedor" placeholder="Shopee, papelaria..."></div>
+    <div class="col-md-6"><label class="form-label">Observações</label><input class="form-control" id="pm-obs"></div>
+  </div></div>
+  <div class="modal-footer"><button class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancelar</button><button class="btn btn-primary" onclick="salvarPapMaterial()">Salvar</button></div>
+</div></div></div>
+
+<div class="modal fade" id="modalPapProduto" tabindex="-1"><div class="modal-dialog modal-lg"><div class="modal-content">
+  <div class="modal-header"><h5 class="modal-title" id="modalPapProdutoTitulo">Novo Produto de Papelaria</h5><button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button></div>
+  <div class="modal-body"><input type="hidden" id="pp-idx"><div class="row g-3">
+    <div class="col-12"><label class="form-label">Nome do Produto *</label><input class="form-control" id="pp-nome" placeholder="Ex: Caderno de Orações personalizado"></div>
+    <div class="col-12">
+      <label class="form-label">Materiais usados (quantidade por produto)</label>
+      <div id="pp-itens"></div>
+      <button type="button" class="btn btn-outline-secondary btn-sm mt-2" onclick="addPapItem()"><i class="bi bi-plus-lg"></i> Adicionar material</button>
+    </div>
+    <div class="col-md-4"><label class="form-label">Mão de obra (R$)</label><input class="form-control" id="pp-maoobra" type="text" inputmode="numeric" placeholder="0,00" oninput="mascaraMoeda(this);calcPapProduto()"></div>
+    <div class="col-md-4"><label class="form-label">Outros custos (R$)</label><input class="form-control" id="pp-outros" type="text" inputmode="numeric" placeholder="0,00" oninput="mascaraMoeda(this);calcPapProduto()"></div>
+    <div class="col-md-4"><label class="form-label">Canal de venda</label><select class="form-select" id="pp-canal" onchange="calcPapProduto()"></select></div>
+    <div class="col-md-6"><label class="form-label">Preço de venda (R$)</label><input class="form-control" id="pp-preco" type="text" inputmode="numeric" placeholder="0,00" oninput="mascaraMoeda(this);calcPapProduto()"></div>
+    <div class="col-md-6"><label class="form-label">Margem desejada (%)</label><input class="form-control" id="pp-margemdesejada" type="number" step="1" min="0" max="95" value="50" oninput="calcPapProduto()"></div>
+    <div class="col-12"><div id="pp-resumo"></div></div>
+    <div class="col-12"><label class="form-label">Observações</label><textarea class="form-control" id="pp-obs" rows="2"></textarea></div>
+  </div></div>
+  <div class="modal-footer"><button class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancelar</button><button class="btn btn-primary" onclick="salvarPapProduto()">Salvar</button></div>
+</div></div></div>
+
 <div class="modal fade" id="modalTrafego" tabindex="-1"><div class="modal-dialog modal-xl"><div class="modal-content">
   <div class="modal-header"><h5 class="modal-title" id="modalTrafegoTitulo">Novo Registro de Tráfego</h5><button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button></div>
   <div class="modal-body"><input type="hidden" id="tr-idx"><div class="row g-3">
@@ -1289,7 +1338,7 @@ const dadosPadrao = {
 // ============================================================
 // STATE
 // ============================================================
-let dados = { config:{canais:[]}, clientes:[], pedidos:[], financeiro:[], compras:[], produtos:[], estoqueMovimentos:[], afiliados:[], trafegodiario:[], prospeccao:[], notasServico:[] };
+let dados = { config:{canais:[]}, clientes:[], pedidos:[], financeiro:[], compras:[], produtos:[], estoqueMovimentos:[], afiliados:[], trafegodiario:[], prospeccao:[], notasServico:[], papelariaMateriais:[], papelariaProdutos:[] };
 let currentPage = 'dashboard';
 let appReady = false;
 let finTab = 'todos';
@@ -1360,7 +1409,7 @@ async function seedIfEmpty() {
 // LISTENERS FIRESTORE
 // ============================================================
 function setupListeners() {
-  const cols = ['clientes','pedidos','financeiro','compras','produtos','estoqueMovimentos','afiliados','trafegodiario','prospeccao','notasServico'];
+  const cols = ['clientes','pedidos','financeiro','compras','produtos','estoqueMovimentos','afiliados','trafegodiario','prospeccao','notasServico','papelariaMateriais','papelariaProdutos'];
   const loaded = new Set();
 
   unsubscribers.push(db.collection('config').doc('main').onSnapshot(doc => {
@@ -1445,7 +1494,7 @@ async function atualizarTela() {
   const icon = document.getElementById('icon-atualizar');
   icon.classList.add('girando');
   try {
-    const cols = ['clientes','pedidos','financeiro','compras','produtos','estoqueMovimentos','afiliados','trafegodiario','prospeccao','notasServico'];
+    const cols = ['clientes','pedidos','financeiro','compras','produtos','estoqueMovimentos','afiliados','trafegodiario','prospeccao','notasServico','papelariaMateriais','papelariaProdutos'];
     const configSnap = await db.collection('config').doc('main').get({ source: 'server' });
     if (configSnap.exists) dados.config = configSnap.data();
     await Promise.all(cols.map(async col => {
@@ -1535,7 +1584,7 @@ function nextNumPedido() { if (!dados.pedidos.length) return 'PED-01'; const num
 // ============================================================
 // NAVEGAÇÃO
 // ============================================================
-const pageTitles = { dashboard:['Dashboard','Visão geral da operação'], clientes:['Clientes','Cadastro e gestão de clientes'], pedidos:['Pedidos','Pedidos diários — todos os canais'], fiscal:['Fiscal','Notas fiscais emitidas (saída) e recebidas de fornecedores (entrada)'], financeiro:['Financeiro','Lançamentos de entradas e saídas'], fluxo:['Fluxo de Caixa','Resumo mensal automático'], compras:['Compras','Compras e fornecedores'], produtos:['Produtos','Cadastro de produtos e preços'], estoque:['Estoque','Controle automático de estoque'], canais:['Canais','Desempenho por canal de venda'], afiliados:['Afiliados','Gestão de afiliados e comissões'], trafego:['Tráfego Pago','Acompanhamento diário de campanhas'], prospeccao:['Prospecção','Pipeline de novos clientes e parceiros'], usuarios:['Usuários','Gerenciar acessos ao sistema'], config:['Configurações','Taxas de canais e dados do sistema'], relatorios:['Relatórios','Geração de relatórios por período'], leads:['Leads','Cadastros da página de degustação gratuita'], appmlc:['App MLC','Desempenho e analytics do aplicativo Meu Lugar de Cura'] };
+const pageTitles = { dashboard:['Dashboard','Visão geral da operação'], clientes:['Clientes','Cadastro e gestão de clientes'], pedidos:['Pedidos','Pedidos diários — todos os canais'], fiscal:['Fiscal','Notas fiscais emitidas (saída) e recebidas de fornecedores (entrada)'], financeiro:['Financeiro','Lançamentos de entradas e saídas'], fluxo:['Fluxo de Caixa','Resumo mensal automático'], compras:['Compras','Compras e fornecedores'], produtos:['Produtos','Cadastro de produtos e preços'], estoque:['Estoque','Controle automático de estoque'], canais:['Canais','Desempenho por canal de venda'], afiliados:['Afiliados','Gestão de afiliados e comissões'], papelaria:['Papelaria','Materiais, custo por produto e margem de venda'], trafego:['Tráfego Pago','Acompanhamento diário de campanhas'], prospeccao:['Prospecção','Pipeline de novos clientes e parceiros'], usuarios:['Usuários','Gerenciar acessos ao sistema'], config:['Configurações','Taxas de canais e dados do sistema'], relatorios:['Relatórios','Geração de relatórios por período'], leads:['Leads','Cadastros da página de degustação gratuita'], appmlc:['App MLC','Desempenho e analytics do aplicativo Meu Lugar de Cura'] };
 
 function fixarStickyHeaders(pgId) {
   setTimeout(function(){
@@ -1567,7 +1616,7 @@ function showPage(id) {
   fixarStickyHeaders(id);
 }
 
-function renderPage(id) { const fn={dashboard:renderDashboard,clientes:renderClientes,pedidos:renderPedidos,fiscal:renderFiscal,financeiro:renderFinanceiro,fluxo:renderFluxo,compras:renderCompras,produtos:renderProdutos,estoque:renderEstoque,canais:renderCanais,afiliados:renderAfiliados,trafego:renderTrafego,prospeccao:renderProspeccao,usuarios:renderUsuarios,config:renderConfig,relatorios:renderRelatorios,leads:renderLeads,appmlc:renderAppMlc}; if(fn[id]) fn[id](); }
+function renderPage(id) { const fn={dashboard:renderDashboard,clientes:renderClientes,pedidos:renderPedidos,fiscal:renderFiscal,financeiro:renderFinanceiro,fluxo:renderFluxo,compras:renderCompras,produtos:renderProdutos,estoque:renderEstoque,canais:renderCanais,afiliados:renderAfiliados,papelaria:renderPapelaria,trafego:renderTrafego,prospeccao:renderProspeccao,usuarios:renderUsuarios,config:renderConfig,relatorios:renderRelatorios,leads:renderLeads,appmlc:renderAppMlc}; if(fn[id]) fn[id](); }
 
 // ============================================================
 // LEADS
@@ -2382,7 +2431,9 @@ const sortState={
   estoque:{col:'nome',dir:'asc'},
   estoqueMovimentos:{col:'data',dir:'desc'},
   canais:{col:'nome',dir:'asc'},
-  afiliados:{col:'nome',dir:'asc'}
+  afiliados:{col:'nome',dir:'asc'},
+  papelariaMateriais:{col:'nome',dir:'asc'},
+  papelariaProdutos:{col:'nome',dir:'asc'}
 };
 function sortBy(tabela,col,renderFn){
   const s=sortState[tabela];
@@ -4684,6 +4735,205 @@ async function salvarAfiliado() {
 }
 
 // ============================================================
+// PAPELARIA — materiais, custo por produto e margem
+// ============================================================
+function papCustoUnit(m) { const q=parseFloat(m.qtdPacote)||0; return q>0?(parseFloat(m.custoPacote)||0)/q:0; }
+function papMaterialPorId(id) { return dados.papelariaMateriais.find(m=>m._docId===id); }
+// Recalcula sempre com o custo ATUAL do material (se o preço do material mudar, o produto atualiza sozinho)
+function papCalcular(p) {
+  const itens=(p.itens||[]).map(it=>{
+    const m=papMaterialPorId(it.materialId);
+    const custoUnit=m?papCustoUnit(m):(parseFloat(it.custoUnit)||0);
+    const qtd=parseFloat(it.qtd)||0;
+    return {nome:m?m.nome:(it.nome||'Material removido'),unidade:m?m.unidade:(it.unidade||''),removido:!m,qtd,custoUnit,subtotal:qtd*custoUnit};
+  });
+  const materiais=itens.reduce((s,i)=>s+i.subtotal,0);
+  const custo=materiais+(parseFloat(p.maoDeObra)||0)+(parseFloat(p.outrosCustos)||0);
+  const canal=(dados.config.canais||[]).find(c=>c.nome===p.canal);
+  const taxaPct=canal?(parseFloat(canal.taxa)||0):0, taxaFixa=canal?(parseFloat(canal.taxaFixa)||0):0;
+  const preco=parseFloat(p.precoVenda)||0;
+  const taxas=preco>0?preco*taxaPct+taxaFixa:0;
+  const lucro=preco-custo-taxas;
+  const margem=preco>0?lucro/preco*100:0;
+  const md=(parseFloat(p.margemDesejada)||0)/100;
+  const div=1-taxaPct-md;
+  const precoSugerido=div>0?(custo+taxaFixa)/div:0;
+  return {itens,materiais,custo,taxaPct,taxaFixa,taxas,preco,lucro,margem,precoSugerido};
+}
+function papCorMargem(m) { return m>=40?'#10B981':m>=20?'#F59E0B':'#EF4444'; }
+function papFmtQtd(n) { return Number(n).toLocaleString('pt-BR',{maximumFractionDigits:3}); }
+function papMoedaUnit(v) { return 'R$ '+Number(v||0).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:v>0&&v<1?4:2}); }
+
+function renderPapelaria() {
+  const calc=new Map(dados.papelariaProdutos.map(p=>[p,papCalcular(p)]));
+  // KPIs
+  const comPreco=dados.papelariaProdutos.filter(p=>calc.get(p).preco>0);
+  const margemMedia=comPreco.length?comPreco.reduce((s,p)=>s+calc.get(p).margem,0)/comPreco.length:0;
+  const abaixo=comPreco.filter(p=>calc.get(p).margem<20).length;
+  document.getElementById('kpi-papelaria').innerHTML=`
+    <div class="kpi-card"><div class="kpi-label">Materiais cadastrados</div><div class="kpi-value">${dados.papelariaMateriais.length}</div><div class="kpi-sub">itens de papelaria</div></div>
+    <div class="kpi-card"><div class="kpi-label">Produtos montados</div><div class="kpi-value">${dados.papelariaProdutos.length}</div><div class="kpi-sub">com custo calculado</div></div>
+    <div class="kpi-card"><div class="kpi-label">Margem média</div><div class="kpi-value" style="color:${comPreco.length?papCorMargem(margemMedia):'inherit'}">${comPreco.length?margemMedia.toFixed(1).replace('.',',')+'%':'—'}</div><div class="kpi-sub">produtos com preço definido</div></div>
+    <div class="kpi-card"><div class="kpi-label">Margem abaixo de 20%</div><div class="kpi-value" style="color:${abaixo?'#EF4444':'inherit'}">${abaixo}</div><div class="kpi-sub">produtos para revisar o preço</div></div>`;
+
+  // Produtos
+  const sp=sortState.papelariaProdutos;
+  const prods=[...dados.papelariaProdutos].sort((a,b)=>{
+    const ca=calc.get(a), cb=calc.get(b);
+    if(sp.col==='nome') return compararSort((a.nome||'').toLowerCase(),(b.nome||'').toLowerCase(),sp.dir);
+    return compararSort(ca[sp.col]||0,cb[sp.col]||0,sp.dir);
+  });
+  document.querySelector('#tabela-papelariaProdutos tbody').innerHTML=prods.length?prods.map(p=>{
+    const i=dados.papelariaProdutos.indexOf(p), c=calc.get(p);
+    const mats=c.itens.map(it=>`${papFmtQtd(it.qtd)} ${it.unidade} ${it.nome}${it.removido?' ⚠️':''}`).join('<br>');
+    const canalTxt=p.canal?`${badgeCanal(p.canal)}<div style="font-size:11px;color:var(--cor-texto-suave);margin-top:2px">${moeda(c.taxas)}</div>`:'<span style="color:var(--cor-texto-suave)">Sem taxa</span>';
+    return `<tr><td style="font-weight:600;color:#fff">${p.nome}</td><td style="font-size:12px">${mats||'—'}</td><td style="font-weight:600">${moeda(c.custo)}</td><td>${c.preco>0?moeda(c.preco):`<span style="color:var(--cor-texto-suave)">Sugerido ${moeda(c.precoSugerido)}</span>`}</td><td>${canalTxt}</td><td style="color:${c.preco>0?papCorMargem(c.margem):'inherit'};font-weight:600">${c.preco>0?moeda(c.lucro):'—'}</td><td style="color:${c.preco>0?papCorMargem(c.margem):'inherit'};font-weight:700">${c.preco>0?c.margem.toFixed(1).replace('.',',')+'%':'—'}</td><td style="white-space:nowrap"><button class="btn-sm-action btn-edit" title="Editar" onclick="editarPapProduto(${i})"><i class="bi bi-pencil-fill"></i></button><button class="btn-sm-action btn-edit" title="Duplicar" onclick="editarPapProduto(${i},true)"><i class="bi bi-files"></i></button><button class="btn-sm-action btn-delete" onclick="deletar('papelariaProdutos',${i})"><i class="bi bi-trash-fill"></i></button></td></tr>`;
+  }).join(''):'<tr><td colspan="8"><div class="empty-state"><i class="bi bi-scissors"></i>Nenhum produto montado. Cadastre os materiais abaixo e depois clique em "Novo Produto"</div></td></tr>';
+  atualizarThSort('papelariaProdutos',sp.col,sp.dir);
+
+  // Materiais
+  const sm=sortState.papelariaMateriais;
+  const mats=[...dados.papelariaMateriais].sort((a,b)=>{
+    if(sm.col==='custoUnit') return compararSort(papCustoUnit(a),papCustoUnit(b),sm.dir);
+    return compararSort((a[sm.col]||'').toString().toLowerCase(),(b[sm.col]||'').toString().toLowerCase(),sm.dir);
+  });
+  document.querySelector('#tabela-papelariaMateriais tbody').innerHTML=mats.length?mats.map(m=>{
+    const i=dados.papelariaMateriais.indexOf(m);
+    const usos=dados.papelariaProdutos.filter(p=>(p.itens||[]).some(it=>it.materialId===m._docId)).length;
+    return `<tr><td style="font-weight:600;color:#fff">${m.nome}</td><td>${m.categoria||'—'}</td><td>${moeda(m.custoPacote)} / ${papFmtQtd(m.qtdPacote)} ${m.unidade}</td><td style="color:var(--cor-verde);font-weight:600">${papMoedaUnit(papCustoUnit(m))} <span style="font-size:11px;color:var(--cor-texto-suave)">por ${m.unidade}</span></td><td>${m.fornecedor||'—'}</td><td>${usos?usos+' produto'+(usos>1?'s':''):'—'}</td><td style="white-space:nowrap"><button class="btn-sm-action btn-edit" onclick="editarPapMaterial(${i})"><i class="bi bi-pencil-fill"></i></button><button class="btn-sm-action btn-delete" onclick="deletarPapMaterial(${i})"><i class="bi bi-trash-fill"></i></button></td></tr>`;
+  }).join(''):'<tr><td colspan="7"><div class="empty-state"><i class="bi bi-box2"></i>Nenhum material cadastrado</div></td></tr>';
+  atualizarThSort('papelariaMateriais',sm.col,sm.dir);
+}
+
+// ---------- Materiais ----------
+function calcPapMaterial() {
+  const custo=pFloat('pm-custo'), qtd=parseFloat(v('pm-qtd'))||0, un=v('pm-unidade');
+  document.getElementById('pm-resumo').innerHTML=qtd>0&&custo>0
+    ?`Cada ${un} sai por <strong style="color:var(--cor-verde)">${papMoedaUnit(custo/qtd)}</strong>`
+    :'Informe o valor pago e quantas unidades vieram para calcular o custo de cada uma';
+}
+function abrirModalPapMaterial() {
+  ['pm-idx','pm-nome','pm-categoria','pm-custo','pm-fornecedor','pm-obs'].forEach(id=>document.getElementById(id).value='');
+  document.getElementById('pm-qtd').value=1;
+  document.getElementById('pm-unidade').value='unidade';
+  document.getElementById('modalPapMaterialTitulo').textContent='Novo Material';
+  calcPapMaterial();
+  bootstrap.Modal.getOrCreateInstance(document.getElementById('modalPapMaterial')).show();
+}
+function editarPapMaterial(i) {
+  const m=dados.papelariaMateriais[i];
+  document.getElementById('pm-idx').value=i;
+  document.getElementById('pm-nome').value=m.nome||'';
+  document.getElementById('pm-categoria').value=m.categoria||'';
+  document.getElementById('pm-custo').value=fmtM(m.custoPacote);
+  document.getElementById('pm-qtd').value=m.qtdPacote||1;
+  document.getElementById('pm-unidade').value=m.unidade||'unidade';
+  document.getElementById('pm-fornecedor').value=m.fornecedor||'';
+  document.getElementById('pm-obs').value=m.obs||'';
+  document.getElementById('modalPapMaterialTitulo').textContent='Editar Material';
+  calcPapMaterial();
+  bootstrap.Modal.getOrCreateInstance(document.getElementById('modalPapMaterial')).show();
+}
+async function salvarPapMaterial() {
+  const qtd=parseFloat(v('pm-qtd'))||0;
+  if(!v('pm-nome').trim()) return alert('Informe o nome do material');
+  if(!pFloat('pm-custo')||qtd<=0) return alert('Informe o valor pago e a quantidade que veio');
+  const idx=v('pm-idx');
+  const obj={nome:v('pm-nome').trim(),categoria:v('pm-categoria').trim(),custoPacote:pFloat('pm-custo'),qtdPacote:qtd,unidade:v('pm-unidade'),fornecedor:v('pm-fornecedor').trim(),obs:v('pm-obs')};
+  await salvarComCriadoEm('papelariaMateriais',idx,obj,dados.papelariaMateriais);
+  bootstrap.Modal.getOrCreateInstance(document.getElementById('modalPapMaterial')).hide();
+}
+async function deletarPapMaterial(i) {
+  const m=dados.papelariaMateriais[i];
+  const usos=dados.papelariaProdutos.filter(p=>(p.itens||[]).some(it=>it.materialId===m._docId));
+  if(usos.length&&!confirm(`"${m.nome}" é usado em ${usos.length} produto(s): ${usos.map(p=>p.nome).join(', ')}.\n\nSe excluir, esses produtos mantêm o último custo conhecido do material. Continuar?`)) return;
+  await deletar('papelariaMateriais',i);
+}
+
+// ---------- Produtos ----------
+function papOpcoesMateriais(sel) {
+  const lista=[...dados.papelariaMateriais].sort((a,b)=>(a.nome||'').localeCompare(b.nome||'','pt-BR'));
+  return '<option value="">Selecione o material...</option>'+lista.map(m=>`<option value="${m._docId}" ${m._docId===sel?'selected':''}>${m.nome} (${papMoedaUnit(papCustoUnit(m))}/${m.unidade})</option>`).join('');
+}
+function addPapItem(it) {
+  it=it||{};
+  const row=document.createElement('div');
+  row.className='pp-item d-flex gap-2 align-items-center mb-2';
+  if(it.nome) row.dataset.nome=it.nome;
+  if(it.custoUnit!==undefined) row.dataset.custo=it.custoUnit;
+  if(it.unidade) row.dataset.unidade=it.unidade;
+  const semMaterial=it.materialId&&!papMaterialPorId(it.materialId);
+  row.innerHTML=`<select class="form-select form-select-sm pp-mat" style="flex:1" onchange="calcPapProduto()">${papOpcoesMateriais(it.materialId)}${semMaterial?`<option value="${it.materialId}" selected>${it.nome||'Material removido'} (removido)</option>`:''}</select>
+    <input class="form-control form-control-sm pp-qtd" type="number" step="any" min="0" value="${it.qtd!==undefined?it.qtd:1}" style="width:90px" title="Quantidade usada" oninput="calcPapProduto()">
+    <span class="pp-sub" style="width:90px;text-align:right;font-size:12px;color:var(--cor-texto-suave)"></span>
+    <button type="button" class="btn-sm-action btn-delete" onclick="this.parentElement.remove();calcPapProduto()"><i class="bi bi-x-lg"></i></button>`;
+  document.getElementById('pp-itens').appendChild(row);
+  calcPapProduto();
+}
+function papLerItens() {
+  return [...document.querySelectorAll('#pp-itens .pp-item')].map(r=>{
+    const id=r.querySelector('.pp-mat').value, m=papMaterialPorId(id);
+    return {materialId:id,qtd:parseFloat(r.querySelector('.pp-qtd').value)||0,nome:m?m.nome:(r.dataset.nome||''),unidade:m?m.unidade:(r.dataset.unidade||''),custoUnit:m?papCustoUnit(m):(parseFloat(r.dataset.custo)||0)};
+  }).filter(it=>it.materialId);
+}
+function papLerForm() {
+  return {nome:v('pp-nome').trim(),itens:papLerItens(),maoDeObra:pFloat('pp-maoobra'),outrosCustos:pFloat('pp-outros'),canal:v('pp-canal'),precoVenda:pFloat('pp-preco'),margemDesejada:parseFloat(v('pp-margemdesejada'))||0,obs:v('pp-obs')};
+}
+function calcPapProduto() {
+  document.querySelectorAll('#pp-itens .pp-item').forEach(r=>{
+    const m=papMaterialPorId(r.querySelector('.pp-mat').value);
+    const cu=m?papCustoUnit(m):(parseFloat(r.dataset.custo)||0);
+    r.querySelector('.pp-sub').textContent=r.querySelector('.pp-mat').value?moeda(cu*(parseFloat(r.querySelector('.pp-qtd').value)||0)):'';
+  });
+  const c=papCalcular(papLerForm());
+  const linha=(k,val,cor)=>`<div style="display:flex;justify-content:space-between;padding:4px 0;border-bottom:1px solid var(--cor-borda)"><span>${k}</span><strong style="${cor?'color:'+cor:''}">${val}</strong></div>`;
+  let html=linha('Materiais',moeda(c.materiais))+linha('Mão de obra + outros',moeda(c.custo-c.materiais))+linha('Custo total do produto',moeda(c.custo),'#fff');
+  if(c.preco>0) html+=linha(`Taxas do canal${c.taxaPct||c.taxaFixa?` (${(c.taxaPct*100).toFixed(2).replace('.',',')}% + ${moeda(c.taxaFixa)})`:''}`,moeda(c.taxas))+linha('Lucro por unidade',moeda(c.lucro),papCorMargem(c.margem))+linha('Margem',c.margem.toFixed(1).replace('.',',')+'%',papCorMargem(c.margem));
+  html+=`<div style="margin-top:10px;font-size:13px">Para ter <strong>${parseFloat(v('pp-margemdesejada'))||0}%</strong> de margem, venda por <strong style="color:var(--cor-verde)">${c.precoSugerido>0?moeda(c.precoSugerido):'—'}</strong> <button type="button" class="btn btn-outline-secondary btn-sm ms-2 py-0" onclick="document.getElementById('pp-preco').value=fmtM(${c.precoSugerido.toFixed(2)});calcPapProduto()" ${c.precoSugerido>0?'':'disabled'}>Usar este preço</button></div>`;
+  document.getElementById('pp-resumo').innerHTML=`<div style="background:var(--cor-card);border:1px solid var(--cor-borda);border-radius:10px;padding:12px 16px;font-size:13px">${html}</div>`;
+}
+function papPreencherCanais(sel) {
+  document.getElementById('pp-canal').innerHTML='<option value="">Sem taxa (venda direta)</option>'+(dados.config.canais||[]).map(c=>`<option ${c.nome===sel?'selected':''}>${c.nome}</option>`).join('');
+}
+function abrirModalPapProduto() {
+  if(!dados.papelariaMateriais.length&&!confirm('Você ainda não cadastrou nenhum material. Quer criar o produto mesmo assim?')) return;
+  ['pp-idx','pp-nome','pp-maoobra','pp-outros','pp-preco','pp-obs'].forEach(id=>document.getElementById(id).value='');
+  document.getElementById('pp-margemdesejada').value=50;
+  papPreencherCanais('');
+  document.getElementById('pp-itens').innerHTML='';
+  document.getElementById('modalPapProdutoTitulo').textContent='Novo Produto de Papelaria';
+  addPapItem();
+  bootstrap.Modal.getOrCreateInstance(document.getElementById('modalPapProduto')).show();
+}
+function editarPapProduto(i,duplicar) {
+  const p=dados.papelariaProdutos[i];
+  document.getElementById('pp-idx').value=duplicar?'':i;
+  document.getElementById('pp-nome').value=(p.nome||'')+(duplicar?' (cópia)':'');
+  document.getElementById('pp-maoobra').value=p.maoDeObra?fmtM(p.maoDeObra):'';
+  document.getElementById('pp-outros').value=p.outrosCustos?fmtM(p.outrosCustos):'';
+  document.getElementById('pp-preco').value=p.precoVenda?fmtM(p.precoVenda):'';
+  document.getElementById('pp-margemdesejada').value=p.margemDesejada!==undefined?p.margemDesejada:50;
+  document.getElementById('pp-obs').value=p.obs||'';
+  papPreencherCanais(p.canal||'');
+  document.getElementById('pp-itens').innerHTML='';
+  (p.itens||[]).forEach(it=>addPapItem(it));
+  if(!(p.itens||[]).length) addPapItem();
+  document.getElementById('modalPapProdutoTitulo').textContent=duplicar?'Duplicar Produto':'Editar Produto';
+  calcPapProduto();
+  bootstrap.Modal.getOrCreateInstance(document.getElementById('modalPapProduto')).show();
+}
+async function salvarPapProduto() {
+  const obj=papLerForm();
+  if(!obj.nome) return alert('Informe o nome do produto');
+  if(!obj.itens.length) return alert('Selecione pelo menos um material usado');
+  // Guarda o custo calculado no momento (referência histórica); a tabela sempre recalcula com o custo atual
+  const c=papCalcular(obj);
+  obj.custoTotal=Math.round(c.custo*100)/100;
+  await salvarComCriadoEm('papelariaProdutos',v('pp-idx'),obj,dados.papelariaProdutos);
+  bootstrap.Modal.getOrCreateInstance(document.getElementById('modalPapProduto')).hide();
+}
+
+// ============================================================
 // CONFIG
 // ============================================================
 // ============================================================
@@ -5380,7 +5630,7 @@ function exportarClientes(formato) {
 
 function exportarDados() {
   const exp={};
-  ['clientes','pedidos','financeiro','compras','estoqueMovimentos','produtos','afiliados'].forEach(k=>{ exp[k]=dados[k].map(({_docId,...rest})=>rest); });
+  ['clientes','pedidos','financeiro','compras','estoqueMovimentos','produtos','afiliados','papelariaMateriais','papelariaProdutos'].forEach(k=>{ exp[k]=dados[k].map(({_docId,...rest})=>rest); });
   exp.config=dados.config;
   exp._backup={geradoEm:new Date().toISOString(),totalRegistros:Object.values(exp).reduce((s,v)=>s+(Array.isArray(v)?v.length:0),0)};
   const blob=new Blob([JSON.stringify(exp,null,2)],{type:'application/json'});
@@ -5417,7 +5667,7 @@ function importarBackup() {
     try{ bk=JSON.parse(await file.text()); } catch(err){ return alert('Arquivo inválido. Selecione um backup JSON gerado pelo sistema.'); }
     const meta=bk._backup?.geradoEm||'data desconhecida';
     if(!confirm(`Importar backup de ${meta}?\n\nOs registros do backup serão ADICIONADOS ao sistema.\n\nPara restauração completa, use "Limpar Dados" antes de importar.`)) return;
-    const cols=['clientes','pedidos','financeiro','compras','estoqueMovimentos','produtos','afiliados','trafegodiario','notasServico'];
+    const cols=['clientes','pedidos','financeiro','compras','estoqueMovimentos','produtos','afiliados','trafegodiario','notasServico','papelariaMateriais','papelariaProdutos'];
     let total=0;
     for(const col of cols){
       if(bk[col]&&Array.isArray(bk[col])){
