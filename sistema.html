@@ -436,7 +436,7 @@ table.gestao tbody tr:hover .tbl-sticky-r{background:#1f1545}
       </div>
       <div class="table-card" style="margin-top:20px">
         <div class="table-header"><h6>Materiais de Papelaria</h6><button class="btn btn-primary btn-sm" onclick="abrirModalPapMaterial()"><i class="bi bi-plus-lg"></i> Novo Material</button></div>
-        <div class="table-responsive"><table class="gestao" id="tabela-papelariaMateriais"><thead><tr><th class="th-sort" data-col="nome" onclick="sortBy('papelariaMateriais','nome',renderPapelaria)">Material</th><th class="th-sort" data-col="categoria" onclick="sortBy('papelariaMateriais','categoria',renderPapelaria)">Categoria</th><th>Embalagem comprada</th><th class="th-sort" data-col="custoUnit" onclick="sortBy('papelariaMateriais','custoUnit',renderPapelaria)">Custo por unidade</th><th class="th-sort" data-col="fornecedor" onclick="sortBy('papelariaMateriais','fornecedor',renderPapelaria)">Fornecedor</th><th>Usado em</th><th></th></tr></thead><tbody></tbody></table></div>
+        <div class="table-responsive"><table class="gestao" id="tabela-papelariaMateriais"><thead><tr><th class="th-sort" data-col="nome" onclick="sortBy('papelariaMateriais','nome',renderPapelaria)">Material</th><th class="th-sort" data-col="categoria" onclick="sortBy('papelariaMateriais','categoria',renderPapelaria)">Categoria</th><th>Embalagem comprada</th><th>Em estoque</th><th class="th-sort" data-col="custoUnit" onclick="sortBy('papelariaMateriais','custoUnit',renderPapelaria)">Custo por unidade</th><th class="th-sort" data-col="fornecedor" onclick="sortBy('papelariaMateriais','fornecedor',renderPapelaria)">Fornecedor</th><th>Usado em</th><th></th></tr></thead><tbody></tbody></table></div>
       </div>
     </div>
 
@@ -1070,7 +1070,8 @@ table.gestao tbody tr:hover .tbl-sticky-r{background:#1f1545}
     <div class="col-md-4"><label class="form-label">Unidade</label><select class="form-select" id="pm-unidade" onchange="calcPapMaterial()"><option>unidade</option><option>folha</option><option>metro</option><option>cm</option><option>ml</option><option>grama</option><option>par</option></select></div>
     <div class="col-12"><div id="pm-resumo" style="background:rgba(16,185,129,.08);border:1px solid rgba(16,185,129,.3);border-radius:10px;padding:10px 14px;font-size:13px"></div></div>
     <div class="col-md-6"><label class="form-label">Fornecedor</label><input class="form-control" id="pm-fornecedor" placeholder="Shopee, papelaria..."></div>
-    <div class="col-md-6"><label class="form-label">Observações</label><input class="form-control" id="pm-obs"></div>
+    <div class="col-md-6"><label class="form-label">Em estoque agora</label><input class="form-control" id="pm-estoque" type="number" step="any" min="0" placeholder="Vazio = igual à qtd que veio"></div>
+    <div class="col-12"><label class="form-label">Observações</label><input class="form-control" id="pm-obs"></div>
   </div></div>
   <div class="modal-footer"><button class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancelar</button><button class="btn btn-primary" onclick="salvarPapMaterial()">Salvar</button></div>
 </div></div></div>
@@ -4738,6 +4739,8 @@ async function salvarAfiliado() {
 // PAPELARIA — materiais, custo por produto e margem
 // ============================================================
 function papCustoUnit(m) { const q=parseFloat(m.qtdPacote)||0; return q>0?(parseFloat(m.custoPacote)||0)/q:0; }
+// Quanto ainda tem do material (sem valor informado = tudo o que veio na compra)
+function papEstoque(m) { return m.estoque!=null&&m.estoque!==''?(parseFloat(m.estoque)||0):(parseFloat(m.qtdPacote)||0); }
 function papMaterialPorId(id) { return dados.papelariaMateriais.find(m=>m._docId===id); }
 // Recalcula sempre com o custo ATUAL do material (se o preço do material mudar, o produto atualiza sozinho)
 function papCalcular(p) {
@@ -4770,7 +4773,12 @@ function renderPapelaria() {
   const comPreco=dados.papelariaProdutos.filter(p=>calc.get(p).preco>0);
   const margemMedia=comPreco.length?comPreco.reduce((s,p)=>s+calc.get(p).margem,0)/comPreco.length:0;
   const abaixo=comPreco.filter(p=>calc.get(p).margem<20).length;
+  const compras=dados.papelariaMateriais.filter(m=>!m.estimativa);
+  const investido=compras.reduce((s,m)=>s+(parseFloat(m.custoPacote)||0),0);
+  const valorEstoque=compras.reduce((s,m)=>s+papEstoque(m)*papCustoUnit(m),0);
   document.getElementById('kpi-papelaria').innerHTML=`
+    <div class="kpi-card"><div class="kpi-label">Investido na papelaria</div><div class="kpi-value">${moeda(investido)}</div><div class="kpi-sub">total pago em materiais</div></div>
+    <div class="kpi-card"><div class="kpi-label">Valor em estoque</div><div class="kpi-value" style="color:var(--cor-verde)">${moeda(valorEstoque)}</div><div class="kpi-sub">materiais que ainda tem</div></div>
     <div class="kpi-card"><div class="kpi-label">Materiais cadastrados</div><div class="kpi-value">${dados.papelariaMateriais.length}</div><div class="kpi-sub">itens de papelaria</div></div>
     <div class="kpi-card"><div class="kpi-label">Produtos montados</div><div class="kpi-value">${dados.papelariaProdutos.length}</div><div class="kpi-sub">com custo calculado</div></div>
     <div class="kpi-card"><div class="kpi-label">Margem média</div><div class="kpi-value" style="color:${comPreco.length?papCorMargem(margemMedia):'inherit'}">${comPreco.length?margemMedia.toFixed(1).replace('.',',')+'%':'—'}</div><div class="kpi-sub">produtos com preço definido</div></div>
@@ -4800,8 +4808,8 @@ function renderPapelaria() {
   document.querySelector('#tabela-papelariaMateriais tbody').innerHTML=mats.length?mats.map(m=>{
     const i=dados.papelariaMateriais.indexOf(m);
     const usos=dados.papelariaProdutos.filter(p=>(p.itens||[]).some(it=>it.materialId===m._docId)).length;
-    return `<tr><td style="font-weight:600;color:#fff">${m.nome}</td><td>${m.categoria||'—'}</td><td>${moeda(m.custoPacote)} / ${papFmtQtd(m.qtdPacote)} ${m.unidade}</td><td style="color:var(--cor-verde);font-weight:600">${papMoedaUnit(papCustoUnit(m))} <span style="font-size:11px;color:var(--cor-texto-suave)">por ${m.unidade}</span></td><td>${m.fornecedor||'—'}</td><td>${usos?usos+' produto'+(usos>1?'s':''):'—'}</td><td style="white-space:nowrap"><button class="btn-sm-action btn-edit" onclick="editarPapMaterial(${i})"><i class="bi bi-pencil-fill"></i></button><button class="btn-sm-action btn-delete" onclick="deletarPapMaterial(${i})"><i class="bi bi-trash-fill"></i></button></td></tr>`;
-  }).join(''):'<tr><td colspan="7"><div class="empty-state"><i class="bi bi-box2"></i>Nenhum material cadastrado</div></td></tr>';
+    return `<tr><td style="font-weight:600;color:#fff">${m.nome}</td><td>${m.categoria||'—'}</td><td>${moeda(m.custoPacote)} / ${papFmtQtd(m.qtdPacote)} ${m.unidade}</td><td>${m.estimativa?'—':papFmtQtd(papEstoque(m))+' '+m.unidade}</td><td style="color:var(--cor-verde);font-weight:600">${papMoedaUnit(papCustoUnit(m))} <span style="font-size:11px;color:var(--cor-texto-suave)">por ${m.unidade}</span></td><td>${m.fornecedor||'—'}</td><td>${usos?usos+' produto'+(usos>1?'s':''):'—'}</td><td style="white-space:nowrap"><button class="btn-sm-action btn-edit" onclick="editarPapMaterial(${i})"><i class="bi bi-pencil-fill"></i></button><button class="btn-sm-action btn-delete" onclick="deletarPapMaterial(${i})"><i class="bi bi-trash-fill"></i></button></td></tr>`;
+  }).join(''):'<tr><td colspan="8"><div class="empty-state"><i class="bi bi-box2"></i>Nenhum material cadastrado</div></td></tr>';
   atualizarThSort('papelariaMateriais',sm.col,sm.dir);
 }
 
@@ -4813,7 +4821,7 @@ function calcPapMaterial() {
     :'Informe o valor pago e quantas unidades vieram para calcular o custo de cada uma';
 }
 function abrirModalPapMaterial() {
-  ['pm-idx','pm-nome','pm-categoria','pm-custo','pm-fornecedor','pm-obs'].forEach(id=>document.getElementById(id).value='');
+  ['pm-idx','pm-nome','pm-categoria','pm-custo','pm-fornecedor','pm-estoque','pm-obs'].forEach(id=>document.getElementById(id).value='');
   document.getElementById('pm-qtd').value=1;
   document.getElementById('pm-unidade').value='unidade';
   document.getElementById('modalPapMaterialTitulo').textContent='Novo Material';
@@ -4829,6 +4837,7 @@ function editarPapMaterial(i) {
   document.getElementById('pm-qtd').value=m.qtdPacote||1;
   document.getElementById('pm-unidade').value=m.unidade||'unidade';
   document.getElementById('pm-fornecedor').value=m.fornecedor||'';
+  document.getElementById('pm-estoque').value=m.estoque!=null?m.estoque:'';
   document.getElementById('pm-obs').value=m.obs||'';
   document.getElementById('modalPapMaterialTitulo').textContent='Editar Material';
   calcPapMaterial();
@@ -4840,6 +4849,9 @@ async function salvarPapMaterial() {
   if(!pFloat('pm-custo')||qtd<=0) return alert('Informe o valor pago e a quantidade que veio');
   const idx=v('pm-idx');
   const obj={nome:v('pm-nome').trim(),categoria:v('pm-categoria').trim(),custoPacote:pFloat('pm-custo'),qtdPacote:qtd,unidade:v('pm-unidade'),fornecedor:v('pm-fornecedor').trim(),obs:v('pm-obs')};
+  if(v('pm-estoque')!=='') obj.estoque=parseFloat(v('pm-estoque'))||0;
+  const anterior=idx===''?null:dados.papelariaMateriais[parseInt(idx)];
+  if(anterior&&anterior.estimativa) obj.estimativa=true;
   await salvarComCriadoEm('papelariaMateriais',idx,obj,dados.papelariaMateriais);
   bootstrap.Modal.getOrCreateInstance(document.getElementById('modalPapMaterial')).hide();
 }
