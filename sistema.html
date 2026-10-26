@@ -372,12 +372,12 @@ table.gestao tbody tr:hover .tbl-sticky-r{background:#1f1545}
 
     <!-- FLUXO DE CAIXA -->
     <div class="page" id="pg-fluxo">
-      <div class="chart-card mb-3"><h6><i class="bi bi-bar-chart-fill me-2" style="color:var(--cor-secundaria)"></i>Entradas × Saídas por Mês</h6><canvas id="chartFluxo" height="70"></canvas></div>
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
-        <div class="table-card">
-          <div class="table-header"><h6>Resumo Mensal</h6></div>
-          <div class="table-responsive"><table class="gestao" id="tabela-fluxo"><thead><tr><th>Mês</th><th>Entradas</th><th>Saídas</th><th>Resultado</th></tr></thead><tbody></tbody></table></div>
-        </div>
+      <div class="chart-card mb-3"><div style="display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap"><h6 style="margin:0"><i class="bi bi-bar-chart-fill me-2" style="color:var(--cor-secundaria)"></i>Entradas × Saídas por Mês (previsto × realizado)</h6><select class="form-select form-select-sm" id="fluxo-ano" style="width:auto" onchange="renderFluxo()"></select></div><canvas id="chartFluxo" height="70"></canvas></div>
+      <div class="table-card mb-3">
+        <div class="table-header"><h6>Resumo Mensal</h6><small style="color:var(--cor-texto-suave)">Fonte: Financeiro + pedidos A receber · Previsto = tudo do mês (realizado + pendente) · Saldo parte do Saldo Inicial</small></div>
+        <div class="table-responsive"><table class="gestao" id="tabela-fluxo"><thead><tr><th rowspan="2">Mês</th><th colspan="2" style="text-align:center">Entradas</th><th colspan="2" style="text-align:center">Saídas</th><th colspan="2" style="text-align:center">Resultado do mês</th><th colspan="2" style="text-align:center">Saldo acumulado</th></tr><tr><th>Previsto</th><th>Realizado</th><th>Previsto</th><th>Realizado</th><th>Previsto</th><th>Realizado</th><th>Previsto</th><th>Realizado</th></tr></thead><tbody></tbody></table></div>
+      </div>
+      <div>
         <div class="table-card">
           <div class="table-header"><h6><i class="bi bi-calendar-event me-2" style="color:#F59E0B"></i>Previsão — Próximos 30 dias</h6></div>
           <div class="table-responsive"><table class="gestao" id="tabela-previsao"><thead><tr><th>Data</th><th>Descrição</th><th>Tipo</th><th>Valor</th></tr></thead><tbody></tbody></table></div>
@@ -2106,11 +2106,12 @@ function renderAbasMesFin(recMap) {
   const hojeYm=new Date().toISOString().slice(0,7);
   const nomes=['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
   const estilo=(ativo,atual)=>`border:1px solid var(--cor-borda);border-bottom:none;border-radius:10px 10px 0 0;padding:6px 12px;min-width:78px;text-align:center;cursor:pointer;font-size:12px;line-height:1.3;white-space:nowrap;${ativo?'background:var(--cor-secundaria);color:#fff;font-weight:700;':'background:var(--cor-card);color:var(--cor-texto);'}${atual&&!ativo?'box-shadow:inset 0 3px 0 var(--cor-secundaria);':''}`;
+  const finTodos=finComPrevisaoPedidos();
   let html=`<button class="btn btn-sm" style="border:none;color:var(--cor-texto-suave);padding:6px 6px" onclick="abrirAbaMesFin(${ano-1},12)" title="Ano anterior"><i class="bi bi-chevron-double-left"></i></button>`;
   html+=`<div style="${estilo(finFiltro.modo==='anoResumo',false)}" onclick="abrirResumoAnoFin(${ano})"><i class="bi bi-grid-3x3-gap me-1"></i><b>Ano ${ano}</b><div style="font-size:10px;opacity:.8">panorama</div></div>`;
   nomes.forEach((n,i)=>{
     const ym=`${ano}-${String(i+1).padStart(2,'0')}`;
-    const arr=dados.financeiro.filter(f=>(finDataRef(f)||'').slice(0,7)===ym);
+    const arr=finTodos.filter(f=>(finDataRef(f)||'').slice(0,7)===ym);
     const t=finTotaisMes(arr);
     const ativo=finFiltro.modo!=='anoResumo' && ym>=de.slice(0,7) && ym<=ate.slice(0,7);
     const corSaldo=ativo?'#fff':(t.saldo>=0?'#10B981':'#EF4444');
@@ -2126,9 +2127,10 @@ function renderResumoAnoFin(recMap) {
   let acum=0;
   const tot={entR:0,entP:0,saiR:0,saiP:0,saldo:0,nRec:0};
   const linhas=[];
+  const finTodos=finComPrevisaoPedidos();
   for(let i=1;i<=12;i++){
     const ym=`${ano}-${String(i).padStart(2,'0')}`;
-    const t=finTotaisMes(dados.financeiro.filter(f=>(finDataRef(f)||'').slice(0,7)===ym),recMap);
+    const t=finTotaisMes(finTodos.filter(f=>(finDataRef(f)||'').slice(0,7)===ym),recMap);
     acum+=t.saldo;
     Object.keys(tot).forEach(k=>tot[k]+=t[k]);
     const nome=new Date(ano,i-1,1).toLocaleDateString('pt-BR',{month:'long'});
@@ -2174,6 +2176,18 @@ function finVencEfetivo(f) { return finIsCartaoCredito(f) ? finVencFatura(f.data
 
 // Data que define em qual mês o lançamento aparece
 function finDataRef(f) { return finBase==='venc' ? (finVencEfetivo(f)||f.data) : f.data; }
+
+// Pedidos "A receber" viram entradas previstas (na data de recebimento). Só leitura: não são gravados no Financeiro.
+// Quando o pedido é marcado como Recebido ele sai daqui; o dinheiro realizado entra pelo lançamento do saque/repasse.
+function finPedidosAReceber() {
+  return dados.pedidos.filter(p=>p.statusRecebimento==='A receber'&&p.status!=='Cancelado'&&p.status!=='Devolvido').map(p=>{
+    const d=p.dataRecebimento||p.data||'';
+    return {_pedido:true,_pedidoIdx:dados.pedidos.indexOf(p),data:d,vencimento:d,tipo:'Entrada',situacao:'Prevista',
+      desc:`Recebimento ${p.num||''} · ${nomeCliente(p.clienteId)}`,categoria:'Receita Vendas',forma:p.canal||'',
+      valor:p.liquido!=null?p.liquido:getPedidoTotal(p)};
+  });
+}
+function finComPrevisaoPedidos() { return dados.financeiro.concat(finPedidosAReceber()); }
 
 // Identifica parcelamentos e assinaturas recorrentes → {pos, total, faltam, tipo}
 function finMapaRecorrencia() {
@@ -2288,7 +2302,7 @@ function renderDashboard() {
     sec('🏦 Financeiro no Período',[
       {label:'Entradas',value:moeda(totalEnt),sub:'realizadas no período',cor:'#10B981',icon:'📈'},
       {label:'Saídas',value:moeda(totalSai),sub:'despesas realizadas no período',cor:'#EF4444',icon:'📉'},
-      {label:'A Receber',value:moeda(dados.pedidos.filter(p=>p.statusRecebimento==='A receber'&&p.status!=='Cancelado'&&p.status!=='Devolvido').reduce((s,p)=>s+(p.liquido!=null?p.liquido:getPedidoTotal(p)),0)),sub:'pedidos aguardando recebimento',cor:'#3B82F6',icon:'⏳'},
+      {label:'Entradas Previstas',value:moeda(finComPrevisaoPedidos().filter(f=>{const d=finDataRef(f);return f.tipo==='Entrada'&&f.situacao==='Prevista'&&d>=de&&d<=ate;}).reduce((s,f)=>s+f.valor,0)),sub:'a receber no período (pedidos + lançamentos)',cor:'#3B82F6',icon:'⏳'},
       {label:'Clientes',value:totalClientes,sub:'cadastrados no total',cor:'#A78BFA',icon:'👥'},
       {label:'Saldo Real',value:moeda(saldoReal),sub:'acumulado (só realizados)',cor:saldoReal>=0?'#10B981':'#EF4444',icon:'🏦'},
     ]);
@@ -4341,17 +4355,16 @@ function renderFinanceiro() {
   document.getElementById('fin-cartao-fech').value=cd.fech;
   document.getElementById('fin-cartao-venc').value=cd.venc;
 
-  const finPeriodo=dados.financeiro.filter(f=>{const d=finDataRef(f);return d>=de&&d<=ate;});
+  const finPeriodo=finComPrevisaoPedidos().filter(f=>{const d=finDataRef(f);return d>=de&&d<=ate;});
   const totalEntradas=finPeriodo.filter(f=>f.tipo==='Entrada'&&(!f.situacao||f.situacao==='Realizada')).reduce((s,f)=>s+f.valor,0);
   const totalSaidas=finPeriodo.filter(f=>f.tipo==='Saída'&&(!f.situacao||f.situacao==='Realizada')).reduce((s,f)=>s+f.valor,0);
   const totalPrevisto=finPeriodo.filter(f=>f.situacao==='Prevista'&&f.tipo==='Saída').reduce((s,f)=>s+f.valor,0);
   const totalPrevEnt=finPeriodo.filter(f=>f.situacao==='Prevista'&&f.tipo==='Entrada').reduce((s,f)=>s+f.valor,0);
-  const aReceber=dados.pedidos.filter(p=>p.statusRecebimento==='A receber'&&p.status!=='Cancelado'&&p.status!=='Devolvido'&&p.data>=de&&p.data<=ate).reduce((s,p)=>s+(p.liquido!=null?p.liquido:getPedidoTotal(p)),0);
   document.getElementById('kpi-financeiro').innerHTML=[
     {label:'Entradas Realizadas',value:moeda(totalEntradas),sub:'lançamentos realizados no período',cor:'#10B981'},
     {label:'Saídas Realizadas',value:moeda(totalSaidas),sub:'despesas realizadas no período',cor:'#EF4444'},
     {label:'Despesas Previstas',value:moeda(totalPrevisto),sub:'a pagar (aguardando) no período',cor:'#F59E0B'},
-    {label:'A Receber (Pedidos)',value:moeda(aReceber),sub:'pagamentos pendentes no período',cor:'#3B82F6'},
+    {label:'Entradas Previstas',value:moeda(totalPrevEnt),sub:'a receber no período (pedidos + lançamentos)',cor:'#3B82F6'},
   ].map(k=>`<div class="kpi-card"><div class="kpi-label">${k.label}</div><div class="kpi-value" style="color:${k.cor}">${k.value}</div><div class="kpi-sub">${k.sub}</div></div>`).join('');
   const s=sortState.financeiro;
   let lista=finPeriodo;
@@ -4390,6 +4403,7 @@ function renderFinanceiro() {
     return `<tr data-grupo="${k}"><td colspan="10" style="background:rgba(124,58,237,.12);padding:10px 14px;font-size:12px;color:var(--cor-texto-suave)"><span style="font-size:14px;font-weight:800;color:var(--cor-secundaria);text-transform:capitalize;margin-right:14px"><i class="bi bi-calendar-month me-1"></i>${k?nomeMes(k):'Sem data'}</span>${partes.join(' &nbsp;·&nbsp; ')}</td></tr>`;
   };
   document.querySelector('#tabela-financeiro tbody').innerHTML=lista.length?meses.map(k=>linhaMes(k)+porMes[k].map(f=>{
+    if(f._pedido) return `<tr style="background:rgba(59,130,246,.05)"><td>${fmtData(f.data)}</td><td><span style="background:rgba(59,130,246,.15);color:#3B82F6;padding:2px 8px;border-radius:12px;font-size:11px;font-weight:600" title="Vem do pedido (A receber). Não é lançamento do Financeiro.">Prevista · pedido</span></td><td>${f.vencimento?fmtData(f.vencimento):'—'}</td><td>${badgeTipo(f.tipo)}</td><td style="font-weight:600;color:#fff">${f.desc}</td><td style="color:var(--cor-texto-suave)">${f.categoria}</td><td style="font-weight:700;color:#10B981">${moeda(f.valor)}</td><td>—</td><td>${f.forma||'—'}</td><td style="white-space:nowrap"><button class="btn-sm-action" style="color:#10B981" onclick="marcarRecebido(${f._pedidoIdx})" title="Marcar pedido como Recebido"><i class="bi bi-check-circle"></i></button></td></tr>`;
     const ri=dados.financeiro.indexOf(f);
     const rec=recMap.get(f);
     const recCell=rec?`<span title="${rec.faltam?`Ainda faltam ${rec.faltam} prevista${rec.faltam>1?'s':''} depois desta`:'Última da série'}" style="background:rgba(124,58,237,.12);color:var(--cor-secundaria);padding:2px 8px;border-radius:12px;font-size:11px;font-weight:600;white-space:nowrap"><i class="bi bi-arrow-repeat"></i> ${rec.parcelado?'Parcela':'Mês'} ${rec.pos}/${rec.total}</span>${rec.faltam?`<div style="font-size:10px;color:var(--cor-texto-suave);margin-top:2px">faltam ${rec.faltam}</div>`:''}`:'—';
@@ -4481,17 +4495,49 @@ async function salvarFinanceiro() {
 // FLUXO DE CAIXA
 // ============================================================
 function renderFluxo() {
+  // Fluxo de caixa = só os lançamentos do Financeiro (mesma base do Saldo Real do dashboard).
+  // + pedidos A receber como entradas previstas. Pedidos recebidos e Compras ficam de fora: o dinheiro deles já está
+  // lançado no Financeiro (saques, pagamentos à gráfica etc.), somar de novo duplicaria.
   const meses=['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
-  const ent=new Array(12).fill(0), sai=new Array(12).fill(0);
-  dados.pedidos.forEach(p=>{const m=parseMes(p.data);if(m>=0)ent[m]+=getPedidoTotal(p);});
-  dados.financeiro.forEach(f=>{const dataRef=(f.situacao==='Prevista'&&f.vencimento)?f.vencimento:f.data;const m=parseMes(dataRef);if(m>=0)(f.tipo==='Entrada'?ent:sai)[m]+=f.valor;});
-  dados.compras.forEach(c=>{const dataRef=(c.dataPagamento)?c.dataPagamento:c.data;const m=parseMes(dataRef);if(m>=0)sai[m]+=(c.qtd*c.custo)+(c.frete||0)+(c.imposto||0);});
-  if(chartFluxoChart) chartFluxoChart.destroy();
-  chartFluxoChart=new Chart(document.getElementById('chartFluxo'),{type:'bar',data:{labels:meses,datasets:[{label:'Entradas',data:ent,backgroundColor:'rgba(16,185,129,0.7)',borderRadius:4},{label:'Saídas',data:sai,backgroundColor:'rgba(239,68,68,0.7)',borderRadius:4}]},options:{plugins:{legend:{labels:{color:'#9D8EC4'}}},scales:{x:{ticks:{color:'#9D8EC4'},grid:{color:'rgba(45,31,94,.5)'}},y:{ticks:{color:'#9D8EC4',callback:v=>'R$ '+v.toLocaleString('pt-BR')},grid:{color:'rgba(45,31,94,.5)'}}}}});
+  const real=f=>!f.situacao||f.situacao==='Realizada';
+  const ref=f=>((real(f)?f.data:(finVencEfetivo(f)||f.data))||'').slice(0,7);
+  const porMes={};
+  finComPrevisaoPedidos().forEach(f=>{
+    const ym=ref(f); if(!/^\d{4}-\d{2}$/.test(ym)) return;
+    const t=porMes[ym]||(porMes[ym]={entP:0,entR:0,saiP:0,saiR:0});
+    const v=f.valor||0, ent=f.tipo==='Entrada';
+    if(ent) t.entP+=v; else t.saiP+=v;
+    if(real(f)){ if(ent) t.entR+=v; else t.saiR+=v; }
+  });
+  const yms=Object.keys(porMes).sort();
+  const anos=[...new Set(yms.map(ym=>ym.slice(0,4)))];
+  const anoAtual=String(new Date().getFullYear());
+  if(!anos.includes(anoAtual)) anos.push(anoAtual);
+  anos.sort();
+  const sel=document.getElementById('fluxo-ano');
+  const ano=sel.value&&anos.includes(sel.value)?sel.value:anoAtual;
+  sel.innerHTML=anos.map(a=>`<option value="${a}"${a===ano?' selected':''}>${a}</option>`).join('');
+  // Saldo acumulado corre desde o Saldo Inicial, atravessando os anos
+  const saldoInicial=parseFloat(dados.config.saldoInicial)||0;
+  let accP=saldoInicial, accR=saldoInicial;
+  yms.filter(ym=>ym<ano+'-01').forEach(ym=>{const t=porMes[ym];accP+=t.entP-t.saiP;accR+=t.entR-t.saiR;});
+  const ymHoje=new Date().toISOString().slice(0,7);
+  const cor=n=>n>=0?'#10B981':'#EF4444';
+  const ser={entP:[],entR:[],saiP:[],saiR:[]};
   const rows=[];
-  const anoAtual=new Date().getFullYear();
-  for(let i=0;i<12;i++){if(ent[i]||sai[i]){const res=ent[i]-sai[i];rows.push(`<tr><td style="font-weight:600;color:#fff">${meses[i]}/${anoAtual}</td><td style="color:#10B981;font-weight:600">${moeda(ent[i])}</td><td style="color:#EF4444;font-weight:600">${moeda(sai[i])}</td><td style="font-weight:700;color:${res>=0?'#10B981':'#EF4444'}">${moeda(res)}</td></tr>`);}}
-  document.querySelector('#tabela-fluxo tbody').innerHTML=rows.length?rows.join(''):'<tr><td colspan="4"><div class="empty-state"><i class="bi bi-bar-chart"></i>Nenhum dado ainda</div></td></tr>';
+  for(let i=0;i<12;i++){
+    const ym=`${ano}-${String(i+1).padStart(2,'0')}`;
+    const t=porMes[ym]||{entP:0,entR:0,saiP:0,saiR:0};
+    ser.entP.push(t.entP);ser.entR.push(t.entR);ser.saiP.push(t.saiP);ser.saiR.push(t.saiR);
+    accP+=t.entP-t.saiP; accR+=t.entR-t.saiR;
+    if(!porMes[ym]) continue;
+    const resP=t.entP-t.saiP, resR=t.entR-t.saiR, futuro=ym>ymHoje;
+    const destaque=ym===ymHoje?'background:rgba(124,58,237,.12);':'';
+    rows.push(`<tr style="${destaque}"><td style="font-weight:600;color:#fff;white-space:nowrap">${meses[i]}/${ano}${ym===ymHoje?' <small style="color:var(--cor-texto-suave)">(atual)</small>':''}</td><td style="color:#10B981;opacity:.75">${moeda(t.entP)}</td><td style="color:#10B981;font-weight:600">${moeda(t.entR)}</td><td style="color:#EF4444;opacity:.75">${moeda(t.saiP)}</td><td style="color:#EF4444;font-weight:600">${moeda(t.saiR)}</td><td style="color:${cor(resP)};opacity:.75">${moeda(resP)}</td><td style="font-weight:600;color:${cor(resR)}">${moeda(resR)}</td><td style="font-weight:700;color:${cor(accP)}">${moeda(accP)}</td><td style="font-weight:700;color:${cor(accR)}">${futuro?'<span style="color:var(--cor-texto-suave);font-weight:400">—</span>':moeda(accR)}</td></tr>`);
+  }
+  if(chartFluxoChart) chartFluxoChart.destroy();
+  chartFluxoChart=new Chart(document.getElementById('chartFluxo'),{type:'bar',data:{labels:meses,datasets:[{label:'Entradas previstas',data:ser.entP,backgroundColor:'rgba(16,185,129,0.25)',borderColor:'rgba(16,185,129,0.8)',borderWidth:1,borderRadius:4},{label:'Entradas realizadas',data:ser.entR,backgroundColor:'rgba(16,185,129,0.75)',borderRadius:4},{label:'Saídas previstas',data:ser.saiP,backgroundColor:'rgba(239,68,68,0.25)',borderColor:'rgba(239,68,68,0.8)',borderWidth:1,borderRadius:4},{label:'Saídas realizadas',data:ser.saiR,backgroundColor:'rgba(239,68,68,0.75)',borderRadius:4}]},options:{plugins:{legend:{labels:{color:'#9D8EC4'}},tooltip:{callbacks:{label:c=>`${c.dataset.label}: ${moeda(c.parsed.y)}`}}},scales:{x:{ticks:{color:'#9D8EC4'},grid:{color:'rgba(45,31,94,.5)'}},y:{ticks:{color:'#9D8EC4',callback:v=>'R$ '+v.toLocaleString('pt-BR')},grid:{color:'rgba(45,31,94,.5)'}}}}});
+  document.querySelector('#tabela-fluxo tbody').innerHTML=rows.length?rows.join(''):'<tr><td colspan="9"><div class="empty-state"><i class="bi bi-bar-chart"></i>Nenhum lançamento neste ano</div></td></tr>';
   // Previsão próximos 30 dias
   const hoje=new Date().toISOString().split('T')[0];
   const d30=new Date(); d30.setDate(d30.getDate()+30);
