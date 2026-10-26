@@ -2859,7 +2859,7 @@ async function salvarPedido() {
   // e salvarComCriadoEm usa .set() que sobrescreve o documento inteiro. Sem isso, editar um pedido apaga a nota fiscal.
   if(idx!==''){
     const orig=dados.pedidos[parseInt(idx)]||{};
-    ['nfe','melhorEnvio','semNF'].forEach(k=>{ if(orig[k]!==undefined) obj[k]=orig[k]; });
+    ['nfe','melhorEnvio','semNF','ml'].forEach(k=>{ if(orig[k]!==undefined) obj[k]=orig[k]; });
   }
   await salvarComCriadoEm('pedidos',idx,obj,dados.pedidos);
   bootstrap.Modal.getInstance(document.getElementById('modalPedido')).hide();
