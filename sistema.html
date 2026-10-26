@@ -459,6 +459,23 @@ table.gestao tbody tr:hover .tbl-sticky-r{background:#1f1545}
 
     <!-- TRÁFEGO -->
     <div class="page" id="pg-trafego">
+      <!-- Dashboard mensal: gasto x vendas reais por produto -->
+      <div class="table-card mb-3" id="tr-dash">
+        <div class="table-header" style="flex-wrap:wrap;gap:8px">
+          <h6><i class="bi bi-speedometer2 me-2" style="color:var(--cor-secundaria)"></i>Resumo Mensal: Gasto × Vendas Reais</h6>
+          <div style="display:flex;align-items:center;gap:8px"><span style="font-size:12px;color:var(--cor-texto-suave)">Mês:</span><select class="form-select form-select-sm" id="tr-dash-mes" style="width:auto" onchange="trDashMes=this.value;renderTrafegoDash()"></select></div>
+        </div>
+        <div style="padding:14px 16px 4px">
+          <div class="kpi-grid" id="tr-dash-kpis" style="margin-bottom:14px"></div>
+          <div class="row g-3">
+            <div class="col-lg-5"><div style="font-size:12px;font-weight:700;color:var(--cor-secundaria);margin-bottom:6px">Por produto no mês</div><div class="table-responsive"><table class="gestao" id="tr-dash-prod"><thead><tr><th>Produto</th><th>Gasto</th><th>Vendas</th><th>Bumps</th><th>Custo por venda</th></tr></thead><tbody></tbody></table></div></div>
+            <div class="col-lg-7"><div style="font-size:12px;font-weight:700;color:var(--cor-secundaria);margin-bottom:6px">Por campanha no mês <span style="font-weight:400;color:var(--cor-texto-suave)">(compras do Meta incluem bumps)</span></div><div class="table-responsive" style="max-height:260px;overflow-y:auto"><table class="gestao" id="tr-dash-camp"><thead><tr><th>Campanha</th><th>Produto</th><th>Gasto</th><th>Compras Meta</th><th>Custo por compra</th></tr></thead><tbody></tbody></table></div></div>
+          </div>
+          <div style="font-size:12px;font-weight:700;color:var(--cor-secundaria);margin:14px 0 6px">Mês a mês <span style="font-weight:400;color:var(--cor-texto-suave)">(clique num mês para ver o detalhe)</span></div>
+          <div class="table-responsive"><table class="gestao" id="tr-dash-meses"><thead><tr><th>Mês</th><th>Gasto</th><th>Compras Meta</th><th>Livro Físico</th><th>Kit Digital</th><th>App</th><th>Bumps</th><th>Custo por venda</th><th>Custo por compra Meta</th></tr></thead><tbody></tbody></table></div>
+          <div style="font-size:11px;color:var(--cor-texto-suave);margin:8px 0 10px;line-height:1.5">Vendas = pedidos Hotmart, Kiwify e Cakto do mês (sem cancelados/devolvidos), contando só o produto principal; itens OB contam como bump. Custo por venda = gasto nas campanhas do produto ÷ vendas do produto. O produto da campanha vem do campo Produto do registro ou do nome da campanha (App, Digital/KIT, Exterior; o resto conta como Livro Físico). Os pedidos não guardam a campanha de origem, então vendas orgânicas nesses checkouts também entram.</div>
+        </div>
+      </div>
       <!-- Filtro de período -->
       <div style="background:var(--cor-card);border:1px solid var(--cor-borda);border-radius:14px;padding:14px 20px;margin-bottom:20px;display:flex;align-items:center;gap:12px;flex-wrap:wrap">
         <span style="font-size:12px;color:var(--cor-texto-suave);white-space:nowrap;font-weight:600"><i class="bi bi-funnel me-1"></i>Período:</span>
@@ -6250,8 +6267,85 @@ async function excluirTrafego(i) {
   await db.collection('trafegodiario').doc(dados.trafegodiario[i]._docId).delete();
 }
 
+// Dashboard do topo da aba Tráfego: gasto (trafegodiario) x vendas reais (pedidos dos checkouts) por mês e produto
+let trDashMes='';
+const TR_PRODUTOS=['Livro Físico','Kit Digital','App','Exterior'];
+function trProdutoCampanha(r) {
+  const p=r.produto||'';
+  if(p==='Livro Físico'||p==='Kit Digital') return p;
+  if(/^Amazon/.test(p)) return 'Exterior';
+  const c=r.campanha||'';
+  if(/exterior|amazon/i.test(c)) return 'Exterior';
+  if(/\bapp\b/i.test(c)&&!/f[ií]sico|\blf\b|livro/i.test(c)) return 'App';
+  if(/digital|^kit\b/i.test(c)) return 'Kit Digital';
+  return 'Livro Físico';
+}
+function trProdutoSku(sku) {
+  const s=(sku||'').toUpperCase().replace(/^OB(DG)?\s*-?\s*/,'');
+  if(/^APP-/.test(s)) return 'App';
+  if(/^(DEV-MLCD|DG-)/.test(s)) return 'Kit Digital';
+  if(/^AM-/.test(s)) return 'Exterior';
+  return 'Livro Físico';
+}
+function trVendasPorMes() {
+  const meses={};
+  dados.pedidos.filter(p=>['Hotmart','Kiwify','Cakto'].includes(p.canal)&&p.status!=='Cancelado'&&p.status!=='Devolvido').forEach(p=>{
+    const ym=(p.data||'').slice(0,7); if(!ym) return;
+    const m=meses[ym]||(meses[ym]={vendas:{},bumps:{},totVendas:0,totBumps:0});
+    getPedidoItens(p).forEach(i=>{
+      const prod=trProdutoSku(i.sku), q=i.qtd||1;
+      if(/^OB/i.test((i.sku||'').trim())){ m.bumps[prod]=(m.bumps[prod]||0)+q; m.totBumps+=q; }
+      else { m.vendas[prod]=(m.vendas[prod]||0)+q; m.totVendas+=q; }
+    });
+  });
+  return meses;
+}
+function renderTrafegoDash() {
+  if(!document.getElementById('tr-dash')) return;
+  const vendas=trVendasPorMes();
+  const gasto={};
+  dados.trafegodiario.forEach(r=>{
+    const ym=(r.data||'').slice(0,7); if(!ym) return;
+    const g=gasto[ym]||(gasto[ym]={inv:0,comp:0,prod:{},camp:{}});
+    const prod=trProdutoCampanha(r), inv=r.investimento||0, comp=r.compras||0;
+    g.inv+=inv; g.comp+=comp;
+    g.prod[prod]=(g.prod[prod]||0)+inv;
+    const c=g.camp[r.campanha||'—']||(g.camp[r.campanha||'—']={inv:0,comp:0,prod});
+    c.inv+=inv; c.comp+=comp;
+  });
+  const yms=Object.keys(gasto).sort().reverse();
+  const hojeYm=new Date().toISOString().slice(0,7);
+  if(!trDashMes||!yms.includes(trDashMes)) trDashMes=yms.includes(hojeYm)?hojeYm:(yms[0]||hojeYm);
+  const nomeMes=ym=>{const [y,m]=ym.split('-').map(Number);return new Date(y,m-1,1).toLocaleDateString('pt-BR',{month:'short',year:'numeric'}).replace('.','');};
+  document.getElementById('tr-dash-mes').innerHTML=yms.map(ym=>`<option value="${ym}"${ym===trDashMes?' selected':''}>${nomeMes(ym)}</option>`).join('');
+  const div=(a,b)=>b>0?moeda(a/b):'—';
+  // custo por venda geral só conta vendas de produtos que tiveram campanha no mês
+  const vendasAnunciadas=ym=>{const g=gasto[ym],v=vendas[ym];if(!g||!v)return 0;return Object.keys(g.prod).filter(p=>g.prod[p]>0).reduce((s,p)=>s+(v.vendas[p]||0),0);};
+  const g=gasto[trDashMes]||{inv:0,comp:0,prod:{},camp:{}}, v=vendas[trDashMes]||{vendas:{},bumps:{},totVendas:0,totBumps:0};
+  const vAnun=vendasAnunciadas(trDashMes);
+  const card=(l,val,sub,cor)=>`<div class="kpi-card"><div class="kpi-label">${l}</div><div class="kpi-value" style="color:${cor}">${val}</div><div class="kpi-sub">${sub}</div></div>`;
+  document.getElementById('tr-dash-kpis').innerHTML=
+    card('💰 Gasto em campanhas',moeda(g.inv),nomeMes(trDashMes),'var(--cor-acento)')+
+    card('🛒 Vendas reais',v.totVendas,TR_PRODUTOS.filter(p=>v.vendas[p]).map(p=>`${p}: ${v.vendas[p]}`).join(' · ')||'nenhuma','var(--cor-verde)')+
+    card('➕ Bumps',v.totBumps,TR_PRODUTOS.filter(p=>v.bumps[p]).map(p=>`${p}: ${v.bumps[p]}`).join(' · ')||'nenhum','#60A5FA')+
+    card('🎯 Custo por venda',div(g.inv,vAnun),`gasto ÷ ${vAnun} venda(s) dos produtos anunciados`,'#fff')+
+    card('📊 Custo por compra (Meta)',div(g.inv,g.comp),`${g.comp} compra(s) no pixel, inclui bumps`,'var(--cor-texto-suave)');
+  document.querySelector('#tr-dash-prod tbody').innerHTML=TR_PRODUTOS.filter(p=>g.prod[p]||v.vendas[p]||v.bumps[p]).map(p=>{
+    const inv=g.prod[p]||0, n=v.vendas[p]||0;
+    return `<tr><td style="font-weight:600;color:#fff">${p}</td><td style="color:var(--cor-acento)">${moeda(inv)}</td><td style="font-weight:700">${n}</td><td>${v.bumps[p]||0}</td><td style="font-weight:700">${inv>0?div(inv,n):'<span style="color:var(--cor-texto-suave);font-weight:400">sem anúncio</span>'}</td></tr>`;
+  }).join('')||'<tr><td colspan="5" style="color:var(--cor-texto-suave)">Sem dados no mês</td></tr>';
+  const camps=Object.entries(g.camp).sort((a,b)=>b[1].inv-a[1].inv);
+  document.querySelector('#tr-dash-camp tbody').innerHTML=camps.map(([nome,c])=>`<tr><td style="max-width:260px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:#fff" title="${nome}">${nome}</td><td style="font-size:11px">${c.prod}</td><td style="color:var(--cor-acento)">${moeda(c.inv)}</td><td>${c.comp}</td><td>${div(c.inv,c.comp)}</td></tr>`).join('')||'<tr><td colspan="5" style="color:var(--cor-texto-suave)">Sem campanhas no mês</td></tr>';
+  document.querySelector('#tr-dash-meses tbody').innerHTML=yms.map(ym=>{
+    const gm=gasto[ym], vm=vendas[ym]||{vendas:{},totBumps:0};
+    const va=vendasAnunciadas(ym), sel=ym===trDashMes;
+    return `<tr style="cursor:pointer;${sel?'background:rgba(124,58,237,.15)':''}" onclick="trDashMes='${ym}';renderTrafegoDash()"><td style="font-weight:700;color:#fff;text-transform:capitalize;white-space:nowrap">${nomeMes(ym)}</td><td style="color:var(--cor-acento);font-weight:600">${moeda(gm.inv)}</td><td>${gm.comp}</td><td>${vm.vendas['Livro Físico']||0}</td><td>${vm.vendas['Kit Digital']||0}</td><td>${vm.vendas['App']||0}</td><td>${vm.totBumps||0}</td><td style="font-weight:700">${div(gm.inv,va)}</td><td style="color:var(--cor-texto-suave)">${div(gm.inv,gm.comp)}</td></tr>`;
+  }).join('')||'<tr><td colspan="9" style="color:var(--cor-texto-suave)">Nenhum registro de tráfego</td></tr>';
+}
+
 function renderTrafego() {
   if(!document.getElementById('pg-trafego').classList.contains('active')) return;
+  renderTrafegoDash();
   if(!trFiltro.de) _initTrFiltro();
   const {de, ate} = trFiltro;
   const _prodFiltro = (document.getElementById('tr-filtro-produto')||{}).value||'';
