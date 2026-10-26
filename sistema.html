@@ -402,11 +402,12 @@ table.gestao tbody tr:hover .tbl-sticky-r{background:#1f1545}
     <div class="page" id="pg-envios">
       <div class="kpi-grid" id="envios-kpis"></div>
       <div class="table-card mb-3">
-        <div class="table-header"><h6><i class="bi bi-box-arrow-up-right me-2" style="color:#EF4444"></i>Enviar hoje <small style="font-weight:500;color:var(--cor-texto-suave);font-size:11px">(atrasados, data de hoje e pedidos sem data programada)</small></h6></div>
+        <div class="table-header"><h6><i class="bi bi-box-arrow-up-right me-2" style="color:#EF4444"></i>Envios de hoje <span id="envios-hoje-data" style="font-weight:600;color:var(--cor-secundaria)"></span> <small style="font-weight:500;color:var(--cor-texto-suave);font-size:11px">(tudo que precisa ser postado hoje: data de hoje, atrasados e pedidos sem data programada)</small></h6></div>
         <div class="table-responsive"><table class="gestao" id="tabela-envios-hoje"><thead><tr><th>Enviar até</th><th>Prazo</th><th>Pedido</th><th>Venda</th><th>Cliente</th><th>Canal</th><th>Produtos</th><th>NF</th><th>Estoque</th><th>Ações</th></tr></thead><tbody></tbody></table></div>
       </div>
       <div class="table-card">
-        <div class="table-header"><h6><i class="bi bi-calendar-event me-2" style="color:#3B82F6"></i>Programados <small style="font-weight:500;color:var(--cor-texto-suave);font-size:11px">(ex.: Mercado Livre com despacho agendado; aparecem em "Enviar hoje" no dia)</small></h6></div>
+        <div class="table-header"><h6><i class="bi bi-calendar-event me-2" style="color:#3B82F6"></i>Envios programados <small style="font-weight:500;color:var(--cor-texto-suave);font-size:11px">(do mais próximo pro mais distante; no dia, o pedido passa pra "Envios de hoje")</small></h6></div>
+        <div id="envios-prog-guardar" style="padding:0 16px 10px;font-size:12px;color:var(--cor-texto-suave)"></div>
         <div class="table-responsive"><table class="gestao" id="tabela-envios-prog"><thead><tr><th>Enviar até</th><th>Prazo</th><th>Pedido</th><th>Venda</th><th>Cliente</th><th>Canal</th><th>Produtos</th><th>NF</th><th>Estoque</th><th>Ações</th></tr></thead><tbody></tbody></table></div>
       </div>
     </div>
@@ -4690,13 +4691,19 @@ function renderEnvios() {
   const hoje=lista.filter(x=>x.dias===null||x.dias<=0), prog=lista.filter(x=>x.dias!==null&&x.dias>0);
   const atrasados=lista.filter(x=>x.dias!==null&&x.dias<0).length, falta=lista.filter(x=>x.falta).length;
   document.getElementById('envios-kpis').innerHTML=`
-    <div class="kpi-card"><div class="kpi-label">Enviar hoje</div><div class="kpi-value" style="color:${hoje.length?'#F59E0B':'inherit'}">${hoje.length}</div><div class="kpi-sub">inclui atrasados e sem data</div></div>
+    <div class="kpi-card"><div class="kpi-label">Envios de hoje</div><div class="kpi-value" style="color:${hoje.length?'#F59E0B':'inherit'}">${hoje.length}</div><div class="kpi-sub">inclui atrasados e sem data</div></div>
     <div class="kpi-card"><div class="kpi-label">Atrasados</div><div class="kpi-value" style="color:${atrasados?'#EF4444':'inherit'}">${atrasados}</div><div class="kpi-sub">passou da data de envio</div></div>
     <div class="kpi-card"><div class="kpi-label">Programados</div><div class="kpi-value">${prog.length}</div><div class="kpi-sub">com data futura</div></div>
     <div class="kpi-card"><div class="kpi-label">Sem produto</div><div class="kpi-value" style="color:${falta?'#EF4444':'inherit'}">${falta}</div><div class="kpi-sub">estoque não cobre o pedido</div></div>`;
   const vazio=msg=>`<tr><td colspan="10"><div class="empty-state"><i class="bi bi-truck"></i>${msg}</div></td></tr>`;
   document.querySelector('#tabela-envios-hoje tbody').innerHTML=hoje.length?hoje.map(_linhaEnvio).join(''):vazio('Nada pra enviar hoje');
   document.querySelector('#tabela-envios-prog tbody').innerHTML=prog.length?prog.map(_linhaEnvio).join(''):vazio('Nenhum envio programado');
+  document.getElementById('envios-hoje-data').textContent='· '+fmtData(_hojeLocalISO());
+  // Quantas unidades de cada produto precisam ficar guardadas para os programados
+  const guardar={};
+  prog.forEach(x=>x.itens.forEach(it=>{const k=it.desc||it.sku||'?';guardar[k]=(guardar[k]||0)+(it.qtd||0);}));
+  const g=Object.entries(guardar);
+  document.getElementById('envios-prog-guardar').innerHTML=g.length?`<i class="bi bi-lock-fill me-1" style="color:#F59E0B"></i>Manter guardado no estoque: ${g.map(([k,q])=>`<b style="color:var(--cor-texto)">${q}× ${escHtml(k)}</b>`).join(' · ')}`:'';
 }
 function atualizarBadgeEnvios() {
   const el=document.getElementById('badge-envios'); if(!el) return;
