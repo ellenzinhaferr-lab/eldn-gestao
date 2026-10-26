@@ -236,6 +236,7 @@ table.gestao tbody tr:hover .tbl-sticky-r{background:#1f1545}
         <span id="dash-periodo-label" style="font-size:12px;color:var(--cor-secundaria);font-weight:600"></span>
       </div>
       <div id="dash-abas-mes" style="display:flex;gap:4px;align-items:flex-end;overflow-x:auto;border-bottom:2px solid var(--cor-borda);margin-bottom:16px"></div>
+      <div id="dash-alerta-envios"></div>
       <div class="kpi-grid" id="kpi-container"></div>
       <div class="row g-3 mb-3">
         <div class="col-lg-6"><div class="chart-card"><h6 id="dash-titulo-mensal"><i class="bi bi-bar-chart-fill me-2" style="color:var(--cor-secundaria)"></i>Receita por Mês (R$)</h6><canvas id="chartReceita" height="110"></canvas></div></div>
@@ -398,9 +399,13 @@ table.gestao tbody tr:hover .tbl-sticky-r{background:#1f1545}
 
     <!-- ESTOQUE -->
     <div class="page" id="pg-estoque">
+      <div class="table-card mb-3">
+        <div class="table-header"><h6><i class="bi bi-truck me-2" style="color:var(--cor-acento)"></i>Envios Programados <small style="font-weight:500;color:var(--cor-texto-suave);font-size:11px">(pedidos Pendente / Em separação: o produto fica reservado até virar Enviado)</small></h6></div>
+        <div class="table-responsive"><table class="gestao" id="tabela-envios-prog"><thead><tr><th>Enviar até</th><th>Prazo</th><th>Pedido</th><th>Cliente</th><th>Canal</th><th>Produtos</th><th>Estoque</th><th></th></tr></thead><tbody></tbody></table></div>
+      </div>
       <div class="table-card">
         <div class="table-header"><h6><i class="bi bi-archive me-2" style="color:var(--cor-acento)"></i>Saldo em Estoque</h6></div>
-        <div class="table-responsive"><table class="gestao" id="tabela-estoque"><thead><tr><th class="th-sort" data-col="sku" onclick="sortBy('estoque','sku',renderEstoque)">SKU</th><th class="th-sort" data-col="nome" onclick="sortBy('estoque','nome',renderEstoque)">Produto</th><th class="th-sort" data-col="entradas" onclick="sortBy('estoque','entradas',renderEstoque)" title="Entradas registradas na aba Estoque">+ Entradas</th><th class="th-sort" data-col="vendido" onclick="sortBy('estoque','vendido',renderEstoque)">− Vendas</th><th>Devoluções</th><th class="th-sort" data-col="saldo" onclick="sortBy('estoque','saldo',renderEstoque)">Saldo Atual</th><th class="th-sort" data-col="status" onclick="sortBy('estoque','status',renderEstoque)">Status</th></tr></thead><tbody></tbody></table></div>
+        <div class="table-responsive"><table class="gestao" id="tabela-estoque"><thead><tr><th class="th-sort" data-col="sku" onclick="sortBy('estoque','sku',renderEstoque)">SKU</th><th class="th-sort" data-col="nome" onclick="sortBy('estoque','nome',renderEstoque)">Produto</th><th class="th-sort" data-col="entradas" onclick="sortBy('estoque','entradas',renderEstoque)" title="Entradas registradas na aba Estoque">+ Entradas</th><th class="th-sort" data-col="vendido" onclick="sortBy('estoque','vendido',renderEstoque)">− Vendas</th><th>Devoluções</th><th class="th-sort" data-col="fisico" onclick="sortBy('estoque','fisico',renderEstoque)" title="O que deve estar fisicamente com você: livre + reservado">Na prateleira</th><th class="th-sort" data-col="reservado" onclick="sortBy('estoque','reservado',renderEstoque)" title="Vendido e ainda não postado (Pendente / Em separação)">Reservado</th><th class="th-sort" data-col="saldo" onclick="sortBy('estoque','saldo',renderEstoque)" title="Pode vender sem faltar para os pedidos já feitos">Livre p/ vender</th><th class="th-sort" data-col="status" onclick="sortBy('estoque','status',renderEstoque)">Status</th></tr></thead><tbody></tbody></table></div>
       </div>
       <div class="table-card mt-3">
         <div class="table-header">
@@ -856,9 +861,10 @@ table.gestao tbody tr:hover .tbl-sticky-r{background:#1f1545}
     <!-- ENTREGA -->
     <div style="border-top:1px solid var(--cor-borda);padding-top:10px;margin-bottom:12px"><small style="color:var(--cor-secundaria);font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:1.2px"><i class="bi bi-truck me-1"></i>Entrega</small></div>
     <div class="row g-3">
-      <div class="col-md-4"><label class="form-label">Status</label><select class="form-select" id="p-status"><option>Pendente</option><option>Em separação</option><option>Enviado</option><option>Entregue</option><option>Cancelado</option><option>Devolvido</option></select></div>
-      <div class="col-md-5"><label class="form-label">Código de Rastreio</label><input class="form-control" id="p-rastreio" placeholder="Ex: BR123456789BR"></div>
-      <div class="col-md-3 d-flex align-items-end"><button type="button" class="btn btn-outline-info w-100" onclick="consultarRastreioModal()"><i class="bi bi-search me-1"></i>Consultar</button></div>
+      <div class="col-md-3"><label class="form-label">Status</label><select class="form-select" id="p-status"><option>Pendente</option><option>Em separação</option><option>Enviado</option><option>Entregue</option><option>Cancelado</option><option>Devolvido</option></select></div>
+      <div class="col-md-3"><label class="form-label">Enviar até</label><input class="form-control" id="p-data-envio" type="date" title="Data limite de postagem (ex.: Mercado Livre agenda o despacho). O estoque fica reservado até o pedido virar Enviado."></div>
+      <div class="col-md-4"><label class="form-label">Código de Rastreio</label><input class="form-control" id="p-rastreio" placeholder="Ex: BR123456789BR"></div>
+      <div class="col-md-2 d-flex align-items-end"><button type="button" class="btn btn-outline-info w-100" onclick="consultarRastreioModal()"><i class="bi bi-search me-1"></i>Consultar</button></div>
       <div class="col-12"><label class="form-label">Link de Rastreio <small style="color:var(--cor-texto-suave)">(opcional — gerado automaticamente pelo Melhor Envio)</small></label><input class="form-control" id="p-link-rastreio" type="url" placeholder="https://melhorenvio.com.br/rastreio/..."></div>
       <div class="col-12" id="resultado-rastreio-modal" style="display:none"></div>
       <div class="col-12"><label class="form-label">Observações</label><textarea class="form-control" id="p-obs" rows="2"></textarea></div>
@@ -2223,6 +2229,7 @@ function renderAbasMesDash() {
 function renderDashboard() {
   if(!dashFiltro.de) _initDashFiltro();
   renderAbasMesDash();
+  renderAlertaEnviosDash();
 
   const de=dashFiltro.de, ate=dashFiltro.ate;
   document.getElementById('dash-de').value=de;
@@ -2623,6 +2630,7 @@ function preencherSelectsPedido() {
   document.getElementById('resultado-rastreio-modal').innerHTML='';
   document.getElementById('p-obs').value='';
   document.getElementById('p-status').value='Pendente';
+  document.getElementById('p-data-envio').value='';
   _itemCount=0;
   document.getElementById('itens-body').innerHTML='';
   adicionarItem();
@@ -2809,6 +2817,7 @@ function editarPedido(i) {
   if(p.pagto) document.getElementById('p-pagto').value=p.pagto;
   document.getElementById('p-liquido').value=p.liquido!=null?p.liquido.toFixed(2):'';
   document.getElementById('p-status').value=p.status;
+  document.getElementById('p-data-envio').value=p.dataEnvio||'';
   document.getElementById('p-rastreio').value=p.rastreio||'';
   document.getElementById('p-link-rastreio').value=p.linkRastreio||'';
   document.getElementById('resultado-rastreio-modal').style.display='none';
@@ -2835,7 +2844,7 @@ async function salvarPedido() {
   const dataRecebimento=calcDataRecebimento(v('p-data'),v('p-canal'),v('p-pagto'));
   const existingRec=idx!==''?dados.pedidos[parseInt(idx)]?.statusRecebimento:null;
   const statusRecebimento=existingRec==='Recebido'?'Recebido':(getPrazoRecebimento(v('p-canal'),v('p-pagto'))>0?'A receber':'Recebido');
-  const obj={data:v('p-data'),num,canal:v('p-canal'),clienteId:parseInt(v('p-cliente'))||null,endereco:v('p-endereco'),itens,frete:parseFloat((v('p-frete')||'0').replace(',','.'))||0,freteVendedor:parseFloat((v('p-frete-vendedor')||'0').replace(',','.'))||0,pagto:v('p-pagto'),liquido:parseFloat((v('p-liquido')||'0').replace(',','.'))||0,status:statusSalvo,dataRecebimento,statusRecebimento,rastreio:v('p-rastreio'),linkRastreio:v('p-link-rastreio'),obs:v('p-obs')};
+  const obj={data:v('p-data'),num,canal:v('p-canal'),clienteId:parseInt(v('p-cliente'))||null,endereco:v('p-endereco'),itens,frete:parseFloat((v('p-frete')||'0').replace(',','.'))||0,freteVendedor:parseFloat((v('p-frete-vendedor')||'0').replace(',','.'))||0,pagto:v('p-pagto'),liquido:parseFloat((v('p-liquido')||'0').replace(',','.'))||0,status:statusSalvo,dataEnvio:v('p-data-envio')||'',dataRecebimento,statusRecebimento,rastreio:v('p-rastreio'),linkRastreio:v('p-link-rastreio'),obs:v('p-obs')};
   // Preserva campos preenchidos por fluxos separados (NF-e, Melhor Envio) — o formulário de edição não os carrega,
   // e salvarComCriadoEm usa .set() que sobrescreve o documento inteiro. Sem isso, editar um pedido apaga a nota fiscal.
   if(idx!==''){
@@ -4597,9 +4606,12 @@ function getProdutoBaseEstoque(p) {
   const base=dados.produtos.find(x=>x.sku===p.estoqueDe&&!x.digital);
   return base||null;
 }
+const STATUS_A_ENVIAR=['Pendente','Em separação'];
 function calcEstoque() {
   const ativos=dados.pedidos.filter(pd=>pd.status!=='Cancelado'&&pd.status!=='Devolvido');
   const devolvidos=dados.pedidos.filter(pd=>pd.status==='Devolvido');
+  // vendidos mas ainda não postados: o livro tem que estar na prateleira até a data de envio
+  const aEnviar=dados.pedidos.filter(pd=>STATUS_A_ENVIAR.includes(pd.status));
   const qtdSku=(peds,sku)=>peds.reduce((s,pd)=>s+getPedidoItens(pd).filter(it=>it.sku===sku).reduce((a,it)=>a+it.qtd,0),0);
   const movSku=sku=>dados.estoqueMovimentos.filter(m=>m.sku===sku).reduce((s,m)=>s+(m.qtd||0),0);
   const proprio={};
@@ -4607,9 +4619,10 @@ function calcEstoque() {
   dados.produtos.forEach(p=>{
     if(p.digital||getProdutoBaseEstoque(p)) return;
     const ligados=dados.produtos.filter(x=>!x.digital&&x.estoqueDe===p.sku);
-    let entradas=movSku(p.sku), vendido=qtdSku(ativos,p.sku), devolvido=qtdSku(devolvidos,p.sku);
-    ligados.forEach(l=>{const q=l.estoqueQtd||1;entradas+=movSku(l.sku)*q;vendido+=qtdSku(ativos,l.sku)*q;devolvido+=qtdSku(devolvidos,l.sku)*q;});
-    proprio[p.sku]={sku:p.sku,nome:p.nome,min:p.estMin||0,entradas,vendido,devolvido,saldo:entradas-vendido+devolvido,ligados:ligados.map(l=>l.nome)};
+    let entradas=movSku(p.sku), vendido=qtdSku(ativos,p.sku), devolvido=qtdSku(devolvidos,p.sku), reservado=qtdSku(aEnviar,p.sku);
+    ligados.forEach(l=>{const q=l.estoqueQtd||1;entradas+=movSku(l.sku)*q;vendido+=qtdSku(ativos,l.sku)*q;devolvido+=qtdSku(devolvidos,l.sku)*q;reservado+=qtdSku(aEnviar,l.sku)*q;});
+    const saldo=entradas-vendido+devolvido;
+    proprio[p.sku]={sku:p.sku,nome:p.nome,min:p.estMin||0,entradas,vendido,devolvido,saldo,reservado,fisico:saldo+reservado,ligados:ligados.map(l=>l.nome)};
   });
   return dados.produtos.map(p=>{
     if(p.digital) return {sku:p.sku,nome:p.nome,min:0,entradas:0,vendido:0,devolvido:0,saldo:Infinity,digital:true};
@@ -4618,25 +4631,63 @@ function calcEstoque() {
     // 2) produtos ligados: mostram as próprias vendas e quantas unidades ainda dá pra vender com o estoque do principal
     const b=proprio[base.sku], q=p.estoqueQtd||1;
     return {sku:p.sku,nome:p.nome,min:Math.ceil((b.min||0)/q),entradas:0,vendido:qtdSku(ativos,p.sku),devolvido:qtdSku(devolvidos,p.sku),
-      saldo:Math.floor(b.saldo/q),compartilhado:true,baseNome:base.nome,baseSku:base.sku,baseSaldo:b.saldo,qtdPorVenda:q};
+      reservado:qtdSku(aEnviar,p.sku),saldo:Math.floor(b.saldo/q),compartilhado:true,baseNome:base.nome,baseSku:base.sku,baseSaldo:b.saldo,qtdPorVenda:q};
   });
 }
 function renderEstoque() {
   const s=sortState.estoque;
   const lista=calcEstoque().sort((a,b)=>{
     let va,vb;
-    if(['min','entradas','vendido','devolvido','saldo'].includes(s.col)){va=a[s.col]||0;vb=b[s.col]||0;}
+    if(['min','entradas','vendido','devolvido','saldo','reservado','fisico'].includes(s.col)){va=a[s.col]||0;vb=b[s.col]||0;}
     else if(s.col==='status'){va=a.saldo<=0?0:a.saldo<=a.min?1:2;vb=b.saldo<=0?0:b.saldo<=b.min?1:2;}
     else{va=(a[s.col]||'').toString().toLowerCase();vb=(b[s.col]||'').toString().toLowerCase();}
     return compararSort(va,vb,s.dir);
   });
-  document.querySelector('#tabela-estoque tbody').innerHTML=lista.length?lista.map(e=>{let status,cor,saldoTxt;if(e.digital){status='♾ Digital';cor='status-ok';saldoTxt='∞';}else if(e.saldo<=0){status='🔴 Zerado';cor='status-critico';saldoTxt=e.saldo;}else if(e.saldo<=e.min){status='🟡 Baixo';cor='status-alerta';saldoTxt=e.saldo;}else{status='🟢 OK';cor='status-ok';saldoTxt=e.saldo;}
+  document.querySelector('#tabela-estoque tbody').innerHTML=lista.length?lista.map(e=>{let status,cor,saldoTxt;if(e.digital){status='♾ Digital';cor='status-ok';saldoTxt='∞';}else if(e.saldo<0&&(e.reservado||0)>0){status='🔴 Falta p/ pedidos';cor='status-critico';saldoTxt=e.saldo;}else if(e.saldo<=0){status='🔴 Zerado';cor='status-critico';saldoTxt=e.saldo;}else if(e.saldo<=e.min){status='🟡 Baixo';cor='status-alerta';saldoTxt=e.saldo;}else{status='🟢 OK';cor='status-ok';saldoTxt=e.saldo;}
     const sub=e.compartilhado?`<div style="font-size:11px;font-weight:500;color:var(--cor-texto-suave)"><i class="bi bi-link-45deg"></i> sai do estoque de <b>${e.baseNome}</b>${e.qtdPorVenda>1?` (${e.qtdPorVenda} un. por venda)`:''}</div>`:(e.ligados&&e.ligados.length?`<div style="font-size:11px;font-weight:500;color:var(--cor-texto-suave)"><i class="bi bi-diagram-3"></i> estoque principal — inclui vendas de: ${e.ligados.join(', ')}</div>`:'');
     const entradasTxt=e.digital?'—':e.compartilhado?'<span style="color:var(--cor-texto-suave);font-weight:400">no principal</span>':'+'+e.entradas;
     if(e.compartilhado) saldoTxt=`${e.saldo}<div style="font-size:10px;font-weight:500;color:var(--cor-texto-suave)">vendas possíveis</div>`;
-    return `<tr${e.compartilhado?' style="opacity:.85"':''}><td style="font-family:monospace;color:var(--cor-secundaria);font-size:12px">${e.sku}</td><td style="font-weight:600;color:#fff">${e.nome}${sub}</td><td style="text-align:center;color:#3B82F6;font-weight:600">${entradasTxt}</td><td style="text-align:center;color:#EF4444;font-weight:600">${e.digital?'—':'−'+e.vendido}</td><td style="text-align:center;color:var(--cor-texto-suave)">${e.digital?'—':(e.devolvido>0?'↩'+e.devolvido:'—')}</td><td style="font-weight:700;font-size:16px;text-align:center" class="${cor}">${saldoTxt}</td><td class="${cor}" style="font-weight:600">${status}</td></tr>`;}).join(''):'<tr><td colspan="7"><div class="empty-state"><i class="bi bi-archive"></i>Nenhum produto</div></td></tr>';
+    return `<tr${e.compartilhado?' style="opacity:.85"':''}><td style="font-family:monospace;color:var(--cor-secundaria);font-size:12px">${e.sku}</td><td style="font-weight:600;color:#fff">${e.nome}${sub}</td><td style="text-align:center;color:#3B82F6;font-weight:600">${entradasTxt}</td><td style="text-align:center;color:#EF4444;font-weight:600">${e.digital?'—':'−'+e.vendido}</td><td style="text-align:center;color:var(--cor-texto-suave)">${e.digital?'—':(e.devolvido>0?'↩'+e.devolvido:'—')}</td><td style="text-align:center;font-weight:600">${e.digital||e.compartilhado?'—':e.fisico}</td><td style="text-align:center;font-weight:600;color:#F59E0B">${e.digital?'—':(e.reservado>0?e.reservado:'—')}</td><td style="font-weight:700;font-size:16px;text-align:center" class="${cor}">${saldoTxt}</td><td class="${cor}" style="font-weight:600">${status}</td></tr>`;}).join(''):'<tr><td colspan="9"><div class="empty-state"><i class="bi bi-archive"></i>Nenhum produto</div></td></tr>';
   atualizarThSort('estoque',s.col,s.dir);
+  renderEnviosProgramados();
   renderMovimentosEstoque();
+}
+function _hojeLocalISO(){ const d=new Date(); return new Date(d.getTime()-d.getTimezoneOffset()*60000).toISOString().slice(0,10); }
+// Pedidos físicos ainda não postados, ordenados pela data limite de envio (sem data por último)
+function getEnviosProgramados() {
+  const est=calcEstoque();
+  const hoje=_hojeLocalISO();
+  return dados.pedidos.map((p,i)=>({p,i})).filter(({p})=>STATUS_A_ENVIAR.includes(p.status)).map(({p,i})=>{
+    const itens=getPedidoItens(p).filter(it=>{const pr=dados.produtos.find(x=>x.sku===it.sku);return !(pr&&pr.digital);});
+    if(!itens.length) return null;
+    const falta=itens.some(it=>{const e=est.find(x=>x&&x.sku===it.sku);if(!e||e.digital) return false;return (e.compartilhado?e.baseSaldo:e.saldo)<0;});
+    const dias=p.dataEnvio?Math.round((new Date(p.dataEnvio+'T12:00:00')-new Date(hoje+'T12:00:00'))/86400000):null;
+    return {p,i,itens,falta,dias};
+  }).filter(Boolean).sort((a,b)=>(a.p.dataEnvio||'9999').localeCompare(b.p.dataEnvio||'9999'));
+}
+function _prazoEnvioBadge(dias){
+  if(dias===null) return '<span style="color:var(--cor-texto-suave)">sem data</span>';
+  if(dias<0) return `<span style="color:#EF4444;font-weight:700">⚠ atrasado ${-dias}d</span>`;
+  if(dias===0) return '<span style="color:#EF4444;font-weight:700">HOJE</span>';
+  if(dias===1) return '<span style="color:#F59E0B;font-weight:700">amanhã</span>';
+  return `<span style="color:#3B82F6;font-weight:600">em ${dias} dias</span>`;
+}
+function renderEnviosProgramados() {
+  const tb=document.querySelector('#tabela-envios-prog tbody'); if(!tb) return;
+  const lista=getEnviosProgramados();
+  tb.innerHTML=lista.length?lista.map(({p,i,itens,falta,dias})=>`<tr><td>${p.dataEnvio?fmtData(p.dataEnvio):'—'}</td><td>${_prazoEnvioBadge(dias)}</td><td style="font-weight:600">${escHtml(p.num||'')}</td><td>${escHtml(nomeCliente(p.clienteId)||'—')}</td><td>${badgeCanal(p.canal)}</td><td style="font-size:12px">${itens.map(it=>`${it.qtd}× ${escHtml(it.desc||it.sku||'')}`).join('<br>')}</td><td style="font-weight:600">${falta?'<span style="color:#EF4444">🔴 falta produto</span>':'<span style="color:#10B981">🟢 reservado</span>'}</td><td><button class="btn-sm-action" style="color:#60A5FA" onclick="verPedido(${i})" title="Ver pedido"><i class="bi bi-eye-fill"></i></button></td></tr>`).join(''):'<tr><td colspan="8"><div class="empty-state"><i class="bi bi-truck"></i>Nenhum pedido aguardando envio</div></td></tr>';
+}
+// Aviso no Dashboard: envios atrasados, de hoje/amanhã ou sem produto
+function renderAlertaEnviosDash() {
+  const el=document.getElementById('dash-alerta-envios'); if(!el) return;
+  const lista=getEnviosProgramados();
+  const atrasados=lista.filter(x=>x.dias!==null&&x.dias<0).length, proximos=lista.filter(x=>x.dias===0||x.dias===1).length, falta=lista.filter(x=>x.falta).length;
+  if(!atrasados&&!proximos&&!falta){ el.innerHTML=''; return; }
+  const partes=[];
+  if(atrasados) partes.push(`<b style="color:#EF4444">${atrasados} atrasado(s)</b>`);
+  if(proximos) partes.push(`<b style="color:#F59E0B">${proximos} pra enviar hoje/amanhã</b>`);
+  if(falta) partes.push(`<b style="color:#EF4444">${falta} sem produto no estoque</b>`);
+  el.innerHTML=`<div style="background:rgba(245,158,11,.08);border:1px solid rgba(245,158,11,.35);border-radius:12px;padding:12px 16px;margin-bottom:16px;display:flex;align-items:center;gap:12px;flex-wrap:wrap"><i class="bi bi-truck" style="font-size:20px;color:#F59E0B"></i><span style="font-size:13px">Envios: ${partes.join(' · ')}</span><button class="btn btn-sm btn-outline-warning ms-auto" onclick="showPage('estoque')">Ver envios programados</button></div>`;
 }
 function renderMovimentosEstoque() {
   const s=sortState.estoqueMovimentos;
