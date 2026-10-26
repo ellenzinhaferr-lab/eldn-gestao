@@ -1557,6 +1557,7 @@ function isPedidoDigital(p) { const itens=getPedidoItens(p); if(!itens.length) r
 function badgeTipoPedido(p) { const d=isPedidoDigital(p); return d?`<span class="badge-canal badge-digital"><i class="bi bi-file-earmark-fill me-1"></i>Digital</span>`:`<span class="badge-canal badge-livro"><i class="bi bi-box-seam-fill me-1"></i>Físico</span>`; }
 function badgeNF(p) {
   if(isPedidoDigital(p)) return '<span style="color:var(--cor-texto-suave);font-size:11px">—</span>';
+  if(!p.nfe&&p.semNF) return '<span style="color:#0DCAF0;font-size:11px;font-weight:600">⊘ Sem NF</span>';
   if(!p.nfe) return '<span style="color:var(--cor-texto-suave);font-size:11px">Não emitida</span>';
   const m={autorizado:['#10B981','✅ Nº '+(p.nfe.numero||'?')+'/'+(p.nfe.serie||'?')],cancelado:['#9D8EC4','🚫 Cancelada (Nº '+(p.nfe.numero||'?')+')'],erro_autorizacao:['#EF4444','❌ Erro'],rejeitado:['#EF4444','❌ Erro'],processando_autorizacao:['#F59E0B','⏳ Processando']};
   const [cor,label]=m[p.nfe.status]||['#F59E0B',p.nfe.status||'—'];
@@ -2825,7 +2826,7 @@ async function salvarPedido() {
   // e salvarComCriadoEm usa .set() que sobrescreve o documento inteiro. Sem isso, editar um pedido apaga a nota fiscal.
   if(idx!==''){
     const orig=dados.pedidos[parseInt(idx)]||{};
-    ['nfe','melhorEnvio'].forEach(k=>{ if(orig[k]!==undefined) obj[k]=orig[k]; });
+    ['nfe','melhorEnvio','semNF'].forEach(k=>{ if(orig[k]!==undefined) obj[k]=orig[k]; });
   }
   await salvarComCriadoEm('pedidos',idx,obj,dados.pedidos);
   bootstrap.Modal.getInstance(document.getElementById('modalPedido')).hide();
@@ -3096,7 +3097,7 @@ async function abrirModalLoteEtiquetas() {
       <input type="checkbox" class="form-check-input lote-etiqueta-check" value="${i}" data-preco="${c.preco}" checked style="margin:0" onchange="atualizarTotalLote()">
       <div style="flex:1">
         <strong style="color:#fff">${escHtml(p.num)}</strong> — ${escHtml(nomeCliente(p.clienteId))}
-        <div style="font-size:12px;color:var(--cor-texto-suave)">${escHtml(c.transportadora)} — ${escHtml(c.servico)} · ${moeda(c.preco)} · ${temNfe?'<span style="color:var(--cor-verde)">NF-e será anexada</span>':'<span style="color:#F59E0B">sem NF-e — vai com Declaração de Conteúdo</span>'}</div>
+        <div style="font-size:12px;color:var(--cor-texto-suave)">${escHtml(c.transportadora)} — ${escHtml(c.servico)} · ${moeda(c.preco)} · ${temNfe?'<span style="color:var(--cor-verde)">NF-e será anexada</span>':(p.semNF?'<span style="color:#0DCAF0">marcado Sem NF — vai com Declaração de Conteúdo</span>':'<span style="color:#F59E0B">sem NF-e — vai com Declaração de Conteúdo</span>')}</div>
       </div>
     </div>`;
   }).join(''):'<div class="empty-state"><i class="bi bi-inbox"></i>Nenhum pedido com frete escolhido aguardando etiqueta.</div>';
@@ -3132,7 +3133,7 @@ async function gerarEtiquetasLote() {
   const checks=[...document.querySelectorAll('.lote-etiqueta-check:checked')].map(c=>parseInt(c.value));
   if(!checks.length) return alert('Selecione ao menos um pedido.');
   const resultadoDiv=document.getElementById('lote-etiquetas-resultado');
-  const semNfe=checks.filter(i=>{const p=dados.pedidos[i];return !(p.nfe&&p.nfe.status==='autorizado');});
+  const semNfe=checks.filter(i=>{const p=dados.pedidos[i];return !p.semNF&&!(p.nfe&&p.nfe.status==='autorizado');});
   if(semNfe.length && !confirm(`${semNfe.length} pedido(s) selecionado(s) não têm NF-e emitida e vão sair com Declaração de Conteúdo em vez da Nota Fiscal. Continuar mesmo assim?`)) return;
   const totalLote=checks.reduce((s,i)=>s+(dados.pedidos[i].melhorEnvio?.cotacaoEscolhida?.preco||0),0);
   const msgConfirm=`Confirma a compra do frete e geração de ${checks.length} etiqueta(s), somando ${moeda(totalLote)}? Isso vai debitar saldo da sua carteira Melhor Envio (ambiente ${ME_AMBIENTE_ATUAL==='producao'?'PRODUÇÃO — saldo real':'Sandbox — saldo fictício'}).`;
@@ -3298,9 +3299,23 @@ function podeEmitirNFe(p) {
 }
 function renderBotaoEmitirNFe(p,i) {
   if(podeEmitirNFe(p)) {
-    return `<button class="btn ${NFE_AMBIENTE_ATUAL==='producao'?'btn-danger':'btn-outline-warning'} btn-sm" onclick="emitirNFe(${i})"><i class="bi bi-receipt me-1"></i>Emitir NF-e ${NFE_AMBIENTE_ATUAL==='producao'?'(REAL)':'(Homologação/Teste)'}</button>`;
+    // Pedido marcado "Sem NF": emissão bloqueada até desmarcar, pra não emitir por engano
+    const btnSemNF=p.semNF
+      ?`<button class="btn btn-info btn-sm" onclick="alternarSemNF(${i})" title="Clique para desmarcar"><i class="bi bi-slash-circle me-1"></i>Sem NF (marcado)</button>`
+      :`<button class="btn btn-outline-info btn-sm" onclick="alternarSemNF(${i})" title="Marcar este pedido como sem Nota Fiscal"><i class="bi bi-slash-circle me-1"></i>Sem NF</button>`;
+    const btnEmitir=`<button class="btn ${NFE_AMBIENTE_ATUAL==='producao'?'btn-danger':'btn-outline-warning'} btn-sm" onclick="emitirNFe(${i})"${p.semNF?' disabled title="Pedido marcado como Sem NF — desmarque para emitir"':''}><i class="bi bi-receipt me-1"></i>Emitir NF-e ${NFE_AMBIENTE_ATUAL==='producao'?'(REAL)':'(Homologação/Teste)'}</button>`;
+    return `<div style="display:flex;gap:8px;flex-wrap:wrap">${btnEmitir}${btnSemNF}</div>`;
   }
   return `<button class="btn btn-outline-secondary btn-sm" disabled title="Nota já emitida — cancele a nota atual pra poder emitir outra"><i class="bi bi-check-circle me-1"></i>NF-e já emitida</button>`;
+}
+async function alternarSemNF(i) {
+  const p=dados.pedidos[i];
+  const semNF=!p.semNF;
+  await db.collection('pedidos').doc(p._docId).update({semNF});
+  dados.pedidos[i].semNF=semNF;
+  const btnArea=document.getElementById('nfe-btn-'+i);
+  if(btnArea) btnArea.innerHTML=renderBotaoEmitirNFe(dados.pedidos[i],i);
+  if(currentPage==='pedidos') renderPedidos();
 }
 function renderStatusNFe(p,i) {
   if(!p.nfe) return '';
