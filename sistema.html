@@ -274,7 +274,7 @@ table.gestao tbody tr:hover .tbl-sticky-r{background:#1f1545}
       <div id="ped-abas-mes" style="display:flex;gap:4px;align-items:flex-end;overflow-x:auto;border-bottom:2px solid var(--cor-borda);margin-bottom:16px;padding-bottom:0"></div>
       <div class="table-card">
         <div class="table-header"><h6>Pedidos Diários</h6><div style="display:flex;gap:8px;"><input type="text" class="input-search" placeholder="Buscar pedido..." oninput="filtrarTabela('tabela-pedidos',this.value)"><button class="btn btn-outline-warning btn-sm" onclick="abrirModalLoteEtiquetas()"><i class="bi bi-tags me-1"></i>Etiquetas em Lote</button><button class="btn btn-outline-success btn-sm" onclick="abrirModalRecebimento()"><i class="bi bi-cash-coin me-1"></i>Receber</button><button class="btn btn-primary btn-sm" onclick="abrirModal('pedido')"><i class="bi bi-plus-lg"></i> Novo</button></div></div>
-        <div class="table-responsive"><table class="gestao" id="tabela-pedidos"><thead><tr><th class="th-sort" data-col="data" onclick="sortBy('pedidos','data',renderPedidos)">Data</th><th class="th-sort" data-col="num" onclick="sortBy('pedidos','num',renderPedidos)">Nº Pedido</th><th class="th-sort" data-col="cliente" onclick="sortBy('pedidos','cliente',renderPedidos)">Cliente</th><th class="th-sort" data-col="valor" onclick="sortBy('pedidos','valor',renderPedidos)">Total</th><th>Tipo</th><th class="th-sort" data-col="canal" onclick="sortBy('pedidos','canal',renderPedidos)">Plataforma</th><th class="th-sort" data-col="status" onclick="sortBy('pedidos','status',renderPedidos)">Status</th><th>NF</th><th>Recebimento</th><th></th></tr></thead><tbody></tbody></table></div>
+        <div class="table-responsive"><table class="gestao" id="tabela-pedidos"><thead><tr><th class="th-sort" data-col="data" onclick="sortBy('pedidos','data',renderPedidos)">Data</th><th class="th-sort" data-col="num" onclick="sortBy('pedidos','num',renderPedidos)">Nº Pedido</th><th class="th-sort" data-col="cliente" onclick="sortBy('pedidos','cliente',renderPedidos)">Cliente</th><th class="th-sort" data-col="valor" onclick="sortBy('pedidos','valor',renderPedidos)">Total</th><th class="th-sort" data-col="liquido" onclick="sortBy('pedidos','liquido',renderPedidos)">Líquido</th><th>Tipo</th><th class="th-sort" data-col="canal" onclick="sortBy('pedidos','canal',renderPedidos)">Plataforma</th><th class="th-sort" data-col="status" onclick="sortBy('pedidos','status',renderPedidos)">Status</th><th>NF</th><th>Recebimento</th><th></th></tr></thead><tbody></tbody></table></div>
       </div>
     </div>
 
@@ -839,6 +839,8 @@ table.gestao tbody tr:hover .tbl-sticky-r{background:#1f1545}
           <th style="padding:4px 6px;border-bottom:1px solid var(--cor-borda);width:75px">Qtd</th>
           <th style="padding:4px 6px;border-bottom:1px solid var(--cor-borda);width:115px">Preço Unit. (R$)</th>
           <th style="padding:4px 6px;border-bottom:1px solid var(--cor-borda);width:110px;text-align:right">Subtotal</th>
+          <th style="padding:4px 6px;border-bottom:1px solid var(--cor-borda);width:100px" title="Taxa da plataforma neste item. Calculada sozinha; se a plataforma cobrou diferente, digite o valor real.">Taxa (R$)</th>
+          <th style="padding:4px 6px;border-bottom:1px solid var(--cor-borda);width:100px" title="Quanto você recebe deste item. Pode digitar o valor que a plataforma mostra.">Líquido (R$)</th>
           <th style="width:38px;border-bottom:1px solid var(--cor-borda)"></th>
         </tr></thead>
         <tbody id="itens-body"></tbody>
@@ -1560,11 +1562,7 @@ function migrarLiquidoPedidos() {
     const pagtoConfig=(dados.config.formasPagto||[]).find(f=>f.nome===p.pagto)||{taxa:0,taxaFixa:0};
     const pagtoEfetivo=canal.incluiPagamento?{taxa:0,taxaFixa:0}:pagtoConfig;
     // Mesma regra do modal (calcularValorPedido): taxa fixa do canal é cobrada por item/transação (ex: bump Hotmart = +R$1)
-    let taxaCanal;
-    if((canal.taxaFixa||0)>0){
-      taxaCanal=getPedidoItens(p).reduce((s,it)=>{const sub=(it.qtd||0)*(it.preco||0);return sub>0?s+sub*(canal.taxa||0)+(canal.taxaFixa||0)*(it.qtd||0):s;},0);
-      if((p.frete||0)>0) taxaCanal+=(p.frete||0)*(canal.taxa||0);
-    } else taxaCanal=bruto*(canal.taxa||0);
+    const taxaCanal=taxaCanalPedido(p,canal);
     const taxaPagto=bruto*(pagtoEfetivo.taxa||0)+(pagtoEfetivo.taxaFixa||0);
     const liquidoCorreto=parseFloat((bruto-taxaCanal-taxaPagto-(p.freteVendedor||0)).toFixed(2));
     // Só preenche pedido sem líquido. Pedido com líquido salvo (pelo modal ou ajuste manual) não é regravado.
@@ -2653,10 +2651,11 @@ function adicionarItem(item={}) {
   const dlOpts=dados.produtos.map(p=>`<option value="${p.sku}">${p.nome}</option>`).join('');
   const skuVal=escHtml(item.sku||'');
   const precoFmt=item.preco?(parseFloat(item.preco).toFixed(2).replace('.',',')):'';
+  const taxaFmt=item.taxaManual&&item.taxa!=null?fmtM(item.taxa):'';
   const tr=document.createElement('tr');
   tr.dataset.i=i;
   tr.style.borderBottom='1px solid rgba(45,31,94,.4)';
-  tr.innerHTML=`<td style="padding:5px 6px"><input class="form-control form-control-sm" id="item-sku-${i}" list="dl-prod-${i}" value="${skuVal}" placeholder="SKU ou nome do produto..." oninput="preencherItemPedido(${i})" autocomplete="off" style="min-width:160px"><datalist id="dl-prod-${i}">${dlOpts}</datalist></td><td style="padding:5px 6px"><input class="form-control form-control-sm" id="item-desc-${i}" value="${escHtml(item.desc||'')}" placeholder="Descrição"></td><td style="padding:5px 6px"><input class="form-control form-control-sm" id="item-qtd-${i}" type="number" min="1" value="${item.qtd||1}" style="width:65px" oninput="calcularValorPedido()"></td><td style="padding:5px 6px"><input class="form-control form-control-sm" id="item-preco-${i}" type="text" inputmode="numeric" value="${precoFmt}" style="width:105px" placeholder="0,00" oninput="mascaraMoeda(this);calcularValorPedido()"></td><td style="padding:5px 6px"><input class="form-control form-control-sm" id="item-sub-${i}" readonly style="width:100px;text-align:right;font-weight:600;color:var(--cor-verde)"></td><td style="padding:5px 4px"><button type="button" class="btn-sm-action btn-delete" onclick="removerItem(this)" title="Remover item"><i class="bi bi-x-lg"></i></button></td>`;
+  tr.innerHTML=`<td style="padding:5px 6px"><input class="form-control form-control-sm" id="item-sku-${i}" list="dl-prod-${i}" value="${skuVal}" placeholder="SKU ou nome do produto..." oninput="preencherItemPedido(${i})" autocomplete="off" style="min-width:160px"><datalist id="dl-prod-${i}">${dlOpts}</datalist></td><td style="padding:5px 6px"><input class="form-control form-control-sm" id="item-desc-${i}" value="${escHtml(item.desc||'')}" placeholder="Descrição"></td><td style="padding:5px 6px"><input class="form-control form-control-sm" id="item-qtd-${i}" type="number" min="1" value="${item.qtd||1}" style="width:65px" oninput="calcularValorPedido()"></td><td style="padding:5px 6px"><input class="form-control form-control-sm" id="item-preco-${i}" type="text" inputmode="numeric" value="${precoFmt}" style="width:105px" placeholder="0,00" oninput="mascaraMoeda(this);calcularValorPedido()"></td><td style="padding:5px 6px"><input class="form-control form-control-sm" id="item-sub-${i}" readonly style="width:100px;text-align:right;font-weight:600;color:var(--cor-verde)"></td><td style="padding:5px 6px"><input class="form-control form-control-sm" id="item-taxa-${i}" type="text" inputmode="numeric" value="${taxaFmt}" data-manual="${item.taxaManual?1:0}" style="width:92px;text-align:right;color:#EF4444" placeholder="0,00" oninput="mascaraMoeda(this);editarTaxaItem(${i})"><div id="item-taxa-info-${i}" style="font-size:10px;color:var(--cor-texto-suave);white-space:nowrap"></div></td><td style="padding:5px 6px"><input class="form-control form-control-sm" id="item-liq-${i}" type="text" inputmode="numeric" style="width:92px;text-align:right;font-weight:600;color:#10B981" placeholder="0,00" oninput="mascaraMoeda(this);editarLiquidoItem(${i})"></td><td style="padding:5px 4px"><button type="button" class="btn-sm-action btn-delete" onclick="removerItem(this)" title="Remover item"><i class="bi bi-x-lg"></i></button></td>`;
   document.getElementById('itens-body').appendChild(tr);
   calcularValorPedido();
 }
@@ -2675,6 +2674,7 @@ function preencherItemPedido(i) {
     document.getElementById('item-desc-'+i).value=prod.nome;
     const precoNum=parseFloat(prod.preco)||0;
     document.getElementById('item-preco-'+i).value=precoNum?precoNum.toFixed(2).replace('.',','):'';
+    const taxaEl=document.getElementById('item-taxa-'+i); if(taxaEl) taxaEl.dataset.manual='0';
   }
   calcularValorPedido();
 }
@@ -2698,6 +2698,35 @@ function preencherEndereco() {
     const partes=[rua,c.complemento,c.bairro,c.cidade&&c.estado?`${c.cidade}/${c.estado}`:(c.cidade||c.estado||''),c.cep].filter(Boolean);
     document.getElementById('p-endereco').value=partes.join(' — ')||'';
   }
+}
+// Taxa automática do item: repete a taxa real digitada na última venda igual (mesmo canal, produto e preço);
+// se não houver, usa a regra do canal (% + taxa fixa por item)
+function taxaAutoItem(canal, sku, qtd, preco) {
+  const sub=qtd*preco; if(sub<=0) return {v:0,hist:false};
+  if(sku){
+    const ant=dados.pedidos.filter(p=>p.canal===canal.nome).sort((a,b)=>(b.data||'').localeCompare(a.data||''));
+    for(const p of ant){ const it=(p.itens||[]).find(x=>x.taxaManual&&x.sku===sku&&x.preco===preco&&x.qtd>0); if(it) return {v:parseFloat((it.taxa/it.qtd*qtd).toFixed(2)),hist:true}; }
+  }
+  return {v:parseFloat((sub*(canal.taxa||0)+(canal.taxaFixa||0)*qtd).toFixed(2)),hist:false};
+}
+// Taxa do canal de um pedido salvo: usa a taxa gravada em cada item; pedidos antigos sem ela usam a regra do canal
+function taxaCanalPedido(p, canal) {
+  let t=getPedidoItens(p).reduce((s,it)=>{const sub=(it.qtd||0)*(it.preco||0);if(sub<=0)return s;return s+(it.taxa!=null?it.taxa:sub*(canal.taxa||0)+(canal.taxaFixa||0)*(it.qtd||0));},0);
+  if((p.frete||0)>0) t+=(p.frete||0)*(canal.taxa||0);
+  return t;
+}
+function editarTaxaItem(i) {
+  const el=document.getElementById('item-taxa-'+i);
+  el.dataset.manual=el.value===''?'0':'1';
+  calcularValorPedido();
+}
+function editarLiquidoItem(i) {
+  const liqEl=document.getElementById('item-liq-'+i), taxaEl=document.getElementById('item-taxa-'+i);
+  if(liqEl.value===''){ taxaEl.dataset.manual='0'; return calcularValorPedido(); }
+  const sub=(parseFloat(document.getElementById('item-qtd-'+i)?.value)||0)*pFloat('item-preco-'+i);
+  taxaEl.value=fmtM(Math.max(0,sub-pFloat('item-liq-'+i)));
+  taxaEl.dataset.manual='1';
+  calcularValorPedido();
 }
 function calcularValorPedido() {
   const nomCanal=v('p-canal');
@@ -2747,20 +2776,26 @@ function calcularValorPedido() {
   document.getElementById('p-total').value=total.toFixed(2).replace('.',',');
   const nomPagto=v('p-pagto');
   const pagto=canal.incluiPagamento ? {taxa:0,taxaFixa:0} : ((dados.config.formasPagto||[]).find(f=>f.nome===nomPagto)||{taxa:0,taxaFixa:0});
-  // Taxa fixa cobrada por item/transação (ex: Hotmart R$1,00 por transação, não por pedido)
+  // Taxa do canal por item: automática (% + fixa por item, ou a real da última venda igual) ou digitada
   let taxaCanal=0;
-  if((canal.taxaFixa||0)>0){
-    document.querySelectorAll('#itens-body tr').forEach(tr=>{
-      const ii=tr.dataset.i;
-      const qtd2=parseFloat(document.getElementById('item-qtd-'+ii)?.value)||0;
-      const preco2=parseFloat((document.getElementById('item-preco-'+ii)?.value||'0').replace(',','.'))||0;
-      const sub2=qtd2*preco2;
-      if(sub2>0) taxaCanal+=sub2*(canal.taxa||0)+(canal.taxaFixa||0)*qtd2;
-    });
-    if(frete>0) taxaCanal+=frete*(canal.taxa||0);
-  } else {
-    taxaCanal=total*(canal.taxa||0);
-  }
+  const linhasItens=[];
+  document.querySelectorAll('#itens-body tr').forEach(tr=>{
+    const ii=tr.dataset.i;
+    const sku2=(document.getElementById('item-sku-'+ii)?.value||'').trim();
+    const desc2=document.getElementById('item-desc-'+ii)?.value||sku2||'Item';
+    const qtd2=parseFloat(document.getElementById('item-qtd-'+ii)?.value)||0;
+    const preco2=pFloat('item-preco-'+ii);
+    const sub2=qtd2*preco2;
+    const taxaEl=document.getElementById('item-taxa-'+ii), liqEl=document.getElementById('item-liq-'+ii), infoEl2=document.getElementById('item-taxa-info-'+ii);
+    let taxaIt, origem;
+    if(taxaEl&&taxaEl.dataset.manual==='1'){ taxaIt=pFloat('item-taxa-'+ii); origem='digitada'; }
+    else { const a=taxaAutoItem(canal,sku2,qtd2,preco2); taxaIt=a.v; origem=a.hist?'última venda':'automática'; if(taxaEl&&document.activeElement!==taxaEl) taxaEl.value=sub2>0?fmtM(taxaIt):''; }
+    if(liqEl&&document.activeElement!==liqEl) liqEl.value=sub2>0?fmtM(sub2-taxaIt):'';
+    if(infoEl2) infoEl2.textContent=sub2>0&&taxaIt>0?(taxaIt/sub2*100).toFixed(1).replace('.',',')+'% · '+origem:'';
+    taxaCanal+=taxaIt;
+    if(sub2>0) linhasItens.push(`${escHtml(desc2)}: R$ ${fmtM(sub2)} − taxa R$ ${fmtM(taxaIt)} = <b style="color:#10B981">R$ ${fmtM(sub2-taxaIt)}</b>`);
+  });
+  if(frete>0) taxaCanal+=frete*(canal.taxa||0);
   const taxaPagto=total*(pagto.taxa||0)+(pagto.taxaFixa||0);
   // Frete pago pelo vendedor (ex.: Envios do Mercado Livre): sai do líquido, não entra no total
   const freteVendedor=parseFloat((v('p-frete-vendedor')||'0').replace(',','.'))||0;
@@ -2771,8 +2806,8 @@ function calcularValorPedido() {
   const infoEl=document.getElementById('p-pagto-info');
   if(infoEl){
     const linhas=[];
-    linhas.push(`Total vendido: R$ ${total.toFixed(2).replace('.',',')}`);
-    if(taxaCanal>0) linhas.push(`− Taxa ${nomCanal} (${(canal.taxa*100).toFixed(1)}%${canal.taxaFixa>0?' + R$ '+canal.taxaFixa.toFixed(2):''}): R$ ${taxaCanal.toFixed(2).replace('.',',')}`);
+    linhas.push(`Total vendido (bruto): R$ ${total.toFixed(2).replace('.',',')}`);
+    if(taxaCanal>0){ linhas.push(`− Taxas ${nomCanal}: R$ ${taxaCanal.toFixed(2).replace('.',',')}`); linhasItens.forEach(l=>linhas.push(`<span style="padding-left:14px;font-size:11px">• ${l}</span>`)); if(frete>0&&canal.taxa) linhas.push(`<span style="padding-left:14px;font-size:11px">• Frete: taxa R$ ${fmtM(frete*canal.taxa)}</span>`); }
     if(canal.incluiPagamento) linhas.push('<span style="color:#10B981;font-size:11px">✓ Pagamento já incluso nas taxas do canal — sem taxa adicional de pagamento</span>');
     else if(taxaPagto>0) linhas.push(`− Taxa ${nomPagto} (${(pagto.taxa*100).toFixed(2)}%${pagto.taxaFixa>0?' + R$ '+pagto.taxaFixa.toFixed(2):''}): R$ ${taxaPagto.toFixed(2).replace('.',',')}`);
     if(freteVendedor>0) linhas.push(`− Frete pago por mim: R$ ${freteVendedor.toFixed(2).replace('.',',')}`);
@@ -2810,8 +2845,8 @@ function renderPedidos() {
     else if(recDate) { const overdue=recDate<hoje; recCell=`<span style="color:${overdue?'#EF4444':'#F59E0B'};font-size:11px;font-weight:600"><i class="bi bi-clock me-1"></i>${fmtData(recDate)}</span>`; }
     const btnRec=recStatus!=='Recebido'?`<button class="btn-sm-action" style="color:#10B981" onclick="marcarRecebido(${ri})" title="Marcar como Recebido"><i class="bi bi-check-circle"></i></button>`:`<button class="btn-sm-action" style="color:#F59E0B;opacity:.7" onclick="desmarcarRecebido(${ri})" title="Desfazer recebimento"><i class="bi bi-arrow-counterclockwise"></i></button>`;
     const btnAprovar=aguardandoAprovacao(p)?`<button class="btn-sm-action" style="color:#F97316" onclick="aprovarPedido(${ri})" title="Aprovar pedido"><i class="bi bi-patch-check-fill"></i></button>`:'';
-    return `<tr style="${rowStyle}"><td>${fmtData(p.data)}</td><td style="font-weight:600;color:#fff">${p.num}</td><td>${nomeCliente(p.clienteId)}</td><td style="font-weight:600;color:var(--cor-verde)">${moeda(bruto)}</td><td>${badgeTipoPedido(p)}</td><td>${badgeCanal(p.canal)}</td><td>${badgeStatus(p.status)}</td><td>${badgeNF(p)}</td><td style="white-space:nowrap">${recCell}</td><td style="white-space:nowrap">${btnAprovar}${btnRec}<button class="btn-sm-action" style="color:#60A5FA" onclick="verPedido(${ri})" title="Visualizar"><i class="bi bi-eye-fill"></i></button><button class="btn-sm-action btn-edit" onclick="editarPedido(${ri})" title="Editar"><i class="bi bi-pencil-fill"></i></button><button class="btn-sm-action btn-delete" onclick="deletar('pedidos',${ri})" title="Excluir"><i class="bi bi-trash-fill"></i></button></td></tr>`;
-  }).join(''):'<tr><td colspan="10"><div class="empty-state"><i class="bi bi-box-seam"></i>Nenhum pedido neste período</div></td></tr>';
+    return `<tr style="${rowStyle}"><td>${fmtData(p.data)}</td><td style="font-weight:600;color:#fff">${p.num}</td><td>${nomeCliente(p.clienteId)}</td><td style="font-weight:600;color:var(--cor-verde)">${moeda(bruto)}</td><td style="font-weight:600;color:#10B981">${p.liquido!=null?moeda(p.liquido):'—'}</td><td>${badgeTipoPedido(p)}</td><td>${badgeCanal(p.canal)}</td><td>${badgeStatus(p.status)}</td><td>${badgeNF(p)}</td><td style="white-space:nowrap">${recCell}</td><td style="white-space:nowrap">${btnAprovar}${btnRec}<button class="btn-sm-action" style="color:#60A5FA" onclick="verPedido(${ri})" title="Visualizar"><i class="bi bi-eye-fill"></i></button><button class="btn-sm-action btn-edit" onclick="editarPedido(${ri})" title="Editar"><i class="bi bi-pencil-fill"></i></button><button class="btn-sm-action btn-delete" onclick="deletar('pedidos',${ri})" title="Excluir"><i class="bi bi-trash-fill"></i></button></td></tr>`;
+  }).join(''):'<tr><td colspan="11"><div class="empty-state"><i class="bi bi-box-seam"></i>Nenhum pedido neste período</div></td></tr>';
   atualizarThSort('pedidos',s.col,s.dir);
 }
 // Abas estilo planilha: uma por mês + ano inteiro (igual ao Financeiro)
@@ -2877,7 +2912,10 @@ async function salvarPedido() {
     const desc=document.getElementById('item-desc-'+i)?.value||'';
     const qtd=parseFloat(document.getElementById('item-qtd-'+i)?.value)||0;
     const preco=pFloat('item-preco-'+i); // campo usa vírgula ("109,90"); parseFloat direto cortava os centavos
-    if(sku||desc) itens.push({sku,desc,qtd,preco});
+    const taxaEl=document.getElementById('item-taxa-'+i);
+    const it={sku,desc,qtd,preco,taxa:pFloat('item-taxa-'+i)};
+    if(taxaEl&&taxaEl.dataset.manual==='1') it.taxaManual=true;
+    if(sku||desc) itens.push(it);
   });
   if(!itens.length) return alert('Adicione pelo menos um item ao pedido');
   const idx=v('p-idx');
@@ -4041,9 +4079,7 @@ function verPedido(i) {
   const canal=(dados.config.canais||[]).find(c=>c.nome===p.canal)||{taxa:0,taxaFixa:0};
   const pagtoConfig=(dados.config.formasPagto||[]).find(f=>f.nome===p.pagto)||{taxa:0,taxaFixa:0};
   const pagtoEfetivo=canal.incluiPagamento?{taxa:0,taxaFixa:0}:pagtoConfig;
-  let taxaCanal; // taxa fixa por item, igual ao modal
-  if((canal.taxaFixa||0)>0){taxaCanal=itens.reduce((s,it)=>{const sub=it.qtd*it.preco;return sub>0?s+sub*(canal.taxa||0)+(canal.taxaFixa||0)*it.qtd:s;},0);if((p.frete||0)>0)taxaCanal+=(p.frete||0)*(canal.taxa||0);}
-  else taxaCanal=bruto*(canal.taxa||0);
+  const taxaCanal=taxaCanalPedido(p,canal);
   const taxaPagto=bruto*(pagtoEfetivo.taxa||0)+(pagtoEfetivo.taxaFixa||0);
   const liq=p.liquido!=null?p.liquido:bruto-taxaCanal-taxaPagto-(p.freteVendedor||0);
   document.getElementById('modalVerPedidoTitulo').textContent=`Pedido ${p.num}`;
@@ -4072,8 +4108,10 @@ function verPedido(i) {
         <th style="padding:4px 8px;border-bottom:1px solid var(--cor-borda);text-align:center">Qtd</th>
         <th style="padding:4px 8px;border-bottom:1px solid var(--cor-borda);text-align:right">Preço Unit.</th>
         <th style="padding:4px 8px;border-bottom:1px solid var(--cor-borda);text-align:right">Subtotal</th>
+        <th style="padding:4px 8px;border-bottom:1px solid var(--cor-borda);text-align:right">Taxa</th>
+        <th style="padding:4px 8px;border-bottom:1px solid var(--cor-borda);text-align:right">Líquido</th>
       </tr></thead>
-      <tbody>${itens.map(it=>`<tr><td style="padding:6px 8px;font-family:monospace;color:var(--cor-secundaria);font-size:12px">${it.sku||'—'}</td><td style="padding:6px 8px;color:#fff">${it.desc||'—'}</td><td style="padding:6px 8px;text-align:center">${it.qtd}</td><td style="padding:6px 8px;text-align:right">${moeda(it.preco)}</td><td style="padding:6px 8px;text-align:right;font-weight:600;color:var(--cor-verde)">${moeda(it.qtd*it.preco)}</td></tr>`).join('')}</tbody>
+      <tbody>${itens.map(it=>{const sub=it.qtd*it.preco;const tx=sub>0?(it.taxa!=null?it.taxa:sub*(canal.taxa||0)+(canal.taxaFixa||0)*it.qtd):0;return `<tr><td style="padding:6px 8px;font-family:monospace;color:var(--cor-secundaria);font-size:12px">${it.sku||'—'}</td><td style="padding:6px 8px;color:#fff">${it.desc||'—'}</td><td style="padding:6px 8px;text-align:center">${it.qtd}</td><td style="padding:6px 8px;text-align:right">${moeda(it.preco)}</td><td style="padding:6px 8px;text-align:right;font-weight:600;color:var(--cor-verde)">${moeda(sub)}</td><td style="padding:6px 8px;text-align:right;color:#EF4444">${tx>0?'- '+moeda(tx):'—'}</td><td style="padding:6px 8px;text-align:right;font-weight:600;color:#10B981">${moeda(sub-tx)}</td></tr>`;}).join('')}</tbody>
     </table>
     <div style="border-top:1px solid var(--cor-borda);padding-top:12px;margin-bottom:10px"><small style="color:var(--cor-secundaria);font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:1.2px"><i class="bi bi-cash-stack me-1"></i>Valores</small></div>
     ${p.dataRecebimento||p.statusRecebimento?`<div style="display:flex;align-items:center;gap:10px;margin-bottom:12px;padding:8px 12px;background:rgba(59,130,246,.07);border-radius:8px;border:1px solid rgba(59,130,246,.2)"><i class="bi bi-calendar-check" style="color:#3B82F6;font-size:16px"></i><div style="font-size:13px"><span style="color:var(--cor-texto-suave)">Recebimento: </span><strong style="color:${p.statusRecebimento==='Recebido'?'#10B981':'#3B82F6'}">${p.statusRecebimento==='Recebido'?'✓ Recebido':(p.dataRecebimento?fmtData(p.dataRecebimento)+' — A receber':'A receber')}</strong></div></div>`:''}
@@ -4217,11 +4255,7 @@ function imprimirPedido(i) {
   const canal=(dados.config.canais||[]).find(c=>c.nome===p.canal)||{taxa:0,taxaFixa:0};
   const pagtoConfig=(dados.config.formasPagto||[]).find(f=>f.nome===p.pagto)||{taxa:0,taxaFixa:0};
   const pagtoEfetivo=canal.incluiPagamento?{taxa:0,taxaFixa:0}:pagtoConfig;
-  let taxaCanal=0;
-  if((canal.taxaFixa||0)>0){
-    itens.forEach(it=>{const sub=it.qtd*it.preco;if(sub>0)taxaCanal+=sub*(canal.taxa||0)+(canal.taxaFixa||0)*it.qtd;});
-    if((p.frete||0)>0)taxaCanal+=(p.frete||0)*(canal.taxa||0);
-  }else{taxaCanal=bruto*(canal.taxa||0);}
+  const taxaCanal=taxaCanalPedido(p,canal);
   const taxaPagto=bruto*(pagtoEfetivo.taxa||0)+(pagtoEfetivo.taxaFixa||0);
   const liq=p.liquido!=null?p.liquido:bruto-taxaCanal-taxaPagto-(p.freteVendedor||0);
   _imprimirPedidoHtml(p,cliente,itens,bruto,liq,taxaCanal,taxaPagto);
@@ -4236,17 +4270,13 @@ function imprimirPedidoModal() {
     const desc=(document.getElementById('item-desc-'+idx)?.value||'').trim();
     const qtd=parseFloat(document.getElementById('item-qtd-'+idx)?.value)||0;
     const preco=parseFloat((document.getElementById('item-preco-'+idx)?.value||'0').replace(',','.'))||0;
-    if(qtd>0||sku)itens.push({sku,desc,qtd,preco});
+    if(qtd>0||sku)itens.push({sku,desc,qtd,preco,taxa:pFloat('item-taxa-'+idx)});
   });
   const frete=parseFloat((v('p-frete')||'0').replace(',','.'))||0;
   const bruto=itens.reduce((s,it)=>s+it.qtd*it.preco,0)+frete;
   const liq=parseFloat((v('p-liquido')||'0').replace(',','.'))||0;
   const canal=(dados.config.canais||[]).find(c=>c.nome===v('p-canal'))||{taxa:0,taxaFixa:0};
-  let taxaCanal=0;
-  if((canal.taxaFixa||0)>0){
-    itens.forEach(it=>{const sub=it.qtd*it.preco;if(sub>0)taxaCanal+=sub*(canal.taxa||0)+(canal.taxaFixa||0)*it.qtd;});
-    if(frete>0)taxaCanal+=frete*(canal.taxa||0);
-  }else{taxaCanal=bruto*(canal.taxa||0);}
+  const taxaCanal=taxaCanalPedido({itens,frete},canal);
   const pagtoNome=v('p-pagto')||'—';
   const pagtoConfig=(dados.config.formasPagto||[]).find(f=>f.nome===pagtoNome)||{taxa:0,taxaFixa:0};
   const pagtoEfetivo=canal.incluiPagamento?{taxa:0,taxaFixa:0}:pagtoConfig;
