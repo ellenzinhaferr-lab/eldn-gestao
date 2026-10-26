@@ -271,6 +271,7 @@ table.gestao tbody tr:hover .tbl-sticky-r{background:#1f1545}
     <!-- PEDIDOS -->
     <div class="page" id="pg-pedidos">
       <div id="pedidos-aprovacao"></div>
+      <div id="ped-abas-mes" style="display:flex;gap:4px;align-items:flex-end;overflow-x:auto;border-bottom:2px solid var(--cor-borda);margin-bottom:16px;padding-bottom:0"></div>
       <div class="table-card">
         <div class="table-header"><h6>Pedidos Diários</h6><div style="display:flex;gap:8px;"><input type="text" class="input-search" placeholder="Buscar pedido..." oninput="filtrarTabela('tabela-pedidos',this.value)"><button class="btn btn-outline-warning btn-sm" onclick="abrirModalLoteEtiquetas()"><i class="bi bi-tags me-1"></i>Etiquetas em Lote</button><button class="btn btn-outline-success btn-sm" onclick="abrirModalRecebimento()"><i class="bi bi-cash-coin me-1"></i>Receber</button><button class="btn btn-primary btn-sm" onclick="abrirModal('pedido')"><i class="bi bi-plus-lg"></i> Novo</button></div></div>
         <div class="table-responsive"><table class="gestao" id="tabela-pedidos"><thead><tr><th class="th-sort" data-col="data" onclick="sortBy('pedidos','data',renderPedidos)">Data</th><th class="th-sort" data-col="num" onclick="sortBy('pedidos','num',renderPedidos)">Nº Pedido</th><th class="th-sort" data-col="cliente" onclick="sortBy('pedidos','cliente',renderPedidos)">Cliente</th><th class="th-sort" data-col="valor" onclick="sortBy('pedidos','valor',renderPedidos)">Total</th><th>Tipo</th><th class="th-sort" data-col="canal" onclick="sortBy('pedidos','canal',renderPedidos)">Plataforma</th><th class="th-sort" data-col="status" onclick="sortBy('pedidos','status',renderPedidos)">Status</th><th>NF</th><th>Recebimento</th><th></th></tr></thead><tbody></tbody></table></div>
@@ -2785,8 +2786,10 @@ function calcularValorPedido() {
 function renderPedidos() {
   atualizarBadgeEnvios();
   renderQuadroAprovacao();
+  renderAbasMesPed();
   const s=sortState.pedidos;
-  const lista=[...dados.pedidos].sort((a,b)=>{
+  const prefixo=pedFiltro.mes?`${pedFiltro.ano}-${String(pedFiltro.mes).padStart(2,'0')}`:String(pedFiltro.ano);
+  const lista=dados.pedidos.filter(p=>(p.data||'').startsWith(prefixo)).sort((a,b)=>{
     let va,vb;
     if(s.col==='cliente'){va=nomeCliente(a.clienteId).toLowerCase();vb=nomeCliente(b.clienteId).toLowerCase();}
     else if(s.col==='valor'){va=getPedidoTotal(a);vb=getPedidoTotal(b);}
@@ -2808,8 +2811,31 @@ function renderPedidos() {
     const btnRec=recStatus!=='Recebido'?`<button class="btn-sm-action" style="color:#10B981" onclick="marcarRecebido(${ri})" title="Marcar como Recebido"><i class="bi bi-check-circle"></i></button>`:`<button class="btn-sm-action" style="color:#F59E0B;opacity:.7" onclick="desmarcarRecebido(${ri})" title="Desfazer recebimento"><i class="bi bi-arrow-counterclockwise"></i></button>`;
     const btnAprovar=aguardandoAprovacao(p)?`<button class="btn-sm-action" style="color:#F97316" onclick="aprovarPedido(${ri})" title="Aprovar pedido"><i class="bi bi-patch-check-fill"></i></button>`:'';
     return `<tr style="${rowStyle}"><td>${fmtData(p.data)}</td><td style="font-weight:600;color:#fff">${p.num}</td><td>${nomeCliente(p.clienteId)}</td><td style="font-weight:600;color:var(--cor-verde)">${moeda(bruto)}</td><td>${badgeTipoPedido(p)}</td><td>${badgeCanal(p.canal)}</td><td>${badgeStatus(p.status)}</td><td>${badgeNF(p)}</td><td style="white-space:nowrap">${recCell}</td><td style="white-space:nowrap">${btnAprovar}${btnRec}<button class="btn-sm-action" style="color:#60A5FA" onclick="verPedido(${ri})" title="Visualizar"><i class="bi bi-eye-fill"></i></button><button class="btn-sm-action btn-edit" onclick="editarPedido(${ri})" title="Editar"><i class="bi bi-pencil-fill"></i></button><button class="btn-sm-action btn-delete" onclick="deletar('pedidos',${ri})" title="Excluir"><i class="bi bi-trash-fill"></i></button></td></tr>`;
-  }).join(''):'<tr><td colspan="10"><div class="empty-state"><i class="bi bi-box-seam"></i>Nenhum pedido ainda</div></td></tr>';
+  }).join(''):'<tr><td colspan="10"><div class="empty-state"><i class="bi bi-box-seam"></i>Nenhum pedido neste período</div></td></tr>';
   atualizarThSort('pedidos',s.col,s.dir);
+}
+// Abas estilo planilha: uma por mês + ano inteiro (igual ao Financeiro)
+let pedFiltro={ano:new Date().getFullYear(), mes:new Date().getMonth()+1};
+function abrirAbaMesPed(ano, mes) { pedFiltro={ano,mes}; renderPedidos(); }
+function renderAbasMesPed() {
+  const el=document.getElementById('ped-abas-mes'); if(!el) return;
+  const ano=pedFiltro.ano;
+  const hojeYm=new Date().toISOString().slice(0,7);
+  const nomes=['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
+  const estilo=(ativo,atual)=>`border:1px solid var(--cor-borda);border-bottom:none;border-radius:10px 10px 0 0;padding:6px 12px;min-width:78px;text-align:center;cursor:pointer;font-size:12px;line-height:1.3;white-space:nowrap;${ativo?'background:var(--cor-secundaria);color:#fff;font-weight:700;':'background:var(--cor-card);color:var(--cor-texto);'}${atual&&!ativo?'box-shadow:inset 0 3px 0 var(--cor-secundaria);':''}`;
+  const resumo=arr=>{ const validos=arr.filter(p=>!['Cancelado','Devolvido'].includes(p.status)); return {n:arr.length,total:validos.reduce((t,p)=>t+getPedidoTotal(p),0)}; };
+  const doAno=dados.pedidos.filter(p=>(p.data||'').startsWith(String(ano)));
+  const ra=resumo(doAno);
+  let html=`<button class="btn btn-sm" style="border:none;color:var(--cor-texto-suave);padding:6px 6px" onclick="abrirAbaMesPed(${ano-1},12)" title="Ano anterior"><i class="bi bi-chevron-double-left"></i></button>`;
+  html+=`<div style="${estilo(!pedFiltro.mes,false)}" onclick="abrirAbaMesPed(${ano},0)" title="${ra.n} pedidos no ano"><i class="bi bi-grid-3x3-gap me-1"></i><b>Ano ${ano}</b><div style="font-size:10px;opacity:.8">${ra.n} pedidos</div></div>`;
+  nomes.forEach((n,i)=>{
+    const ym=`${ano}-${String(i+1).padStart(2,'0')}`;
+    const r=resumo(doAno.filter(p=>p.data.slice(0,7)===ym));
+    const ativo=pedFiltro.mes===i+1;
+    html+=`<div style="${estilo(ativo,ym===hojeYm)}" onclick="abrirAbaMesPed(${ano},${i+1})" title="${r.n} pedidos · ${moeda(r.total)} (sem cancelados)">${n}${ym===hojeYm?' •':''}<div style="font-size:10px;font-weight:600;color:${ativo?'#fff':'var(--cor-verde)'}">${r.n?r.n+' · '+moeda(r.total):'—'}</div></div>`;
+  });
+  html+=`<button class="btn btn-sm" style="border:none;color:var(--cor-texto-suave);padding:6px 6px" onclick="abrirAbaMesPed(${ano+1},1)" title="Próximo ano"><i class="bi bi-chevron-double-right"></i></button>`;
+  el.innerHTML=html;
 }
 function editarPedido(i) {
   preencherSelectsPedido();
