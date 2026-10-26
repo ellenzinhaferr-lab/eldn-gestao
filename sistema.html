@@ -833,6 +833,7 @@ table.gestao tbody tr:hover .tbl-sticky-r{background:#1f1545}
     <div style="border-top:1px solid var(--cor-borda);padding-top:10px;margin-bottom:12px"><small style="color:var(--cor-secundaria);font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:1.2px"><i class="bi bi-cash-stack me-1"></i>Valores e Pagamento</small></div>
     <div class="row g-3 mb-3">
       <div class="col-md-3" id="col-frete"><label class="form-label">Frete (R$)</label><input class="form-control" id="p-frete" type="text" inputmode="numeric" value="0,00" oninput="mascaraMoeda(this);calcularValorPedido()"></div>
+      <div class="col-md-3" id="col-frete-vendedor"><label class="form-label">Frete pago por mim (R$)</label><input class="form-control" id="p-frete-vendedor" type="text" inputmode="numeric" value="0,00" oninput="mascaraMoeda(this);calcularValorPedido()" title="Parte do frete que o marketplace desconta de você (ex.: Envios no Mercado Livre). Não entra no total da venda."></div>
       <div class="col-md-3"><label class="form-label" id="lbl-total">Total Vendido (R$)</label><input class="form-control" id="p-total" readonly style="font-weight:700;color:var(--cor-verde)"></div>
       <div class="col-md-6" id="col-pagto">
         <label class="form-label">Forma de Pagamento</label>
@@ -1294,7 +1295,7 @@ const db = firebase.firestore();
 const dadosPadrao = {
   config: { canais: [
     {nome:'Venda Direta',taxa:0,taxaFixa:0},{nome:'Instagram',taxa:0,taxaFixa:0},{nome:'TikTok Shop',taxa:0.06,taxaFixa:4.00},
-    {nome:'Shopee',taxa:0.14,taxaFixa:4.00},{nome:'Mercado Livre',taxa:0.12,taxaFixa:0},{nome:'Elo7',taxa:0.08,taxaFixa:0},{nome:'Amazon',taxa:0.35,taxaFixa:0},{nome:'Hotmart',taxa:0.099,taxaFixa:1.00},{nome:'Kiwify',taxa:0.0899,taxaFixa:2.49},{nome:'Cakto',taxa:0,taxaFixa:2.49,incluiPagamento:true}
+    {nome:'Shopee',taxa:0.14,taxaFixa:4.00},{nome:'Mercado Livre',taxa:0.17,taxaFixa:0,incluiPagamento:true},{nome:'Elo7',taxa:0.08,taxaFixa:0},{nome:'Amazon',taxa:0.35,taxaFixa:0},{nome:'Hotmart',taxa:0.099,taxaFixa:1.00},{nome:'Kiwify',taxa:0.0899,taxaFixa:2.49},{nome:'Cakto',taxa:0,taxaFixa:2.49,incluiPagamento:true}
   ], formasPagto: [
     {nome:'PIX',taxa:0,taxaFixa:0},{nome:'Cartão Crédito MP',taxa:0.0399,taxaFixa:0},{nome:'Cartão Débito MP',taxa:0.0199,taxaFixa:0},
     {nome:'QR Code MP',taxa:0.0099,taxaFixa:0},{nome:'Boleto',taxa:0.0199,taxaFixa:3.49},{nome:'Dinheiro',taxa:0,taxaFixa:0},{nome:'Grátis',taxa:0,taxaFixa:0}
@@ -1437,6 +1438,11 @@ function setupListeners() {
     if(shopeeExist && shopeeExist.taxaFixa !== 4.00) {
       shopeeExist.taxa = 0.14; shopeeExist.taxaFixa = 4.00; migrou = true;
     }
+    // Mercado Livre: tarifa de venda ~17% (Premium, livro) já inclui o pagamento (só troca o padrão antigo 12%)
+    const mlExist = dados.config.canais.find(c=>c.nome==='Mercado Livre');
+    if(mlExist && mlExist.taxa === 0.12 && !mlExist.incluiPagamento) {
+      mlExist.taxa = 0.17; mlExist.incluiPagamento = true; migrou = true;
+    }
     // Adiciona Cakto se não existir ou corrige taxa
     const caktoExist = dados.config.canais.find(c=>c.nome==='Cakto');
     if(!caktoExist) {
@@ -1542,7 +1548,7 @@ function migrarLiquidoPedidos() {
       if((p.frete||0)>0) taxaCanal+=(p.frete||0)*(canal.taxa||0);
     } else taxaCanal=bruto*(canal.taxa||0);
     const taxaPagto=bruto*(pagtoEfetivo.taxa||0)+(pagtoEfetivo.taxaFixa||0);
-    const liquidoCorreto=parseFloat((bruto-taxaCanal-taxaPagto).toFixed(2));
+    const liquidoCorreto=parseFloat((bruto-taxaCanal-taxaPagto-(p.freteVendedor||0)).toFixed(2));
     // Só preenche pedido sem líquido. Pedido com líquido salvo (pelo modal ou ajuste manual) não é regravado.
     if(p.liquido==null) {
       db.collection('pedidos').doc(p._docId).update({liquido:liquidoCorreto});
@@ -2610,6 +2616,7 @@ function preencherSelectsPedido() {
   document.getElementById('p-data').value=new Date().toISOString().split('T')[0];
   document.getElementById('p-num').value=nextNumPedido();
   document.getElementById('p-frete').value='0,00';
+  document.getElementById('p-frete-vendedor').value='0,00';
   document.getElementById('p-rastreio').value='';
   document.getElementById('p-link-rastreio').value='';
   document.getElementById('resultado-rastreio-modal').style.display='none';
@@ -2682,6 +2689,8 @@ function calcularValorPedido() {
   const lblTotalEl=document.getElementById('lbl-total');
   const pTotalEl=document.getElementById('p-total');
   if(colFreteEl) colFreteEl.style.display=isRoyalties?'none':'';
+  const colFreteVendEl=document.getElementById('col-frete-vendedor');
+  if(colFreteVendEl) colFreteVendEl.style.display=isRoyalties?'none':'';
   if(colPagtoEl) colPagtoEl.style.display=isRoyalties?'none':'';
   if(lblTotalEl) lblTotalEl.textContent=isRoyalties?'Royalties Recebidos (R$)':'Total Vendido (R$)';
   if(pTotalEl) { pTotalEl.readOnly=!isRoyalties; if(isRoyalties) pTotalEl.oninput=calcularValorPedido; else pTotalEl.oninput=null; }
@@ -2700,6 +2709,7 @@ function calcularValorPedido() {
   if(isRoyalties) {
     // Frete zerado e oculto
     const freteEl=document.getElementById('p-frete'); if(freteEl) freteEl.value='0';
+    const freteVendEl=document.getElementById('p-frete-vendedor'); if(freteVendEl) freteVendEl.value='0,00';
     const royalties=parseFloat(v('p-total'))||0;
     document.getElementById('p-liquido').value=royalties.toFixed(2);
     const dispEl=document.getElementById('p-liquido-display');
@@ -2731,7 +2741,9 @@ function calcularValorPedido() {
     taxaCanal=total*(canal.taxa||0);
   }
   const taxaPagto=total*(pagto.taxa||0)+(pagto.taxaFixa||0);
-  const liquido=total-taxaCanal-taxaPagto;
+  // Frete pago pelo vendedor (ex.: Envios do Mercado Livre): sai do líquido, não entra no total
+  const freteVendedor=parseFloat((v('p-frete-vendedor')||'0').replace(',','.'))||0;
+  const liquido=total-taxaCanal-taxaPagto-freteVendedor;
   document.getElementById('p-liquido').value=liquido.toFixed(2);
   const dispEl=document.getElementById('p-liquido-display');
   if(dispEl) dispEl.textContent='R$ '+liquido.toFixed(2).replace('.',',');
@@ -2742,7 +2754,8 @@ function calcularValorPedido() {
     if(taxaCanal>0) linhas.push(`− Taxa ${nomCanal} (${(canal.taxa*100).toFixed(1)}%${canal.taxaFixa>0?' + R$ '+canal.taxaFixa.toFixed(2):''}): R$ ${taxaCanal.toFixed(2).replace('.',',')}`);
     if(canal.incluiPagamento) linhas.push('<span style="color:#10B981;font-size:11px">✓ Pagamento já incluso nas taxas do canal — sem taxa adicional de pagamento</span>');
     else if(taxaPagto>0) linhas.push(`− Taxa ${nomPagto} (${(pagto.taxa*100).toFixed(2)}%${pagto.taxaFixa>0?' + R$ '+pagto.taxaFixa.toFixed(2):''}): R$ ${taxaPagto.toFixed(2).replace('.',',')}`);
-    if(taxaCanal===0&&taxaPagto===0&&!canal.incluiPagamento) linhas.push('Nenhuma taxa para este canal e forma de pagamento');
+    if(freteVendedor>0) linhas.push(`− Frete pago por mim: R$ ${freteVendedor.toFixed(2).replace('.',',')}`);
+    if(taxaCanal===0&&taxaPagto===0&&freteVendedor===0&&!canal.incluiPagamento) linhas.push('Nenhuma taxa para este canal e forma de pagamento');
     infoEl.innerHTML=linhas.join('<br>');
   }
   const dataRec=calcDataRecebimento(v('p-data'),nomCanal,nomPagto);
@@ -2791,6 +2804,7 @@ function editarPedido(i) {
   document.getElementById('itens-body').innerHTML='';
   getPedidoItens(p).forEach(it=>adicionarItem(it));
   document.getElementById('p-frete').value=(parseFloat(p.frete)||0).toFixed(2).replace('.',',');
+  document.getElementById('p-frete-vendedor').value=(parseFloat(p.freteVendedor)||0).toFixed(2).replace('.',',');
   document.getElementById('p-total').value=getPedidoTotal(p).toFixed(2).replace('.',',');
   if(p.pagto) document.getElementById('p-pagto').value=p.pagto;
   document.getElementById('p-liquido').value=p.liquido!=null?p.liquido.toFixed(2):'';
@@ -2821,7 +2835,7 @@ async function salvarPedido() {
   const dataRecebimento=calcDataRecebimento(v('p-data'),v('p-canal'),v('p-pagto'));
   const existingRec=idx!==''?dados.pedidos[parseInt(idx)]?.statusRecebimento:null;
   const statusRecebimento=existingRec==='Recebido'?'Recebido':(getPrazoRecebimento(v('p-canal'),v('p-pagto'))>0?'A receber':'Recebido');
-  const obj={data:v('p-data'),num,canal:v('p-canal'),clienteId:parseInt(v('p-cliente'))||null,endereco:v('p-endereco'),itens,frete:parseFloat((v('p-frete')||'0').replace(',','.'))||0,pagto:v('p-pagto'),liquido:parseFloat((v('p-liquido')||'0').replace(',','.'))||0,status:statusSalvo,dataRecebimento,statusRecebimento,rastreio:v('p-rastreio'),linkRastreio:v('p-link-rastreio'),obs:v('p-obs')};
+  const obj={data:v('p-data'),num,canal:v('p-canal'),clienteId:parseInt(v('p-cliente'))||null,endereco:v('p-endereco'),itens,frete:parseFloat((v('p-frete')||'0').replace(',','.'))||0,freteVendedor:parseFloat((v('p-frete-vendedor')||'0').replace(',','.'))||0,pagto:v('p-pagto'),liquido:parseFloat((v('p-liquido')||'0').replace(',','.'))||0,status:statusSalvo,dataRecebimento,statusRecebimento,rastreio:v('p-rastreio'),linkRastreio:v('p-link-rastreio'),obs:v('p-obs')};
   // Preserva campos preenchidos por fluxos separados (NF-e, Melhor Envio) — o formulário de edição não os carrega,
   // e salvarComCriadoEm usa .set() que sobrescreve o documento inteiro. Sem isso, editar um pedido apaga a nota fiscal.
   if(idx!==''){
@@ -3976,7 +3990,7 @@ function verPedido(i) {
   if((canal.taxaFixa||0)>0){taxaCanal=itens.reduce((s,it)=>{const sub=it.qtd*it.preco;return sub>0?s+sub*(canal.taxa||0)+(canal.taxaFixa||0)*it.qtd:s;},0);if((p.frete||0)>0)taxaCanal+=(p.frete||0)*(canal.taxa||0);}
   else taxaCanal=bruto*(canal.taxa||0);
   const taxaPagto=bruto*(pagtoEfetivo.taxa||0)+(pagtoEfetivo.taxaFixa||0);
-  const liq=p.liquido!=null?p.liquido:bruto-taxaCanal-taxaPagto;
+  const liq=p.liquido!=null?p.liquido:bruto-taxaCanal-taxaPagto-(p.freteVendedor||0);
   document.getElementById('modalVerPedidoTitulo').textContent=`Pedido ${p.num}`;
   document.getElementById('btn-editar-do-ver').onclick=()=>{bootstrap.Modal.getInstance(document.getElementById('modalVerPedido')).hide();setTimeout(()=>editarPedido(i),300);};
   document.getElementById('btn-imprimir-do-ver').onclick=()=>imprimirPedido(i);
@@ -4014,6 +4028,7 @@ function verPedido(i) {
       <div style="display:flex;justify-content:space-between;font-weight:700;color:#fff;padding-top:4px;border-top:1px solid var(--cor-borda)"><span>Total Bruto</span><span style="color:var(--cor-verde)">${moeda(bruto)}</span></div>
       ${taxaCanal>0?`<div style="display:flex;justify-content:space-between"><span style="color:var(--cor-texto-suave)">Taxa canal (${p.canal})</span><span style="color:#EF4444">- ${moeda(taxaCanal)}</span></div>`:''}
       ${taxaPagto>0?`<div style="display:flex;justify-content:space-between"><span style="color:var(--cor-texto-suave)">Taxa pagto (${p.pagto||'—'})</span><span style="color:#EF4444">- ${moeda(taxaPagto)}</span></div>`:''}
+      ${(p.freteVendedor||0)>0?`<div style="display:flex;justify-content:space-between"><span style="color:var(--cor-texto-suave)">Frete pago por mim</span><span style="color:#EF4444">- ${moeda(p.freteVendedor)}</span></div>`:''}
       <div style="display:flex;justify-content:space-between;font-weight:700;padding-top:4px;border-top:1px solid var(--cor-borda)"><span>Valor Líquido</span><span style="color:var(--cor-acento);font-size:16px">${moeda(liq)}</span></div>
       <div style="font-size:12px;color:var(--cor-texto-suave);margin-top:2px">Forma de pagamento: <strong style="color:var(--cor-texto)">${p.pagto||'—'}</strong></div>
     </div>
@@ -4129,6 +4144,7 @@ function _imprimirPedidoHtml(p, cliente, itens, bruto, liq, taxaCanal, taxaPagto
     <div class="tr tf"><span>Total Bruto</span><span>${moeda(bruto)}</span></div>
     ${taxaCanal>0?`<div class="tr" style="color:#888"><span>Taxa canal (${escHtml(p.canal)})</span><span>- ${moeda(taxaCanal)}</span></div>`:''}
     ${taxaPagto>0?`<div class="tr" style="color:#888"><span>Taxa pagto (${escHtml(p.pagto||'—')})</span><span>- ${moeda(taxaPagto)}</span></div>`:''}
+    ${(p.freteVendedor||0)>0?`<div class="tr" style="color:#888"><span>Frete pago por mim</span><span>- ${moeda(p.freteVendedor)}</span></div>`:''}
     <div class="tr" style="font-size:12px;color:#555;margin-top:6px;padding-top:6px;border-top:1px dashed #ccc"><span>Forma de pagamento</span><span>${escHtml(p.pagto||'—')}</span></div>
     <div class="tr tf" style="font-size:18px"><span>Previsão de Recebimento</span><span style="color:#7C3AED">${moeda(liq)}</span></div>
   </div>
@@ -4152,7 +4168,7 @@ function imprimirPedido(i) {
     if((p.frete||0)>0)taxaCanal+=(p.frete||0)*(canal.taxa||0);
   }else{taxaCanal=bruto*(canal.taxa||0);}
   const taxaPagto=bruto*(pagtoEfetivo.taxa||0)+(pagtoEfetivo.taxaFixa||0);
-  const liq=p.liquido!=null?p.liquido:bruto-taxaCanal-taxaPagto;
+  const liq=p.liquido!=null?p.liquido:bruto-taxaCanal-taxaPagto-(p.freteVendedor||0);
   _imprimirPedidoHtml(p,cliente,itens,bruto,liq,taxaCanal,taxaPagto);
 }
 function imprimirPedidoModal() {
@@ -4180,7 +4196,7 @@ function imprimirPedidoModal() {
   const pagtoConfig=(dados.config.formasPagto||[]).find(f=>f.nome===pagtoNome)||{taxa:0,taxaFixa:0};
   const pagtoEfetivo=canal.incluiPagamento?{taxa:0,taxaFixa:0}:pagtoConfig;
   const taxaPagto=bruto*(pagtoEfetivo.taxa||0)+(pagtoEfetivo.taxaFixa||0);
-  const p={num:v('p-num')||'Rascunho',data:v('p-data'),canal:v('p-canal'),status:v('p-status')||'',rastreio:v('p-rastreio')||'',linkRastreio:v('p-link-rastreio')||'',endereco:v('p-endereco')||'',frete,pagto:pagtoNome,obs:v('p-obs')||''};
+  const p={num:v('p-num')||'Rascunho',data:v('p-data'),canal:v('p-canal'),status:v('p-status')||'',rastreio:v('p-rastreio')||'',linkRastreio:v('p-link-rastreio')||'',endereco:v('p-endereco')||'',frete,freteVendedor:parseFloat((v('p-frete-vendedor')||'0').replace(',','.'))||0,pagto:pagtoNome,obs:v('p-obs')||''};
   _imprimirPedidoHtml(p,cliente,itens,bruto,liq,taxaCanal,taxaPagto);
 }
 
