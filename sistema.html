@@ -172,7 +172,7 @@ table.gestao tbody tr:hover .tbl-sticky-r{background:#1f1545}
   <div class="sidebar-nav">
     <div class="nav-item"><button class="nav-link active" onclick="showPage('dashboard')"><i class="bi bi-grid-fill"></i> Dashboard</button></div>
     <div class="nav-item"><button class="nav-link" onclick="showPage('clientes')"><i class="bi bi-people-fill"></i> Clientes</button></div>
-    <div class="nav-item"><button class="nav-link" onclick="showPage('pedidos')"><i class="bi bi-box-seam-fill"></i> Pedidos <span id="badge-aprovacao" title="Pedidos aguardando aprovação" style="display:none;margin-left:auto;background:#F97316;color:#fff;border-radius:10px;padding:0 7px;font-size:11px;font-weight:700"></span></button></div>
+    <div class="nav-item"><button class="nav-link" onclick="showPage('pedidos')"><i class="bi bi-box-seam-fill"></i> Pedidos</button></div>
     <div class="nav-item"><button class="nav-link" onclick="showPage('envios')"><i class="bi bi-truck"></i> Envios <span id="badge-envios" style="display:none;margin-left:auto;background:#EF4444;color:#fff;border-radius:10px;padding:0 7px;font-size:11px;font-weight:700"></span></button></div>
     <div class="nav-item"><button class="nav-link" onclick="showPage('fiscal')"><i class="bi bi-receipt-cutoff"></i> Fiscal</button></div>
     <div class="nav-item"><button class="nav-link" onclick="showPage('financeiro')"><i class="bi bi-cash-stack"></i> Financeiro</button></div>
@@ -237,7 +237,6 @@ table.gestao tbody tr:hover .tbl-sticky-r{background:#1f1545}
         <span id="dash-periodo-label" style="font-size:12px;color:var(--cor-secundaria);font-weight:600"></span>
       </div>
       <div id="dash-abas-mes" style="display:flex;gap:4px;align-items:flex-end;overflow-x:auto;border-bottom:2px solid var(--cor-borda);margin-bottom:16px"></div>
-      <div id="dash-alerta-aprovacao"></div>
       <div id="dash-alerta-envios"></div>
       <div class="kpi-grid" id="kpi-container"></div>
       <div class="row g-3 mb-3">
@@ -270,7 +269,6 @@ table.gestao tbody tr:hover .tbl-sticky-r{background:#1f1545}
 
     <!-- PEDIDOS -->
     <div class="page" id="pg-pedidos">
-      <div id="pedidos-aprovacao"></div>
       <div id="ped-abas-mes" style="display:flex;gap:4px;align-items:flex-end;overflow-x:auto;border-bottom:2px solid var(--cor-borda);margin-bottom:16px;padding-bottom:0"></div>
       <div class="table-card">
         <div class="table-header"><h6>Pedidos Diários</h6><div style="display:flex;gap:8px;"><input type="text" class="input-search" placeholder="Buscar pedido..." oninput="filtrarTabela('tabela-pedidos',this.value)"><button class="btn btn-outline-warning btn-sm" onclick="abrirModalLoteEtiquetas()"><i class="bi bi-tags me-1"></i>Etiquetas em Lote</button><button class="btn btn-outline-success btn-sm" onclick="abrirModalRecebimento()"><i class="bi bi-cash-coin me-1"></i>Receber</button><button class="btn btn-primary btn-sm" onclick="abrirModal('pedido')"><i class="bi bi-plus-lg"></i> Novo</button></div></div>
@@ -892,7 +890,7 @@ table.gestao tbody tr:hover .tbl-sticky-r{background:#1f1545}
     <!-- ENTREGA -->
     <div style="border-top:1px solid var(--cor-borda);padding-top:10px;margin-bottom:12px"><small style="color:var(--cor-secundaria);font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:1.2px"><i class="bi bi-truck me-1"></i>Entrega</small></div>
     <div class="row g-3">
-      <div class="col-md-3"><label class="form-label">Status</label><select class="form-select" id="p-status"><option>Aguardando aprovação</option><option>Pendente</option><option>Em separação</option><option>Enviado</option><option>Entregue</option><option>Cancelado</option><option>Devolvido</option></select></div>
+      <div class="col-md-3"><label class="form-label">Status</label><select class="form-select" id="p-status"><option>Pendente</option><option>Em separação</option><option>Enviado</option><option>Entregue</option><option>Cancelado</option><option>Devolvido</option></select></div>
       <div class="col-md-3"><label class="form-label">Enviar até</label><input class="form-control" id="p-data-envio" type="date" title="Data limite de postagem (ex.: Mercado Livre agenda o despacho). O estoque fica reservado até o pedido virar Enviado."></div>
       <div class="col-md-4"><label class="form-label">Código de Rastreio</label><input class="form-control" id="p-rastreio" placeholder="Ex: BR123456789BR"></div>
       <div class="col-md-2 d-flex align-items-end"><button type="button" class="btn btn-outline-info w-100" onclick="consultarRastreioModal()"><i class="bi bi-search me-1"></i>Consultar</button></div>
@@ -2273,7 +2271,6 @@ function renderAbasMesDash() {
 function renderDashboard() {
   if(!dashFiltro.de) _initDashFiltro();
   renderAbasMesDash();
-  renderAlertaAprovacaoDash();
   renderAlertaEnviosDash();
 
   const de=dashFiltro.de, ate=dashFiltro.ate;
@@ -2880,7 +2877,6 @@ function calcularValorPedido() {
 }
 function renderPedidos() {
   atualizarBadgeEnvios();
-  renderQuadroAprovacao();
   renderAbasMesPed();
   const s=sortState.pedidos;
   const prefixo=pedFiltro.mes?`${pedFiltro.ano}-${String(pedFiltro.mes).padStart(2,'0')}`:String(pedFiltro.ano);
@@ -4149,7 +4145,7 @@ function verPedido(i) {
     <div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:18px;align-items:center">
       <div style="flex:1;min-width:120px"><div style="font-size:11px;color:var(--cor-texto-suave);text-transform:uppercase;letter-spacing:1px">Data</div><div style="font-weight:600;color:#fff;font-size:15px">${fmtData(p.data)}</div></div>
       <div style="flex:1;min-width:120px"><div style="font-size:11px;color:var(--cor-texto-suave);text-transform:uppercase;letter-spacing:1px">Canal</div><div style="margin-top:4px">${badgeCanal(p.canal)}</div></div>
-      <div style="flex:1;min-width:120px"><div style="font-size:11px;color:var(--cor-texto-suave);text-transform:uppercase;letter-spacing:1px">Status</div><div style="margin-top:4px;display:flex;align-items:center;gap:6px"><select class="form-select form-select-sm" id="ver-pedido-status-${i}" style="max-width:160px" onchange="atualizarStatusPedido(${i},this.value)">${['Aguardando aprovação','Pendente','Em separação','Enviado','Entregue','Cancelado','Devolvido'].map(s=>`<option${s===p.status?' selected':''}>${s}</option>`).join('')}</select><span id="ver-pedido-status-ok-${i}" style="font-size:12px"></span></div></div>
+      <div style="flex:1;min-width:120px"><div style="font-size:11px;color:var(--cor-texto-suave);text-transform:uppercase;letter-spacing:1px">Status</div><div style="margin-top:4px;display:flex;align-items:center;gap:6px"><select class="form-select form-select-sm" id="ver-pedido-status-${i}" style="max-width:160px" onchange="atualizarStatusPedido(${i},this.value)">${['Pendente','Em separação','Enviado','Entregue','Cancelado','Devolvido'].map(s=>`<option${s===p.status?' selected':''}>${s}</option>`).join('')}</select><span id="ver-pedido-status-ok-${i}" style="font-size:12px"></span></div></div>
       ${p.rastreio?`<div style="flex:2;min-width:200px"><div style="font-size:11px;color:var(--cor-texto-suave);text-transform:uppercase;letter-spacing:1px">Rastreio</div><div style="display:flex;align-items:center;gap:8px;margin-top:4px;flex-wrap:wrap"><span style="font-weight:600;color:var(--cor-azul);font-size:14px;font-family:monospace">${escHtml(p.rastreio)}</span>${p.linkRastreio?`<a href="${escHtml(p.linkRastreio)}" target="_blank" class="btn btn-outline-secondary btn-sm" style="font-size:11px;padding:2px 8px"><i class="bi bi-box-arrow-up-right me-1"></i>Abrir link</a>`:''}` +
       `<button class="btn btn-outline-info btn-sm" style="font-size:11px;padding:2px 8px" onclick="consultarRastreioView('${escHtml(p.rastreio)}')"><i class="bi bi-search me-1"></i>Consultar</button></div></div>`:''}
     </div>
@@ -4865,8 +4861,6 @@ function renderEnvios() {
   document.getElementById('envios-prog-guardar').innerHTML=g.length?`<i class="bi bi-lock-fill me-1" style="color:#F59E0B"></i>Manter guardado no estoque: ${g.map(([k,q])=>`<b style="color:var(--cor-texto)">${q}× ${escHtml(k)}</b>`).join(' · ')}`:'';
 }
 function atualizarBadgeEnvios() {
-  const elAp=document.getElementById('badge-aprovacao');
-  if(elAp){ const na=pedidosAguardandoAprovacao().length; elAp.textContent=na; elAp.style.display=na?'inline-block':'none'; }
   const el=document.getElementById('badge-envios'); if(!el) return;
   const n=getEnviosProgramados().filter(x=>x.dias===null||x.dias<=0).length;
   el.textContent=n; el.style.display=n?'inline-block':'none';
@@ -4954,26 +4948,6 @@ async function recusarPedido(i) {
   try { await db.collection('pedidos').doc(p._docId).update({status:'Cancelado'}); p.status='Cancelado'; }
   catch(e) { return alert('Erro ao recusar o pedido: '+e.message); }
   if(currentPage==='pedidos') renderPedidos(); else atualizarBadgeEnvios();
-}
-function renderQuadroAprovacao() {
-  const el=document.getElementById('pedidos-aprovacao'); if(!el) return;
-  const lista=pedidosAguardandoAprovacao().sort((a,b)=>(b.p.data||'').localeCompare(a.p.data||''));
-  if(!lista.length){ el.innerHTML=''; return; }
-  const linhas=lista.map(({p,i})=>{
-    const {bloqueios,avisos}=pendenciasAprovacao(p);
-    const itens=getPedidoItens(p).map(it=>`${it.qtd}× ${escHtml(it.desc||it.sku||'?')}${it.sku?'':' <span style="color:#EF4444">(sem produto)</span>'}`).join('<br>');
-    const pend=bloqueios.length?`<span style="color:#EF4444;font-size:11px">🔴 ${escHtml(bloqueios.join(' · '))}</span>`:(avisos.length?`<span style="color:#F59E0B;font-size:11px">⚠ ${escHtml(avisos.join(' · '))}</span>`:'<span style="color:#10B981;font-size:11px">🟢 pronto</span>');
-    return `<tr><td>${fmtData(p.data)}</td><td style="font-weight:600;color:#fff">${escHtml(p.num||'')}</td><td>${escHtml(nomeCliente(p.clienteId))}</td><td>${badgeCanal(p.canal)}</td><td style="font-size:12px">${itens}</td><td style="font-weight:600;color:var(--cor-verde)">${moeda(getPedidoTotal(p))}</td><td>${badgeTipoPedido(p)}</td><td>${pend}</td><td style="white-space:nowrap"><button class="btn btn-sm btn-success" style="font-size:11px;padding:2px 8px" onclick="aprovarPedido(${i})"${bloqueios.length?' disabled title="Corrija a pendência antes"':''}><i class="bi bi-check2 me-1"></i>Aprovar</button> <button class="btn-sm-action" style="color:#60A5FA" onclick="verPedido(${i})" title="Ver pedido"><i class="bi bi-eye-fill"></i></button><button class="btn-sm-action btn-edit" onclick="editarPedido(${i})" title="Editar antes de aprovar"><i class="bi bi-pencil-fill"></i></button><button class="btn-sm-action btn-delete" onclick="recusarPedido(${i})" title="Recusar (vira Cancelado)"><i class="bi bi-x-circle-fill"></i></button></td></tr>`;
-  }).join('');
-  el.innerHTML=`<div class="table-card" style="border:1px solid rgba(249,115,22,.45);margin-bottom:16px">
-    <div class="table-header"><h6 style="color:#F97316"><i class="bi bi-hourglass-split me-1"></i>Aguardando aprovação (${lista.length})</h6><div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap"><span style="font-size:12px;color:var(--cor-texto-suave)">Pedidos que chegaram das plataformas. Confira e aprove para liberar NF-e e etiqueta.</span><button class="btn btn-sm btn-success" onclick="aprovarTodosPedidos()"><i class="bi bi-check2-all me-1"></i>Aprovar todos</button></div></div>
-    <div class="table-responsive"><table class="gestao"><thead><tr><th>Data</th><th>Nº Pedido</th><th>Cliente</th><th>Canal</th><th>Itens</th><th>Total</th><th>Tipo</th><th>Conferência</th><th></th></tr></thead><tbody>${linhas}</tbody></table></div>
-  </div>`;
-}
-function renderAlertaAprovacaoDash() {
-  const el=document.getElementById('dash-alerta-aprovacao'); if(!el) return;
-  const n=pedidosAguardandoAprovacao().length;
-  el.innerHTML=n?`<div style="background:rgba(249,115,22,.08);border:1px solid rgba(249,115,22,.4);border-radius:12px;padding:12px 16px;margin-bottom:16px;display:flex;align-items:center;gap:12px;flex-wrap:wrap"><i class="bi bi-hourglass-split" style="font-size:20px;color:#F97316"></i><span style="font-size:13px"><b style="color:#F97316">${n} pedido(s) aguardando aprovação</b> das plataformas</span><button class="btn btn-sm btn-outline-warning ms-auto" onclick="showPage('pedidos')">Conferir e aprovar</button></div>`:'';
 }
 // Aviso no Dashboard: envios atrasados, de hoje/amanhã ou sem produto
 function renderAlertaEnviosDash() {
