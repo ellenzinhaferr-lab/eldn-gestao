@@ -82,6 +82,7 @@ table.gestao tbody tr:last-child td{border-bottom:none}
 .badge-saida{background:rgba(239,68,68,.15);color:#EF4444}
 .badge-livro{background:rgba(124,58,237,.15);color:var(--cor-secundaria)}
 .badge-kit{background:rgba(245,158,11,.15);color:#F59E0B}
+.badge-papelaria{background:rgba(236,72,153,.15);color:#F472B6}
 .badge-digital{background:rgba(59,130,246,.15);color:#60A5FA}
 .modal-content{background:var(--cor-card);border:1px solid var(--cor-borda);color:var(--cor-texto);border-radius:16px}
 .modal-header{border-bottom:1px solid var(--cor-borda)}
@@ -1041,7 +1042,7 @@ table.gestao tbody tr:hover .tbl-sticky-r{background:#1f1545}
   <div class="modal-body"><input type="hidden" id="pr-idx"><div class="row g-3">
     <div class="col-md-4"><label class="form-label">SKU *</label><input class="form-control" id="pr-sku" placeholder="DEV-MLCF-01"></div>
     <div class="col-md-8"><label class="form-label">Nome do Produto *</label><input class="form-control" id="pr-nome"></div>
-    <div class="col-md-4"><label class="form-label">Categoria</label><select class="form-select" id="pr-categoria" onchange="sugerirFiscalProduto()"><option>Livro Físico</option><option>Livro Digital</option><option>Kit</option><option>Serviço</option><option>Outro</option></select></div>
+    <div class="col-md-4"><label class="form-label">Categoria</label><select class="form-select" id="pr-categoria" onchange="sugerirFiscalProduto()"><option>Livro Físico</option><option>Livro Digital</option><option>Kit</option><option>Papelaria</option><option>Serviço</option><option>Outro</option></select></div>
     <div class="col-md-4"><label class="form-label">Fornecedor Principal</label><input class="form-control" id="pr-fornecedor"></div>
     <div class="col-md-4" style="display:flex;align-items:flex-end;padding-bottom:6px">
       <div class="form-check form-switch mb-0">
@@ -1051,7 +1052,8 @@ table.gestao tbody tr:hover .tbl-sticky-r{background:#1f1545}
     </div>
     <div class="col-md-4"><label class="form-label">Preço de Venda (R$)</label><input class="form-control" id="pr-preco" type="text" inputmode="numeric" value="0,00" placeholder="0,00" oninput="mascaraMoeda(this)"></div>
     <div id="pr-estoque-section" class="col-12"><div class="row g-3">
-      <div class="col-12" style="background:rgba(124,58,237,.06);border:1px solid var(--cor-borda);border-radius:10px;padding:12px 14px">
+      <div class="col-12" id="pr-papelaria-aviso" style="display:none;background:rgba(236,72,153,.08);border:1px solid rgba(236,72,153,.35);border-radius:10px;padding:12px 14px;font-size:13px"></div>
+      <div class="col-12" id="pr-estoque-de-box" style="background:rgba(124,58,237,.06);border:1px solid var(--cor-borda);border-radius:10px;padding:12px 14px">
         <div class="row g-2 align-items-end">
           <div class="col-md-8"><label class="form-label"><i class="bi bi-diagram-3 me-1"></i>De qual estoque este produto sai?</label>
             <select class="form-select" id="pr-estoque-de" onchange="toggleEstoqueDeProduto()"></select></div>
@@ -1590,7 +1592,7 @@ function migrarLiquidoPedidos() {
   });
 }
 function badgeCanal(c) { const m={'Instagram':'badge-instagram','Amazon':'badge-amazon','Amazon KDP':'badge-amazonkdp','Shopee':'badge-shopee','TikTok Shop':'badge-tiktok','Venda Direta':'badge-direta','Mercado Livre':'badge-ml','Elo7':'badge-elo7','Hotmart':'badge-hotmart','Kiwify':'badge-kiwify','Cakto':'badge-cakto'}; return `<span class="badge-canal ${m[c]||'badge-direta'}">${c||'—'}</span>`; }
-function badgeCategoria(c) { const m={'Livro Físico':'badge-livro','Livro Digital':'badge-digital','Kit':'badge-kit'}; return `<span class="badge-canal ${m[c]||'badge-livro'}">${c}</span>`; }
+function badgeCategoria(c) { const m={'Livro Físico':'badge-livro','Livro Digital':'badge-digital','Kit':'badge-kit','Papelaria':'badge-papelaria'}; return `<span class="badge-canal ${m[c]||'badge-livro'}">${c}</span>`; }
 function badgeTipo(t) { return t==='Entrada'?`<span class="badge-canal badge-entrada">↑ Entrada</span>`:`<span class="badge-canal badge-saida">↓ Saída</span>`; }
 function badgeStatus(s) { const m={'Aguardando aprovação':'#F97316','Entregue':'#10B981','Enviado':'#3B82F6','Em separação':'#F59E0B','Pendente':'#9D8EC4','Cancelado':'#EF4444','Devolvido':'#EF4444'}; return `<span style="color:${m[s]||'#9D8EC4'};font-size:12px;font-weight:600;">${s}</span>`; }
 function isPedidoDigital(p) { const itens=getPedidoItens(p); if(!itens.length) return false; return itens.every(it=>{ const prod=dados.produtos.find(x=>x.sku===it.sku); return prod&&prod.digital; }); }
@@ -2576,7 +2578,7 @@ function abrirModal(tipo) {
   const ids={cliente:'modalCliente',pedido:'modalPedido',financeiro:'modalFinanceiro',compra:'modalCompra',produto:'modalProduto',afiliado:'modalAfiliado',canal:'modalCanal',formapagto:'modalFormaPagto',usuario:'modalUsuario'};
   if(tipo==='pedido') preencherSelectsPedido();
   if(tipo==='compra') preencherSelectsCompra();
-  if(tipo==='produto'){renderTaxasCanalProduto();preencherEstoqueDeProduto('', '');document.getElementById('pr-estoque-qtd').value=1;document.getElementById('pr-idx').value='';document.getElementById('pr-substitui-envio').checked=false;document.getElementById('modalProdutoTitulo').textContent='Novo Produto';document.getElementById('btn-duplicar-produto').style.display='none';}
+  if(tipo==='produto'){renderTaxasCanalProduto();preencherEstoqueDeProduto('', '');papModoProduto(null);document.getElementById('pr-estoque-qtd').value=1;document.getElementById('pr-idx').value='';document.getElementById('pr-substitui-envio').checked=false;document.getElementById('modalProdutoTitulo').textContent='Novo Produto';document.getElementById('btn-duplicar-produto').style.display='none';}
   if(tipo==='financeiro'){document.getElementById('f-idx').value='';document.getElementById('f-recorrente').checked=false;document.getElementById('f-recorrente-tipo').value='assinatura';document.getElementById('f-recorrente-wrap').style.display='block';toggleRecorrenteFinanceiro();}
   if(tipo==='usuario'){document.getElementById('u-nome').value='';document.getElementById('u-email').value='';document.getElementById('u-senha').value='';document.getElementById('u-msg').style.display='none';document.getElementById('btn-salvar-usuario').disabled=false;document.getElementById('btn-salvar-usuario').textContent='Criar Usuário';}
   new bootstrap.Modal(document.getElementById(ids[tipo])).show();
@@ -2993,7 +2995,8 @@ async function salvarPedido() {
   itens.forEach(it=>{
     if(it.sku&&statusSalvo!=='Cancelado'&&statusSalvo!=='Devolvido'){
       const est=calcEstoque().find(e=>e.sku===it.sku);
-      if(est&&est.compartilhado) mostrarToastEstoque(`<strong>${est.baseNome}</strong> &nbsp;-${it.qtd*est.qtdPorVenda} unid. (${est.nome}) &nbsp;|&nbsp; Saldo: <strong>${est.baseSaldo}</strong>`,'saida');
+      if(est&&est.papelaria) mostrarToastEstoque(`<strong>${est.nome}</strong> &nbsp;materiais baixados (${it.qtd} unid.) &nbsp;|&nbsp; Dá pra produzir: <strong>${est.saldo}</strong>`,'saida');
+      else if(est&&est.compartilhado) mostrarToastEstoque(`<strong>${est.baseNome}</strong> &nbsp;-${it.qtd*est.qtdPorVenda} unid. (${est.nome}) &nbsp;|&nbsp; Saldo: <strong>${est.baseSaldo}</strong>`,'saida');
       else if(est) mostrarToastEstoque(`<strong>${est.nome}</strong> &nbsp;-${it.qtd} unid. &nbsp;|&nbsp; Saldo: <strong>${est.saldo}</strong>`,'saida');
     }
   });
@@ -4662,7 +4665,7 @@ function renderProdutos() {
 }
 // Estoque compartilhado: produto (kit, order bump...) que baixa do estoque de outro produto principal
 function preencherEstoqueDeProduto(valor, skuAtual) {
-  const opts=dados.produtos.filter(p=>!p.digital&&!p.estoqueDe&&p.sku!==skuAtual);
+  const opts=dados.produtos.filter(p=>!p.digital&&!p.estoqueDe&&!p.papelariaId&&p.sku!==skuAtual);
   document.getElementById('pr-estoque-de').innerHTML='<option value="">Estoque próprio (este é o produto principal)</option>'+opts.map(p=>`<option value="${p.sku}">Baixa do estoque de: ${p.nome} (${p.sku})</option>`).join('');
   document.getElementById('pr-estoque-de').value=valor||'';
   toggleEstoqueDeProduto();
@@ -4708,6 +4711,7 @@ function editarProduto(i) {
   document.getElementById('pr-icms').value=p.icms||'Isento';
   document.getElementById('pr-obs').value=p.obs||'';
   preencherEstoqueDeProduto(p.estoqueDe||'', p.sku);
+  papModoProduto(p);
   renderTaxasCanalProduto(p.taxasCanal||{});
   document.getElementById('pr-estoque-qtd').value=p.estoqueQtd||1;
   document.getElementById('modalProdutoTitulo').textContent='Editar Produto';
@@ -4738,8 +4742,12 @@ async function salvarProduto() {
   const skuRepetido=dados.produtos.some((p,i)=>(p.sku||'').toUpperCase()===sku.toUpperCase()&&String(i)!==idx);
   if(skuRepetido) return alert(`Já existe um produto com o SKU "${sku}". Use um SKU diferente para a variação.`);
   const isDigital=document.getElementById('pr-digital').checked;
-  const estoqueDe=isDigital?'':v('pr-estoque-de');
+  // Produto criado pela aba Papelaria: o estoque vem dos materiais, não de outro produto
+  const papelariaId=idx===''?'':(dados.produtos[parseInt(idx)].papelariaId||'');
+  const estoqueDe=isDigital||papelariaId?'':v('pr-estoque-de');
   const skuAntigo=idx===''?'':dados.produtos[parseInt(idx)].sku;
+  if(papelariaId&&skuAntigo&&skuAntigo!==sku&&dados.pedidos.some(pd=>getPedidoItens(pd).some(it=>it.sku===skuAntigo)))
+    return alert(`Já existem pedidos com o SKU "${skuAntigo}". Para não perder a baixa dos materiais da papelaria, mantenha o SKU.`);
   if(!estoqueDe && skuAntigo && dados.produtos.some(p=>p.estoqueDe===skuAntigo) && skuAntigo!==sku)
     return alert(`Outros produtos baixam do estoque de "${skuAntigo}". Para trocar o SKU, primeiro altere esses produtos.`);
   if(estoqueDe && skuAntigo && dados.produtos.some(p=>p.estoqueDe===skuAntigo))
@@ -4752,6 +4760,12 @@ async function salvarProduto() {
     largura:isDigital?0:(parseInt(v('pr-largura'))||0),comprimento:isDigital?0:(parseInt(v('pr-comprimento'))||0),
     substituiEnvio:isDigital?false:document.getElementById('pr-substitui-envio').checked,
     ncm:v('pr-ncm').trim(),csosn:v('pr-csosn').trim(),icms:v('pr-icms'),obs:v('pr-obs'),taxasCanal:lerTaxasCanalProduto()};
+  if(papelariaId){
+    obj.papelariaId=papelariaId;
+    // mantém o vínculo do lado da papelaria se o SKU mudou
+    const pp=dados.papelariaProdutos.find(x=>x._docId===papelariaId);
+    if(pp&&pp.produtoSku!==sku) await db.collection('papelariaProdutos').doc(papelariaId).update({produtoSku:sku});
+  }
   if(idx==='') await db.collection('produtos').add(obj);
   else await db.collection('produtos').doc(dados.produtos[parseInt(idx)]._docId).set(obj);
   bootstrap.Modal.getInstance(document.getElementById('modalProduto')).hide();
@@ -4782,7 +4796,7 @@ function calcEstoque() {
   const proprio={};
   // 1) produtos com estoque próprio: somam o próprio + tudo dos produtos ligados a eles (× unidades por venda)
   dados.produtos.forEach(p=>{
-    if(p.digital||getProdutoBaseEstoque(p)) return;
+    if(p.digital||p.papelariaId||getProdutoBaseEstoque(p)) return;
     const ligados=dados.produtos.filter(x=>!x.digital&&x.estoqueDe===p.sku);
     let entradas=movSku(p.sku), vendido=qtdSku(ativos,p.sku), devolvido=qtdSku(devolvidos,p.sku), reservado=qtdSku(aEnviar,p.sku);
     ligados.forEach(l=>{const q=l.estoqueQtd||1;entradas+=movSku(l.sku)*q;vendido+=qtdSku(ativos,l.sku)*q;devolvido+=qtdSku(devolvidos,l.sku)*q;reservado+=qtdSku(aEnviar,l.sku)*q;});
@@ -4791,6 +4805,13 @@ function calcEstoque() {
   });
   return dados.produtos.map(p=>{
     if(p.digital) return {sku:p.sku,nome:p.nome,min:0,entradas:0,vendido:0,devolvido:0,saldo:Infinity,digital:true};
+    // 3) produtos da Papelaria: não têm estoque próprio; cada venda baixa os materiais (itens de produção)
+    //    e o saldo mostra quantas unidades ainda dá pra produzir com o que sobrou de material
+    if(p.papelariaId){
+      const pr=papProducaoPossivel(p.papelariaId);
+      return {sku:p.sku,nome:p.nome,min:p.estMin||0,entradas:0,vendido:qtdSku(ativos,p.sku),devolvido:qtdSku(devolvidos,p.sku),
+        reservado:qtdSku(aEnviar,p.sku),saldo:pr.qtd,papelaria:true,limitante:pr.limitante};
+    }
     const base=getProdutoBaseEstoque(p);
     if(!base) return proprio[p.sku];
     // 2) produtos ligados: mostram as próprias vendas e quantas unidades ainda dá pra vender com o estoque do principal
@@ -4809,10 +4830,11 @@ function renderEstoque() {
     return compararSort(va,vb,s.dir);
   });
   document.querySelector('#tabela-estoque tbody').innerHTML=lista.length?lista.map(e=>{let status,cor,saldoTxt;if(e.digital){status='♾ Digital';cor='status-ok';saldoTxt='∞';}else if(e.saldo<0&&(e.reservado||0)>0){status='🔴 Falta p/ pedidos';cor='status-critico';saldoTxt=e.saldo;}else if(e.saldo<=0){status='🔴 Zerado';cor='status-critico';saldoTxt=e.saldo;}else if(e.saldo<=e.min){status='🟡 Baixo';cor='status-alerta';saldoTxt=e.saldo;}else{status='🟢 OK';cor='status-ok';saldoTxt=e.saldo;}
-    const sub=e.compartilhado?`<div style="font-size:11px;font-weight:500;color:var(--cor-texto-suave)"><i class="bi bi-link-45deg"></i> sai do estoque de <b>${e.baseNome}</b>${e.qtdPorVenda>1?` (${e.qtdPorVenda} un. por venda)`:''}</div>`:(e.ligados&&e.ligados.length?`<div style="font-size:11px;font-weight:500;color:var(--cor-texto-suave)"><i class="bi bi-diagram-3"></i> estoque principal — inclui vendas de: ${e.ligados.join(', ')}</div>`:'');
-    const entradasTxt=e.digital?'—':e.compartilhado?'<span style="color:var(--cor-texto-suave);font-weight:400">no principal</span>':'+'+e.entradas;
-    if(e.compartilhado) saldoTxt=`${e.saldo}<div style="font-size:10px;font-weight:500;color:var(--cor-texto-suave)">vendas possíveis</div>`;
-    return `<tr${e.compartilhado?' style="opacity:.85"':''}><td style="font-family:monospace;color:var(--cor-secundaria);font-size:12px">${e.sku}</td><td style="font-weight:600;color:#fff">${e.nome}${sub}</td><td style="text-align:center;color:#3B82F6;font-weight:600">${entradasTxt}</td><td style="text-align:center;color:#EF4444;font-weight:600">${e.digital?'—':'−'+e.vendido}</td><td style="text-align:center;color:var(--cor-texto-suave)">${e.digital?'—':(e.devolvido>0?'↩'+e.devolvido:'—')}</td><td style="text-align:center;font-weight:600">${e.digital||e.compartilhado?'—':e.fisico}</td><td style="text-align:center;font-weight:600;color:#F59E0B">${e.digital?'—':(e.reservado>0?e.reservado:'—')}</td><td style="font-weight:700;font-size:16px;text-align:center" class="${cor}">${saldoTxt}</td><td class="${cor}" style="font-weight:600">${status}</td></tr>`;}).join(''):'<tr><td colspan="9"><div class="empty-state"><i class="bi bi-archive"></i>Nenhum produto</div></td></tr>';
+    const sub=e.papelaria?`<div style="font-size:11px;font-weight:500;color:#F472B6"><i class="bi bi-scissors"></i> produzido com materiais da Papelaria${e.limitante?` · acaba primeiro: <b>${escHtml(e.limitante)}</b>`:''}</div>`:e.compartilhado?`<div style="font-size:11px;font-weight:500;color:var(--cor-texto-suave)"><i class="bi bi-link-45deg"></i> sai do estoque de <b>${e.baseNome}</b>${e.qtdPorVenda>1?` (${e.qtdPorVenda} un. por venda)`:''}</div>`:(e.ligados&&e.ligados.length?`<div style="font-size:11px;font-weight:500;color:var(--cor-texto-suave)"><i class="bi bi-diagram-3"></i> estoque principal — inclui vendas de: ${e.ligados.join(', ')}</div>`:'');
+    const entradasTxt=e.digital?'—':e.papelaria?'<span style="color:var(--cor-texto-suave);font-weight:400">materiais</span>':e.compartilhado?'<span style="color:var(--cor-texto-suave);font-weight:400">no principal</span>':'+'+e.entradas;
+    if(e.papelaria) saldoTxt=`${e.saldo}<div style="font-size:10px;font-weight:500;color:var(--cor-texto-suave)">dá pra produzir</div>`;
+    else if(e.compartilhado) saldoTxt=`${e.saldo}<div style="font-size:10px;font-weight:500;color:var(--cor-texto-suave)">vendas possíveis</div>`;
+    return `<tr${e.compartilhado?' style="opacity:.85"':''}><td style="font-family:monospace;color:var(--cor-secundaria);font-size:12px">${e.sku}</td><td style="font-weight:600;color:#fff">${e.nome}${sub}</td><td style="text-align:center;color:#3B82F6;font-weight:600">${entradasTxt}</td><td style="text-align:center;color:#EF4444;font-weight:600">${e.digital?'—':'−'+e.vendido}</td><td style="text-align:center;color:var(--cor-texto-suave)">${e.digital?'—':(e.devolvido>0?'↩'+e.devolvido:'—')}</td><td style="text-align:center;font-weight:600">${e.digital||e.compartilhado||e.papelaria?'—':e.fisico}</td><td style="text-align:center;font-weight:600;color:#F59E0B">${e.digital?'—':(e.reservado>0?e.reservado:'—')}</td><td style="font-weight:700;font-size:16px;text-align:center" class="${cor}">${saldoTxt}</td><td class="${cor}" style="font-weight:600">${status}</td></tr>`;}).join(''):'<tr><td colspan="9"><div class="empty-state"><i class="bi bi-archive"></i>Nenhum produto</div></td></tr>';
   atualizarThSort('estoque',s.col,s.dir);
   renderMovimentosEstoque();
 }
@@ -4976,7 +4998,7 @@ function renderMovimentosEstoque() {
 
 // Movimentação só nos produtos com estoque próprio (kits/order bumps baixam do principal)
 function opcoesEstoqueMov(skuAtual) {
-  const lista=dados.produtos.filter(p=>!p.digital&&(!getProdutoBaseEstoque(p)||p.sku===skuAtual));
+  const lista=dados.produtos.filter(p=>!p.digital&&((!getProdutoBaseEstoque(p)&&!p.papelariaId)||p.sku===skuAtual));
   return '<option value="">— Selecione —</option>'+lista.map(p=>`<option value="${p.sku}">${p.sku} — ${p.nome}</option>`).join('');
 }
 function abrirModalEstoqueMov() {
@@ -5093,9 +5115,91 @@ async function salvarAfiliado() {
 // PAPELARIA — materiais, custo por produto e margem
 // ============================================================
 function papCustoUnit(m) { const q=parseFloat(m.qtdPacote)||0; return q>0?(parseFloat(m.custoPacote)||0)/q:0; }
-// Quanto ainda tem do material (sem valor informado = tudo o que veio na compra)
-function papEstoque(m) { return m.estoque!=null&&m.estoque!==''?(parseFloat(m.estoque)||0):(parseFloat(m.qtdPacote)||0); }
+// Base do estoque do material (sem valor informado = tudo o que veio na compra)
+function papEstoqueBase(m) { return m.estoque!=null&&m.estoque!==''?(parseFloat(m.estoque)||0):(parseFloat(m.qtdPacote)||0); }
+// Quanto de cada material já foi usado nas vendas: pedido (não cancelado) de produto ligado à Papelaria
+// × quantidade de cada item de produção da ficha do produto
+function papConsumoPorMaterial() {
+  const consumo={};
+  const porSku={};
+  dados.produtos.forEach(pr=>{ if(pr.papelariaId){ const pp=dados.papelariaProdutos.find(x=>x._docId===pr.papelariaId); if(pp) porSku[pr.sku]=pp; } });
+  if(!Object.keys(porSku).length) return consumo;
+  dados.pedidos.forEach(pd=>{
+    if(pd.status==='Cancelado') return;
+    getPedidoItens(pd).forEach(it=>{
+      const pp=porSku[it.sku]; if(!pp) return;
+      (pp.itens||[]).forEach(mi=>{ if(mi.materialId) consumo[mi.materialId]=(consumo[mi.materialId]||0)+(parseFloat(it.qtd)||0)*(parseFloat(mi.qtd)||0); });
+    });
+  });
+  return consumo;
+}
+function papConsumo(m) { return papConsumoPorMaterial()[m._docId]||0; }
+// Quanto ainda tem do material = base − o que já saiu nas vendas
+function papEstoque(m,consumo) { return papEstoqueBase(m)-((consumo||papConsumoPorMaterial())[m._docId]||0); }
+// Quantas unidades do produto de papelaria ainda dá pra produzir (o material que acaba primeiro manda)
+function papProducaoPossivel(papId) {
+  const pp=dados.papelariaProdutos.find(x=>x._docId===papId);
+  if(!pp) return {qtd:0,limitante:'ficha de produção não encontrada'};
+  const consumo=papConsumoPorMaterial();
+  let qtd=Infinity, limitante='';
+  (pp.itens||[]).forEach(it=>{
+    const m=papMaterialPorId(it.materialId), q=parseFloat(it.qtd)||0;
+    if(!m||m.estimativa||q<=0) return; // impressão estimada e material removido não travam a produção
+    const da=Math.floor((papEstoque(m,consumo)+1e-9)/q);
+    if(da<qtd){qtd=da;limitante=m.nome;}
+  });
+  return qtd===Infinity?{qtd:0,limitante:''}:{qtd,limitante};
+}
 function papMaterialPorId(id) { return dados.papelariaMateriais.find(m=>m._docId===id); }
+// Produto da aba Produtos ligado a um produto da Papelaria
+function papProdutoVinculado(pp) {
+  if(!pp) return null;
+  const nome=(pp.nome||'').trim().toLowerCase();
+  return dados.produtos.find(x=>x.papelariaId===pp._docId)
+    ||(pp.produtoSku?dados.produtos.find(x=>x.sku===pp.produtoSku&&!x.papelariaId):null)
+    ||(nome?dados.produtos.find(x=>!x.papelariaId&&!x.digital&&(x.nome||'').trim().toLowerCase()===nome):null)
+    ||null;
+}
+function papProximoSku() {
+  const usados=new Set(dados.produtos.map(p=>(p.sku||'').toUpperCase()));
+  let n=1; while(usados.has('PAP-'+String(n).padStart(3,'0'))) n++;
+  return 'PAP-'+String(n).padStart(3,'0');
+}
+// Cria ou atualiza o produto na aba Produtos (categoria Papelaria) a partir do produto da Papelaria
+async function papSincronizarProduto(papId,obj,nomeAnterior) {
+  const pp={...obj,_docId:papId};
+  const existente=papProdutoVinculado(pp);
+  const custo=Math.round((obj.custoTotal||0)*100)/100;
+  if(existente){
+    const upd={papelariaId:papId,categoria:'Papelaria',custo,digital:false,estoqueDe:''};
+    if((parseFloat(obj.precoVenda)||0)>0) upd.preco=parseFloat(obj.precoVenda);
+    // renomeia só se o nome em Produtos ainda era o mesmo da Papelaria (não apaga um nome ajustado à mão)
+    if(!nomeAnterior||existente.nome===nomeAnterior) upd.nome=obj.nome;
+    await db.collection('produtos').doc(existente._docId).update(upd);
+    if(obj.produtoSku!==existente.sku) await db.collection('papelariaProdutos').doc(papId).update({produtoSku:existente.sku});
+    return existente.sku;
+  }
+  const sku=obj.produtoSku&&!dados.produtos.some(p=>(p.sku||'').toUpperCase()===obj.produtoSku.toUpperCase())?obj.produtoSku:papProximoSku();
+  await db.collection('produtos').add({papelariaId:papId,estoqueDe:'',estoqueQtd:1,sku,nome:obj.nome,categoria:'Papelaria',fornecedor:'Produção própria',digital:false,
+    preco:parseFloat(obj.precoVenda)||0,estMin:0,estIni:0,custo,frete:0,peso:0,altura:0,largura:0,comprimento:0,substituiEnvio:false,
+    ncm:'',csosn:'',icms:'Isento',obs:'Criado automaticamente pela aba Papelaria. O estoque baixa os materiais da ficha de produção.',taxasCanal:{}});
+  await db.collection('papelariaProdutos').doc(papId).update({produtoSku:sku});
+  return sku;
+}
+// Modal de Produto: produto ligado à Papelaria não escolhe "de qual estoque sai"
+function papModoProduto(p) {
+  const aviso=document.getElementById('pr-papelaria-aviso'), box=document.getElementById('pr-estoque-de-box');
+  if(p&&p.papelariaId){
+    const pr=papProducaoPossivel(p.papelariaId);
+    aviso.innerHTML=`<i class="bi bi-scissors me-1" style="color:#F472B6"></i><b>Produto da Papelaria.</b> Cada venda baixa os materiais da ficha de produção (aba Papelaria). Hoje dá pra produzir <b>${pr.qtd}</b> unidade(s)${pr.limitante?` · acaba primeiro: ${escHtml(pr.limitante)}`:''}. Materiais e custo são editados na aba Papelaria.`;
+    aviso.style.display=''; box.style.display='none';
+    document.querySelectorAll('.pr-estoque-proprio').forEach(el=>el.style.display='');
+    document.getElementById('pr-estini').parentElement.style.display='none';
+  } else {
+    aviso.style.display='none'; box.style.display='';
+    document.getElementById('pr-estini').parentElement.style.display=v('pr-estoque-de')?'none':'';
+  }
+}
 // Recalcula sempre com o custo ATUAL do material (se o preço do material mudar, o produto atualiza sozinho)
 function papCalcular(p) {
   const itens=(p.itens||[]).map(it=>{
@@ -5129,7 +5233,8 @@ function renderPapelaria() {
   const abaixo=comPreco.filter(p=>calc.get(p).margem<20).length;
   const compras=dados.papelariaMateriais.filter(m=>!m.estimativa);
   const investido=compras.reduce((s,m)=>s+(parseFloat(m.custoPacote)||0),0);
-  const valorEstoque=compras.reduce((s,m)=>s+papEstoque(m)*papCustoUnit(m),0);
+  const consumo=papConsumoPorMaterial();
+  const valorEstoque=compras.reduce((s,m)=>s+Math.max(0,papEstoque(m,consumo))*papCustoUnit(m),0);
   document.getElementById('kpi-papelaria').innerHTML=`
     <div class="kpi-card"><div class="kpi-label">Investido na papelaria</div><div class="kpi-value">${moeda(investido)}</div><div class="kpi-sub">total pago em materiais</div></div>
     <div class="kpi-card"><div class="kpi-label">Valor em estoque</div><div class="kpi-value" style="color:var(--cor-verde)">${moeda(valorEstoque)}</div><div class="kpi-sub">materiais que ainda tem</div></div>
@@ -5148,8 +5253,10 @@ function renderPapelaria() {
   document.querySelector('#tabela-papelariaProdutos tbody').innerHTML=prods.length?prods.map(p=>{
     const i=dados.papelariaProdutos.indexOf(p), c=calc.get(p);
     const mats=c.itens.map(it=>`${papFmtQtd(it.qtd)} ${it.unidade} ${it.nome}${it.removido?' ⚠️':''}`).join('<br>');
+    const vinc=papProdutoVinculado(p), prod=papProducaoPossivel(p._docId);
+    const vincTxt=vinc?`<div style="font-size:11px;font-weight:500;margin-top:2px"><span style="font-family:monospace;color:var(--cor-secundaria)">${escHtml(vinc.sku)}</span> <span style="color:${prod.qtd>0?'var(--cor-texto-suave)':'#EF4444'}">· dá pra produzir ${prod.qtd}</span></div>`:'<div style="font-size:11px;color:#F59E0B;margin-top:2px">⚠ sem cadastro em Produtos: edite e salve</div>';
     const canalTxt=p.canal?`${badgeCanal(p.canal)}<div style="font-size:11px;color:var(--cor-texto-suave);margin-top:2px">${moeda(c.taxas)}</div>`:'<span style="color:var(--cor-texto-suave)">Sem taxa</span>';
-    return `<tr><td style="font-weight:600;color:#fff">${p.nome}</td><td style="font-size:12px">${mats||'—'}</td><td style="font-weight:600">${moeda(c.custo)}</td><td>${c.preco>0?moeda(c.preco):`<span style="color:var(--cor-texto-suave)">Sugerido ${moeda(c.precoSugerido)}</span>`}</td><td>${canalTxt}</td><td style="color:${c.preco>0?papCorMargem(c.margem):'inherit'};font-weight:600">${c.preco>0?moeda(c.lucro):'—'}</td><td style="color:${c.preco>0?papCorMargem(c.margem):'inherit'};font-weight:700">${c.preco>0?c.margem.toFixed(1).replace('.',',')+'%':'—'}</td><td style="white-space:nowrap"><button class="btn-sm-action btn-edit" title="Editar" onclick="editarPapProduto(${i})"><i class="bi bi-pencil-fill"></i></button><button class="btn-sm-action btn-edit" title="Duplicar" onclick="editarPapProduto(${i},true)"><i class="bi bi-files"></i></button><button class="btn-sm-action btn-delete" onclick="deletar('papelariaProdutos',${i})"><i class="bi bi-trash-fill"></i></button></td></tr>`;
+    return `<tr><td style="font-weight:600;color:#fff">${p.nome}${vincTxt}</td><td style="font-size:12px">${mats||'—'}</td><td style="font-weight:600">${moeda(c.custo)}</td><td>${c.preco>0?moeda(c.preco):`<span style="color:var(--cor-texto-suave)">Sugerido ${moeda(c.precoSugerido)}</span>`}</td><td>${canalTxt}</td><td style="color:${c.preco>0?papCorMargem(c.margem):'inherit'};font-weight:600">${c.preco>0?moeda(c.lucro):'—'}</td><td style="color:${c.preco>0?papCorMargem(c.margem):'inherit'};font-weight:700">${c.preco>0?c.margem.toFixed(1).replace('.',',')+'%':'—'}</td><td style="white-space:nowrap"><button class="btn-sm-action btn-edit" title="Editar" onclick="editarPapProduto(${i})"><i class="bi bi-pencil-fill"></i></button><button class="btn-sm-action btn-edit" title="Duplicar" onclick="editarPapProduto(${i},true)"><i class="bi bi-files"></i></button><button class="btn-sm-action btn-delete" onclick="deletarPapProduto(${i})"><i class="bi bi-trash-fill"></i></button></td></tr>`;
   }).join(''):'<tr><td colspan="8"><div class="empty-state"><i class="bi bi-scissors"></i>Nenhum produto montado. Cadastre os materiais abaixo e depois clique em "Novo Produto"</div></td></tr>';
   atualizarThSort('papelariaProdutos',sp.col,sp.dir);
 
@@ -5162,7 +5269,7 @@ function renderPapelaria() {
   document.querySelector('#tabela-papelariaMateriais tbody').innerHTML=mats.length?mats.map(m=>{
     const i=dados.papelariaMateriais.indexOf(m);
     const usos=dados.papelariaProdutos.filter(p=>(p.itens||[]).some(it=>it.materialId===m._docId)).length;
-    return `<tr><td style="font-weight:600;color:#fff">${m.nome}</td><td>${m.categoria||'—'}</td><td>${moeda(m.custoPacote)} / ${papFmtQtd(m.qtdPacote)} ${m.unidade}</td><td>${m.estimativa?'—':papFmtQtd(papEstoque(m))+' '+m.unidade}</td><td style="color:var(--cor-verde);font-weight:600">${papMoedaUnit(papCustoUnit(m))} <span style="font-size:11px;color:var(--cor-texto-suave)">por ${m.unidade}</span></td><td>${m.fornecedor||'—'}</td><td>${usos?usos+' produto'+(usos>1?'s':''):'—'}</td><td style="white-space:nowrap"><button class="btn-sm-action btn-edit" onclick="editarPapMaterial(${i})"><i class="bi bi-pencil-fill"></i></button><button class="btn-sm-action btn-delete" onclick="deletarPapMaterial(${i})"><i class="bi bi-trash-fill"></i></button></td></tr>`;
+    return `<tr><td style="font-weight:600;color:#fff">${m.nome}</td><td>${m.categoria||'—'}</td><td>${moeda(m.custoPacote)} / ${papFmtQtd(m.qtdPacote)} ${m.unidade}</td><td>${m.estimativa?'—':`<span style="${papEstoque(m,consumo)<=0?'color:#EF4444;font-weight:600':''}">${papFmtQtd(papEstoque(m,consumo))} ${m.unidade}</span>${consumo[m._docId]?`<div style="font-size:11px;color:var(--cor-texto-suave)">−${papFmtQtd(consumo[m._docId])} usado em vendas</div>`:''}`}</td><td style="color:var(--cor-verde);font-weight:600">${papMoedaUnit(papCustoUnit(m))} <span style="font-size:11px;color:var(--cor-texto-suave)">por ${m.unidade}</span></td><td>${m.fornecedor||'—'}</td><td>${usos?usos+' produto'+(usos>1?'s':''):'—'}</td><td style="white-space:nowrap"><button class="btn-sm-action btn-edit" onclick="editarPapMaterial(${i})"><i class="bi bi-pencil-fill"></i></button><button class="btn-sm-action btn-delete" onclick="deletarPapMaterial(${i})"><i class="bi bi-trash-fill"></i></button></td></tr>`;
   }).join(''):'<tr><td colspan="8"><div class="empty-state"><i class="bi bi-box2"></i>Nenhum material cadastrado</div></td></tr>';
   atualizarThSort('papelariaMateriais',sm.col,sm.dir);
 }
@@ -5191,7 +5298,9 @@ function editarPapMaterial(i) {
   document.getElementById('pm-qtd').value=m.qtdPacote||1;
   document.getElementById('pm-unidade').value=m.unidade||'unidade';
   document.getElementById('pm-fornecedor').value=m.fornecedor||'';
-  document.getElementById('pm-estoque').value=m.estoque!=null?m.estoque:'';
+  // mostra o que tem AGORA (já descontado o que saiu nas vendas)
+  const usado=papConsumo(m);
+  document.getElementById('pm-estoque').value=m.estoque!=null||usado?Math.round(papEstoque(m)*1000)/1000:'';
   document.getElementById('pm-obs').value=m.obs||'';
   document.getElementById('modalPapMaterialTitulo').textContent='Editar Material';
   calcPapMaterial();
@@ -5203,8 +5312,12 @@ async function salvarPapMaterial() {
   if(!pFloat('pm-custo')||qtd<=0) return alert('Informe o valor pago e a quantidade que veio');
   const idx=v('pm-idx');
   const obj={nome:v('pm-nome').trim(),categoria:v('pm-categoria').trim(),custoPacote:pFloat('pm-custo'),qtdPacote:qtd,unidade:v('pm-unidade'),fornecedor:v('pm-fornecedor').trim(),obs:v('pm-obs')};
-  if(v('pm-estoque')!=='') obj.estoque=parseFloat(v('pm-estoque'))||0;
   const anterior=idx===''?null:dados.papelariaMateriais[parseInt(idx)];
+  // O campo mostra o saldo atual; grava a base somando de volta o que já saiu nas vendas,
+  // assim as próximas vendas continuam baixando a partir do valor digitado
+  const usado=anterior?papConsumo(anterior):0;
+  if(v('pm-estoque')!=='') obj.estoque=(parseFloat(v('pm-estoque'))||0)+usado;
+  else if(usado) obj.estoque=qtd;
   if(anterior&&anterior.estimativa) obj.estimativa=true;
   await salvarComCriadoEm('papelariaMateriais',idx,obj,dados.papelariaMateriais);
   bootstrap.Modal.getOrCreateInstance(document.getElementById('modalPapMaterial')).hide();
@@ -5295,8 +5408,43 @@ async function salvarPapProduto() {
   // Guarda o custo calculado no momento (referência histórica); a tabela sempre recalcula com o custo atual
   const c=papCalcular(obj);
   obj.custoTotal=Math.round(c.custo*100)/100;
-  await salvarComCriadoEm('papelariaProdutos',v('pp-idx'),obj,dados.papelariaProdutos);
+  const idx=v('pp-idx');
+  const anterior=idx===''?null:dados.papelariaProdutos[parseInt(idx)];
+  if(anterior&&anterior.produtoSku) obj.produtoSku=anterior.produtoSku;
+  let papId;
+  try {
+    if(idx===''){
+      obj.criadoEm=firebase.firestore.FieldValue.serverTimestamp();
+      papId=(await db.collection('papelariaProdutos').add(obj)).id;
+    } else {
+      if(anterior.criadoEm) obj.criadoEm=anterior.criadoEm;
+      papId=anterior._docId;
+      await db.collection('papelariaProdutos').doc(papId).set(obj);
+    }
+  } catch(e) { return alert('Erro ao salvar o produto: '+e.message); }
   bootstrap.Modal.getOrCreateInstance(document.getElementById('modalPapProduto')).hide();
+  // Cadastra/atualiza também na aba Produtos (categoria Papelaria)
+  try {
+    const sku=await papSincronizarProduto(papId,obj,anterior?anterior.nome:'');
+    if(!anterior) mostrarToastEstoque(`<strong>${escHtml(obj.nome)}</strong> &nbsp;cadastrado também em Produtos (SKU <strong>${escHtml(sku)}</strong>, categoria Papelaria)`,'entrada');
+  } catch(e) { alert('O produto foi salvo na Papelaria, mas deu erro ao cadastrar na aba Produtos: '+e.message+'\n\nAbra e salve de novo para tentar outra vez.'); }
+}
+async function deletarPapProduto(i) {
+  const p=dados.papelariaProdutos[i];
+  const vinc=papProdutoVinculado(p);
+  if(!confirm(`Excluir "${p.nome}" da Papelaria?`)) return;
+  await db.collection('papelariaProdutos').doc(p._docId).delete();
+  if(!vinc) return;
+  const temPedido=dados.pedidos.some(pd=>getPedidoItens(pd).some(it=>it.sku===vinc.sku));
+  if(temPedido){
+    // mantém o produto por causa do histórico de pedidos, só desfaz o vínculo
+    await db.collection('produtos').doc(vinc._docId).update({papelariaId:firebase.firestore.FieldValue.delete()});
+    alert(`"${vinc.nome}" (${vinc.sku}) continua na aba Produtos porque já tem pedidos. Ele passa a ter estoque próprio.`);
+  } else if(confirm(`Excluir também "${vinc.nome}" (${vinc.sku}) da aba Produtos?`)) {
+    await db.collection('produtos').doc(vinc._docId).delete();
+  } else {
+    await db.collection('produtos').doc(vinc._docId).update({papelariaId:firebase.firestore.FieldValue.delete()});
+  }
 }
 
 // ============================================================
