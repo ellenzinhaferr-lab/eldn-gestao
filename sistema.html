@@ -643,7 +643,10 @@ table.gestao tbody tr:hover .tbl-sticky-r{background:#1f1545}
     <div class="page" id="pg-appmlc">
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;flex-wrap:wrap;gap:10px">
         <div style="font-size:12px;color:var(--cor-texto-suave)" id="appmlc-ultima-atualizacao"><i class="bi bi-hourglass-split me-1"></i>Aguardando carregamento...</div>
-        <button class="btn btn-outline-secondary btn-sm" onclick="renderAppMlc()"><i class="bi bi-arrow-clockwise me-1"></i>Atualizar dados</button>
+        <div style="display:flex;gap:8px;flex-wrap:wrap">
+          <button class="btn btn-primary btn-sm" onclick="abrirLiberarAcessoApp()"><i class="bi bi-gift-fill me-1"></i>Liberar acesso (cortesia)</button>
+          <button class="btn btn-outline-secondary btn-sm" onclick="renderAppMlc()"><i class="bi bi-arrow-clockwise me-1"></i>Atualizar dados</button>
+        </div>
       </div>
       <!-- KPIs principais -->
       <div class="kpi-grid mb-3" id="appmlc-kpis" style="grid-template-columns:repeat(auto-fill,minmax(175px,1fr))"></div>
@@ -674,23 +677,57 @@ table.gestao tbody tr:hover .tbl-sticky-r{background:#1f1545}
       <div class="table-card">
         <div class="table-header">
           <h6><i class="bi bi-people-fill me-2" style="color:var(--cor-secundaria)"></i>Usuárias do App</h6>
-          <input type="text" class="input-search" placeholder="Buscar nome..." oninput="filtrarTabela('tabela-appmlc',this.value)">
+          <input type="text" class="input-search" placeholder="Buscar nome ou e-mail..." oninput="filtrarTabela('tabela-appmlc',this.value)">
         </div>
         <div class="table-responsive">
           <table class="gestao" id="tabela-appmlc">
             <thead><tr>
               <th>#</th>
               <th>Nome</th>
+              <th>E-mail</th>
               <th>Status</th>
+              <th>Origem</th>
               <th>Dia Atual</th>
               <th>Dias Conc.</th>
               <th>Bíblia (cap.)</th>
               <th>Notificação</th>
               <th>Horário</th>
               <th>Cadastro</th>
+              <th>Ações</th>
             </tr></thead>
-            <tbody id="appmlc-tbody"><tr><td colspan="9" class="text-center py-4" style="color:var(--cor-texto-suave)"><i class="bi bi-hourglass-split me-2"></i>Carregando...</td></tr></tbody>
+            <tbody id="appmlc-tbody"><tr><td colspan="12" class="text-center py-4" style="color:var(--cor-texto-suave)"><i class="bi bi-hourglass-split me-2"></i>Carregando...</td></tr></tbody>
           </table>
+        </div>
+      </div>
+      <!-- Liberações aguardando a pessoa criar conta -->
+      <div class="table-card mt-3">
+        <div class="table-header">
+          <h6><i class="bi bi-hourglass-split me-2" style="color:var(--cor-acento)"></i>Aguardando cadastro no app (<span id="appmlc-pend-count">0</span>)</h6>
+          <span style="font-size:12px;color:var(--cor-texto-suave)">Acesso já liberado: ativa sozinho quando a pessoa criar a conta com este e-mail</span>
+        </div>
+        <div class="table-responsive">
+          <table class="gestao">
+            <thead><tr><th>E-mail</th><th>Origem</th><th>Liberado em</th><th>Ações</th></tr></thead>
+            <tbody id="appmlc-pend-tbody"><tr><td colspan="4" class="text-center py-3" style="color:var(--cor-texto-suave)">Carregando...</td></tr></tbody>
+          </table>
+        </div>
+      </div>
+      <!-- Modal liberar acesso -->
+      <div class="modal fade" id="modalLiberarApp" tabindex="-1">
+        <div class="modal-dialog modal-dialog-centered">
+          <div class="modal-content">
+            <div class="modal-header"><h5 class="modal-title"><i class="bi bi-gift-fill me-2"></i>Liberar acesso ao App (cortesia)</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
+            <div class="modal-body">
+              <label class="form-label">E-mail da pessoa</label>
+              <input type="email" id="appmlc-lib-email" class="form-control" placeholder="email@exemplo.com" onkeydown="if(event.key==='Enter')liberarAcessoApp()">
+              <div style="font-size:12px;color:var(--cor-texto-suave);margin-top:8px">Use o mesmo e-mail que ela vai usar (ou já usa) para entrar no app. Se ela ainda não tem conta, o acesso libera sozinho quando ela se cadastrar.</div>
+              <div id="appmlc-lib-msg" style="display:none;font-size:13px;margin-top:12px;font-weight:500"></div>
+            </div>
+            <div class="modal-footer">
+              <button class="btn btn-outline-secondary" data-bs-dismiss="modal">Fechar</button>
+              <button class="btn btn-primary" id="appmlc-lib-btn" onclick="liberarAcessoApp()"><i class="bi bi-unlock-fill me-1"></i>Liberar acesso</button>
+            </div>
+          </div>
         </div>
       </div>
     </div>
@@ -1805,30 +1842,71 @@ function exportLeadsExcel() {
 // ============================================================
 // APP MLC — Analytics do aplicativo Meu Lugar de Cura
 // ============================================================
-const _SB_URL = 'https://tvyjxyxycyyiajiojozf.supabase.co';
-const _SB_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InR2eWp4eXh5Y3l5aWFqaW9qb3pmIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3OTczNzA2NiwiZXhwIjoyMDk1MzEzMDY2fQ.mUoBP-rS5a71D7ZUSCdvBgPlUePfxUyfRDqwIvtPj3w';
+// Sem chave do Supabase aqui (repo público): a função admin-app valida o login do Firebase.
+const _APP_ADMIN_URL = 'https://tvyjxyxycyyiajiojozf.supabase.co/functions/v1/admin-app';
 let _chartAppStatus = null, _chartAppFase = null, _chartAppHabitos = null;
 
-async function _sbFetch(table, params) {
-  const r = await fetch(`${_SB_URL}/rest/v1/${table}?${params}`, {
-    headers: { 'apikey': _SB_KEY, 'Authorization': `Bearer ${_SB_KEY}` }
+async function _appAdmin(action, extra) {
+  const token = await auth.currentUser.getIdToken();
+  const r = await fetch(_APP_ADMIN_URL, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'x-firebase-token': token },
+    body: JSON.stringify(Object.assign({ action }, extra || {}))
   });
-  if (!r.ok) throw new Error(await r.text());
-  return r.json();
+  const d = await r.json().catch(() => ({}));
+  if (!r.ok) throw new Error(d.error || ('Erro ' + r.status));
+  return d;
+}
+
+function _escHtml(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+
+function abrirLiberarAcessoApp() {
+  document.getElementById('appmlc-lib-email').value = '';
+  document.getElementById('appmlc-lib-msg').style.display = 'none';
+  bootstrap.Modal.getOrCreateInstance(document.getElementById('modalLiberarApp')).show();
+  setTimeout(() => document.getElementById('appmlc-lib-email').focus(), 300);
+}
+
+async function liberarAcessoApp() {
+  const email = document.getElementById('appmlc-lib-email').value.trim().toLowerCase();
+  const msg = document.getElementById('appmlc-lib-msg');
+  const btn = document.getElementById('appmlc-lib-btn');
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) { msg.style.display='block'; msg.style.color='var(--cor-vermelho)'; msg.textContent='Digite um e-mail válido.'; return; }
+  btn.disabled = true;
+  try {
+    const r = await _appAdmin('grant', { email });
+    msg.style.display = 'block'; msg.style.color = 'var(--cor-verde)';
+    msg.textContent = r.result === 'activated'
+      ? 'Pronto! A conta já existia e o acesso foi liberado. É só fechar e abrir o app de novo.'
+      : 'Pronto! Assim que ela criar a conta no app com esse e-mail, o acesso libera sozinho.';
+    renderAppMlc();
+  } catch (e) {
+    msg.style.display = 'block'; msg.style.color = 'var(--cor-vermelho)'; msg.textContent = 'Não deu certo: ' + e.message;
+  } finally { btn.disabled = false; }
+}
+
+async function mudarStatusApp(userId, status, nome) {
+  const acao = status === 'active' ? 'LIBERAR o acesso de' : 'BLOQUEAR o acesso de';
+  if (!confirm(`${acao} ${nome}?`)) return;
+  try { await _appAdmin('set_status', { userId, status }); renderAppMlc(); }
+  catch (e) { alert('Não deu certo: ' + e.message); }
+}
+
+async function cancelarPendenteApp(email) {
+  if (!confirm(`Cancelar a liberação pendente de ${email}?`)) return;
+  try { await _appAdmin('cancel_pending', { email }); renderAppMlc(); }
+  catch (e) { alert('Não deu certo: ' + e.message); }
 }
 
 async function renderAppMlc() {
   document.getElementById('appmlc-ultima-atualizacao').innerHTML = '<i class="bi bi-hourglass-split me-1"></i>Carregando dados do Supabase...';
   document.getElementById('appmlc-kpis').innerHTML = '<div style="color:var(--cor-texto-suave);font-size:13px;padding:4px"><i class="bi bi-hourglass-split me-2"></i>Aguarde...</div>';
   document.getElementById('appmlc-engajamento').innerHTML = '';
-  document.getElementById('appmlc-tbody').innerHTML = '<tr><td colspan="9" class="text-center py-4" style="color:var(--cor-texto-suave)"><i class="bi bi-hourglass-split me-2"></i>Carregando...</td></tr>';
+  document.getElementById('appmlc-tbody').innerHTML = '<tr><td colspan="12" class="text-center py-4" style="color:var(--cor-texto-suave)"><i class="bi bi-hourglass-split me-2"></i>Carregando...</td></tr>';
 
   try {
-    const [profiles, progress, bible] = await Promise.all([
-      _sbFetch('profiles', 'select=id,name,subscription_status,current_day,notification_hour,onesignal_player_id,created_at&order=created_at.desc&limit=1000'),
-      _sbFetch('user_progress', 'select=user_id,day_number,completed_at,did_study,did_reading,did_prayer,did_fasting&limit=5000'),
-      _sbFetch('bible_reading', 'select=user_id&limit=5000')
-    ]);
+    const { profiles, progress, bible, pending } = await _appAdmin('dashboard');
+    _renderPendentesApp(pending || []);
 
     const total = profiles.length;
     const ativas = profiles.filter(p => p.subscription_status === 'active').length;
@@ -1930,12 +2008,20 @@ async function renderAppMlc() {
     // --- Tabela de usuárias ---
     const tbody = document.getElementById('appmlc-tbody');
     if(!total) {
-      tbody.innerHTML='<tr><td colspan="9" class="text-center py-4" style="color:var(--cor-texto-suave)">Nenhuma usuária cadastrada ainda.</td></tr>';
+      tbody.innerHTML='<tr><td colspan="12" class="text-center py-4" style="color:var(--cor-texto-suave)">Nenhuma usuária cadastrada ainda.</td></tr>';
     } else {
       tbody.innerHTML = profiles.map((p,i) => {
-        const badge = p.subscription_status==='active'
+        const ativa = p.subscription_status==='active';
+        const badge = ativa
           ? '<span class="badge-canal badge-direta">Ativa</span>'
           : '<span class="badge-canal badge-saida">Inativa</span>';
+        const origem = p.kiwify_subscription_id === 'cortesia'
+          ? '<span class="badge-canal badge-livro">Cortesia</span>'
+          : (p.kiwify_subscription_id ? '<span style="color:var(--cor-texto-suave)">Compra</span>' : '<span style="color:var(--cor-texto-suave)">—</span>');
+        const nomeJs = _escHtml((p.name||p.email||'esta usuária').replace(/['\\]/g,''));
+        const acao = ativa
+          ? `<button class="btn-sm-action btn-delete" title="Bloquear acesso" onclick="mudarStatusApp('${p.id}','inactive','${nomeJs}')"><i class="bi bi-lock-fill"></i></button>`
+          : `<button class="btn-sm-action" style="color:var(--cor-verde)" title="Liberar acesso" onclick="mudarStatusApp('${p.id}','active','${nomeJs}')"><i class="bi bi-unlock-fill"></i></button>`;
         const notifIcon = p.onesignal_player_id
           ? '<i class="bi bi-bell-fill" style="color:var(--cor-verde)" title="Notificação ativa"></i>'
           : '<i class="bi bi-bell-slash" style="color:var(--cor-texto-suave)" title="Sem notificação"></i>';
@@ -1943,17 +2029,20 @@ async function renderAppMlc() {
         const bibleLidos = bibleByUser[p.id]||0;
         const cadastro = p.created_at ? new Date(p.created_at).toLocaleDateString('pt-BR') : '—';
         const horario = p.notification_hour!=null ? `${String(p.notification_hour).padStart(2,'0')}:00` : '—';
-        const nome = p.name || '<span style="color:var(--cor-texto-suave);font-style:italic">Sem nome</span>';
+        const nome = p.name ? _escHtml(p.name) : '<span style="color:var(--cor-texto-suave);font-style:italic">Sem nome</span>';
         return `<tr>
           <td style="color:var(--cor-texto-suave)">${i+1}</td>
           <td style="font-weight:500">${nome}</td>
+          <td style="color:var(--cor-texto-suave)">${_escHtml(p.email)||'—'}</td>
           <td>${badge}</td>
+          <td>${origem}</td>
           <td><span style="font-weight:600;color:var(--cor-secundaria)">Dia ${p.current_day||1}</span></td>
           <td>${diasConc}</td>
           <td>${bibleLidos}</td>
           <td style="text-align:center">${notifIcon}</td>
           <td>${horario}</td>
           <td style="color:var(--cor-texto-suave);white-space:nowrap">${cadastro}</td>
+          <td>${acao}</td>
         </tr>`;
       }).join('');
     }
@@ -1968,6 +2057,22 @@ async function renderAppMlc() {
       `<i class="bi bi-x-circle me-1" style="color:var(--cor-vermelho)"></i>Falha ao carregar`;
     console.error('[App MLC]', e);
   }
+}
+
+function _renderPendentesApp(pending) {
+  const tb = document.getElementById('appmlc-pend-tbody');
+  document.getElementById('appmlc-pend-count').textContent = pending.length;
+  if (!pending.length) {
+    tb.innerHTML = '<tr><td colspan="4" class="text-center py-3" style="color:var(--cor-texto-suave)">Nenhuma liberação aguardando cadastro.</td></tr>';
+    return;
+  }
+  tb.innerHTML = pending.map(p => {
+    const origem = p.subscription_id === 'cortesia' ? '<span class="badge-canal badge-livro">Cortesia</span>' : `<span style="color:var(--cor-texto-suave)">Compra ${_escHtml(p.subscription_id||'')}</span>`;
+    const dt = p.created_at ? new Date(p.created_at).toLocaleDateString('pt-BR') : '—';
+    const em = _escHtml(p.email).replace(/'/g,'');
+    return `<tr><td>${_escHtml(p.email)}</td><td>${origem}</td><td style="color:var(--cor-texto-suave)">${dt}</td>
+      <td><button class="btn-sm-action btn-delete" title="Cancelar liberação" onclick="cancelarPendenteApp('${em}')"><i class="bi bi-x-lg"></i></button></td></tr>`;
+  }).join('');
 }
 
 // ============================================================
