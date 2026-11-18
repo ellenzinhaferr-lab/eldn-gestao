@@ -38,6 +38,15 @@ body{background:var(--cor-fundo);color:var(--cor-texto);font-family:'Segoe UI',s
 .nav-link:hover{background:rgba(124,58,237,.15);color:var(--cor-secundaria)}
 .nav-link.active{background:rgba(124,58,237,.25);color:#fff;font-weight:600}
 .nav-link i{width:18px;text-align:center;font-size:16px}
+.nav-group{margin-top:6px}
+.nav-group-titulo{display:flex;align-items:center;gap:6px;width:calc(100% - 20px);margin:0 10px;padding:8px 14px 4px;border:none;background:none;color:var(--cor-secundaria);font-size:10.5px;font-weight:700;letter-spacing:1.2px;text-transform:uppercase;cursor:pointer;text-align:left}
+.nav-group-titulo span:first-child{flex:1}
+.nav-group-titulo:hover{color:var(--cor-texto)}
+.nav-group-titulo i{font-size:11px;transition:transform .2s}
+.nav-group.fechado .nav-group-titulo i{transform:rotate(-90deg)}
+.nav-group.fechado .nav-group-itens{display:none}
+.nav-group-alerta{display:none;width:8px;height:8px;border-radius:50%;background:#EF4444}
+.nav-group.fechado.tem-alerta .nav-group-alerta{display:inline-block}
 .sidebar-footer{padding:14px 20px;border-top:1px solid var(--cor-borda);font-size:12px;color:var(--cor-texto-suave)}
 .main-content{margin-left:240px;min-height:100vh;display:flex;flex-direction:column}
 .topbar{background:var(--cor-card);border-bottom:1px solid var(--cor-borda);padding:14px 28px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:50}
@@ -172,28 +181,49 @@ table.gestao tbody tr:hover .tbl-sticky-r{background:#1f1545}
   </div>
   <div class="sidebar-nav">
     <div class="nav-item"><button class="nav-link active" onclick="showPage('dashboard')"><i class="bi bi-grid-fill"></i> Dashboard</button></div>
-    <div class="nav-item"><button class="nav-link" onclick="showPage('clientes')"><i class="bi bi-people-fill"></i> Clientes</button></div>
-    <div class="nav-item"><button class="nav-link" onclick="showPage('pedidos')"><i class="bi bi-box-seam-fill"></i> Pedidos</button></div>
-    <div class="nav-item"><button class="nav-link" onclick="showPage('envios')"><i class="bi bi-truck"></i> Envios <span id="badge-envios" style="display:none;margin-left:auto;background:#EF4444;color:#fff;border-radius:10px;padding:0 7px;font-size:11px;font-weight:700"></span></button></div>
-    <div class="nav-item"><button class="nav-link" onclick="showPage('fiscal')"><i class="bi bi-receipt-cutoff"></i> Fiscal</button></div>
-    <div class="nav-item"><button class="nav-link" onclick="showPage('financeiro')"><i class="bi bi-cash-stack"></i> Financeiro</button></div>
-    <div class="nav-item"><button class="nav-link" onclick="showPage('fluxo')"><i class="bi bi-bar-chart-fill"></i> Fluxo de Caixa</button></div>
-    <div class="nav-item"><button class="nav-link" onclick="showPage('compras')"><i class="bi bi-cart-fill"></i> Compras</button></div>
-    <div class="nav-item"><button class="nav-link" onclick="showPage('produtos')"><i class="bi bi-bookmark-fill"></i> Produtos</button></div>
-    <div class="nav-item"><button class="nav-link" onclick="showPage('papelaria')"><i class="bi bi-scissors"></i> Papelaria</button></div>
-    <div class="nav-item"><button class="nav-link" onclick="showPage('estoque')"><i class="bi bi-archive-fill"></i> Estoque</button></div>
-    <div class="nav-item"><button class="nav-link" onclick="showPage('canais')"><i class="bi bi-share-fill"></i> Canais</button></div>
-    <div class="nav-item"><button class="nav-link" onclick="showPage('afiliados')"><i class="bi bi-person-check-fill"></i> Afiliados</button></div>
-    <div class="nav-item"><button class="nav-link" onclick="showPage('trafego')"><i class="bi bi-megaphone-fill"></i> Tráfego</button></div>
-    <div class="nav-item"><button class="nav-link" onclick="showPage('prospeccao')"><i class="bi bi-funnel-fill"></i> Prospecção</button></div>
-    <div class="nav-item"><button class="nav-link" onclick="showPage('leads')"><i class="bi bi-person-lines-fill"></i> Leads</button></div>
-    <div class="nav-item"><button class="nav-link" onclick="showPage('appmlc')"><i class="bi bi-phone-fill"></i> App MLC</button></div>
-    <div class="nav-item"><button class="nav-link" onclick="showPage('relatorios')"><i class="bi bi-file-earmark-bar-graph-fill"></i> Relatórios</button></div>
-    <div class="nav-item" style="margin-top:8px;border-top:1px solid var(--cor-borda);padding-top:8px;">
-      <button class="nav-link" onclick="showPage('usuarios')"><i class="bi bi-shield-lock-fill"></i> Usuários</button>
+    <div class="nav-group" data-grupo="vendas">
+      <button class="nav-group-titulo" onclick="toggleGrupoMenu('vendas')"><span>Vendas</span><span class="nav-group-alerta"></span><i class="bi bi-chevron-down"></i></button>
+      <div class="nav-group-itens">
+        <div class="nav-item"><button class="nav-link" onclick="showPage('clientes')"><i class="bi bi-people-fill"></i> Clientes</button></div>
+        <div class="nav-item"><button class="nav-link" onclick="showPage('pedidos')"><i class="bi bi-box-seam-fill"></i> Pedidos</button></div>
+        <div class="nav-item"><button class="nav-link" onclick="showPage('envios')"><i class="bi bi-truck"></i> Envios <span id="badge-envios" style="display:none;margin-left:auto;background:#EF4444;color:#fff;border-radius:10px;padding:0 7px;font-size:11px;font-weight:700"></span></button></div>
+        <div class="nav-item"><button class="nav-link" onclick="showPage('canais')"><i class="bi bi-share-fill"></i> Canais</button></div>
+        <div class="nav-item"><button class="nav-link" onclick="showPage('afiliados')"><i class="bi bi-person-check-fill"></i> Afiliados</button></div>
+      </div>
     </div>
-    <div class="nav-item">
-      <button class="nav-link" onclick="showPage('config')"><i class="bi bi-gear-fill"></i> Configurações</button>
+    <div class="nav-group" data-grupo="marketing">
+      <button class="nav-group-titulo" onclick="toggleGrupoMenu('marketing')"><span>Marketing</span><span class="nav-group-alerta"></span><i class="bi bi-chevron-down"></i></button>
+      <div class="nav-group-itens">
+        <div class="nav-item"><button class="nav-link" onclick="showPage('trafego')"><i class="bi bi-megaphone-fill"></i> Tráfego</button></div>
+        <div class="nav-item"><button class="nav-link" onclick="showPage('leads')"><i class="bi bi-person-lines-fill"></i> Leads</button></div>
+        <div class="nav-item"><button class="nav-link" onclick="showPage('prospeccao')"><i class="bi bi-funnel-fill"></i> Prospecção</button></div>
+      </div>
+    </div>
+    <div class="nav-group" data-grupo="produtos">
+      <button class="nav-group-titulo" onclick="toggleGrupoMenu('produtos')"><span>Produtos e Estoque</span><span class="nav-group-alerta"></span><i class="bi bi-chevron-down"></i></button>
+      <div class="nav-group-itens">
+        <div class="nav-item"><button class="nav-link" onclick="showPage('produtos')"><i class="bi bi-bookmark-fill"></i> Produtos</button></div>
+        <div class="nav-item"><button class="nav-link" onclick="showPage('estoque')"><i class="bi bi-archive-fill"></i> Estoque</button></div>
+        <div class="nav-item"><button class="nav-link" onclick="showPage('compras')"><i class="bi bi-cart-fill"></i> Compras</button></div>
+        <div class="nav-item"><button class="nav-link" onclick="showPage('papelaria')"><i class="bi bi-scissors"></i> Papelaria</button></div>
+        <div class="nav-item"><button class="nav-link" onclick="showPage('appmlc')"><i class="bi bi-phone-fill"></i> App MLC</button></div>
+      </div>
+    </div>
+    <div class="nav-group" data-grupo="financeiro">
+      <button class="nav-group-titulo" onclick="toggleGrupoMenu('financeiro')"><span>Financeiro</span><span class="nav-group-alerta"></span><i class="bi bi-chevron-down"></i></button>
+      <div class="nav-group-itens">
+        <div class="nav-item"><button class="nav-link" onclick="showPage('financeiro')"><i class="bi bi-cash-stack"></i> Financeiro</button></div>
+        <div class="nav-item"><button class="nav-link" onclick="showPage('fluxo')"><i class="bi bi-bar-chart-fill"></i> Fluxo de Caixa</button></div>
+        <div class="nav-item"><button class="nav-link" onclick="showPage('fiscal')"><i class="bi bi-receipt-cutoff"></i> Fiscal</button></div>
+        <div class="nav-item"><button class="nav-link" onclick="showPage('relatorios')"><i class="bi bi-file-earmark-bar-graph-fill"></i> Relatórios</button></div>
+      </div>
+    </div>
+    <div class="nav-group" data-grupo="sistema">
+      <button class="nav-group-titulo" onclick="toggleGrupoMenu('sistema')"><span>Sistema</span><span class="nav-group-alerta"></span><i class="bi bi-chevron-down"></i></button>
+      <div class="nav-group-itens">
+        <div class="nav-item"><button class="nav-link" onclick="showPage('usuarios')"><i class="bi bi-shield-lock-fill"></i> Usuários</button></div>
+        <div class="nav-item"><button class="nav-link" onclick="showPage('config')"><i class="bi bi-gear-fill"></i> Configurações</button></div>
+      </div>
     </div>
   </div>
   <div class="sidebar-footer">
@@ -1682,12 +1712,34 @@ function fixarStickyHeaders(pgId) {
   },0);
 }
 
+// Menu lateral agrupado: abre/fecha grupos e lembra o estado no navegador
+function _gruposMenuFechados(){ try{return JSON.parse(localStorage.getItem('eldnMenuFechados')||'[]');}catch(e){return [];} }
+function _salvarGruposMenu(lista){ try{localStorage.setItem('eldnMenuFechados',JSON.stringify(lista));}catch(e){} }
+function toggleGrupoMenu(gid){
+  const g=document.querySelector(`.nav-group[data-grupo="${gid}"]`); if(!g) return;
+  g.classList.toggle('fechado');
+  const lista=_gruposMenuFechados().filter(x=>x!==gid);
+  if(g.classList.contains('fechado')) lista.push(gid);
+  _salvarGruposMenu(lista);
+  atualizarAlertaGruposMenu();
+}
+function atualizarAlertaGruposMenu(){
+  document.querySelectorAll('.nav-group').forEach(g=>{
+    const temBadge=[...g.querySelectorAll('[id^="badge-"]')].some(b=>b.style.display!=='none'&&b.textContent.trim()!=='');
+    g.classList.toggle('tem-alerta',temBadge);
+  });
+}
+document.addEventListener('DOMContentLoaded',()=>{
+  _gruposMenuFechados().forEach(gid=>{ const g=document.querySelector(`.nav-group[data-grupo="${gid}"]`); if(g) g.classList.add('fechado'); });
+  setInterval(atualizarAlertaGruposMenu,3000);
+});
 function showPage(id) {
   currentPage = id;
   document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
   document.querySelectorAll('.nav-link').forEach(b=>b.classList.remove('active'));
   document.getElementById('pg-'+id).classList.add('active');
-  document.querySelector(`[onclick="showPage('${id}')"]`).classList.add('active');
+  const _btnMenu=document.querySelector(`[onclick="showPage('${id}')"]`);
+  if(_btnMenu){ _btnMenu.classList.add('active'); const _g=_btnMenu.closest('.nav-group'); if(_g&&_g.classList.contains('fechado')) _g.classList.remove('fechado'); }
   const [titulo,sub] = pageTitles[id];
   document.getElementById('page-title').textContent = titulo;
   document.getElementById('page-sub').textContent = sub;
