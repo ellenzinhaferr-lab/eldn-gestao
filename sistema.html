@@ -840,7 +840,7 @@ table.gestao tbody tr:hover .tbl-sticky-r{background:#1f1545}
     <div class="col-md-4"><label class="form-label">WhatsApp</label><input class="form-control" id="c-whatsapp" maxlength="16" oninput="this.value=formatarTelefone(this.value)"></div>
     <div class="col-md-4"><label class="form-label">CPF / CNPJ *</label><input class="form-control" id="c-cpf" placeholder="Necessário para emitir NF-e" maxlength="18" oninput="this.value=formatarCpfCnpj(this.value)"></div>
     <div class="col-md-4"><label class="form-label">Instagram</label><input class="form-control" id="c-instagram" placeholder="@usuario"></div>
-    <div class="col-md-4"><label class="form-label">Canal de Origem</label><select class="form-select" id="c-canal"><option>Instagram</option><option>Amazon</option><option>Indicação</option><option>Parente</option><option>WhatsApp</option><option>Site</option><option>Outro</option></select></div>
+    <div class="col-md-4"><label class="form-label">Canal de Origem</label><select class="form-select" id="c-canal"></select></div>
     <div class="col-12" style="border-top:1px solid var(--cor-borda);padding-top:12px;margin-top:4px"><small style="color:var(--cor-secundaria);font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:1px"><i class="bi bi-geo-alt-fill me-1"></i>Endereço para Envio</small></div>
     <div class="col-md-3"><label class="form-label">CEP</label><input class="form-control" id="c-cep" placeholder="00000-000" maxlength="10" oninput="mascaraCEP(this)" onblur="buscarCEP()"></div>
     <div class="col-md-7"><label class="form-label">Logradouro</label><input class="form-control" id="c-logradouro" placeholder="Rua, Av., Alameda..."></div>
@@ -2679,7 +2679,23 @@ function verHistoricoCliente(clienteId) {
   new bootstrap.Modal(document.getElementById('modalHistoricoCliente')).show();
 }
 
+// Canal de origem do cliente: todos os canais de venda cadastrados + origens extras (indicação, parente...)
+const ORIGENS_EXTRAS_CLIENTE=['Instagram','Indicação','Parente','WhatsApp','Site','Outro'];
+function preencherSelectCanalCliente(atual) {
+  const sel=document.getElementById('c-canal');
+  const vendas=[...new Set((dados.config.canais||[]).map(c=>c.nome).filter(Boolean))].sort((a,b)=>a.localeCompare(b,'pt-BR'));
+  const extras=ORIGENS_EXTRAS_CLIENTE.filter(o=>!vendas.some(v=>v.toLowerCase()===o.toLowerCase()));
+  const todos=[...vendas,...extras];
+  let html='<option value="">— Selecione —</option>';
+  if(atual&&!todos.includes(atual)) html+=`<option>${escHtml(atual)}</option>`;
+  if(vendas.length) html+='<optgroup label="Canais de venda">'+vendas.map(n=>`<option>${escHtml(n)}</option>`).join('')+'</optgroup>';
+  html+='<optgroup label="Outras origens">'+extras.map(n=>`<option>${escHtml(n)}</option>`).join('')+'</optgroup>';
+  sel.innerHTML=html;
+  sel.value=atual||'';
+}
+
 function abrirModal(tipo) {
+  if(tipo==='cliente') preencherSelectCanalCliente('');
   const ids={cliente:'modalCliente',pedido:'modalPedido',financeiro:'modalFinanceiro',compra:'modalCompra',produto:'modalProduto',afiliado:'modalAfiliado',canal:'modalCanal',formapagto:'modalFormaPagto',usuario:'modalUsuario'};
   if(tipo==='pedido') preencherSelectsPedido();
   if(tipo==='compra') preencherSelectsCompra();
@@ -2697,7 +2713,7 @@ function editarCliente(i) {
   document.getElementById('c-whatsapp').value=formatarTelefone(c.whatsapp);
   document.getElementById('c-cpf').value=formatarCpfCnpj(c.cpf);
   document.getElementById('c-instagram').value=c.instagram;
-  document.getElementById('c-canal').value=c.canal;
+  preencherSelectCanalCliente(c.canal||'');
   document.getElementById('c-cep').value=c.cep||'';
   document.getElementById('c-logradouro').value=c.logradouro||'';
   document.getElementById('c-numero').value=c.numero||'';
