@@ -5359,12 +5359,33 @@ async function papSincronizarProduto(papId,obj,nomeAnterior) {
   await db.collection('papelariaProdutos').doc(papId).update({produtoSku:sku});
   return sku;
 }
+// Composição (ficha de produção) do produto da Papelaria, mostrada no modal de Produto
+function papComposicaoHtml(papId) {
+  const pp=dados.papelariaProdutos.find(x=>x._docId===papId);
+  if(!pp||!(pp.itens||[]).length) return '<div class="mt-2" style="color:#F87171">Ficha de produção sem materiais.</div>';
+  const consumo=papConsumoPorMaterial();
+  let total=0;
+  const linhas=pp.itens.map(it=>{
+    const m=papMaterialPorId(it.materialId), q=parseFloat(it.qtd)||0;
+    const cu=m?papCustoUnit(m):(parseFloat(it.custoUnit)||0), c=cu*q; total+=c;
+    const nome=escHtml((m&&m.nome)||it.nome||'Material removido');
+    const est=m?papFmtQtd(Math.max(0,papEstoque(m,consumo))):'—';
+    return `<tr><td>${nome}${m&&m.estimativa?' <span style="color:#FBBF24">(estimativa)</span>':''}${m?'':' <span style="color:#F87171">(não encontrado)</span>'}</td><td class="text-end">${papFmtQtd(q)} ${escHtml((m&&m.unidade)||it.unidade||'')}</td><td class="text-end">${moeda(c)}</td><td class="text-end">${est}</td></tr>`;
+  }).join('');
+  const extras=(parseFloat(pp.maoDeObra)||0)+(parseFloat(pp.outrosCustos)||0);
+  return `<div class="mt-2" style="font-weight:600">Composição (por unidade):</div>
+  <div class="table-responsive"><table class="table table-sm mb-0" style="font-size:12px;--bs-table-bg:transparent;color:inherit">
+  <thead><tr><th>Material</th><th class="text-end">Qtd</th><th class="text-end">Custo</th><th class="text-end">Em estoque</th></tr></thead>
+  <tbody>${linhas}</tbody>
+  <tfoot><tr><th>Total materiais</th><th></th><th class="text-end">${moeda(total)}</th><th></th></tr>${extras?`<tr><td>Mão de obra + outros custos</td><td></td><td class="text-end">${moeda(extras)}</td><td></td></tr>`:''}</tfoot>
+  </table></div>`;
+}
 // Modal de Produto: produto ligado à Papelaria não escolhe "de qual estoque sai"
 function papModoProduto(p) {
   const aviso=document.getElementById('pr-papelaria-aviso'), box=document.getElementById('pr-estoque-de-box');
   if(p&&p.papelariaId){
     const pr=papProducaoPossivel(p.papelariaId);
-    aviso.innerHTML=`<i class="bi bi-scissors me-1" style="color:#F472B6"></i><b>Produto da Papelaria.</b> Cada venda baixa os materiais da ficha de produção (aba Papelaria). Hoje dá pra produzir <b>${pr.qtd}</b> unidade(s)${pr.limitante?` · acaba primeiro: ${escHtml(pr.limitante)}`:''}. Materiais e custo são editados na aba Papelaria.`;
+    aviso.innerHTML=`<i class="bi bi-scissors me-1" style="color:#F472B6"></i><b>Produto da Papelaria.</b> Cada venda baixa os materiais da ficha de produção (aba Papelaria). Hoje dá pra produzir <b>${pr.qtd}</b> unidade(s)${pr.limitante?` · acaba primeiro: ${escHtml(pr.limitante)}`:''}. Materiais e custo são editados na aba Papelaria.`+papComposicaoHtml(p.papelariaId);
     aviso.style.display=''; box.style.display='none';
     document.querySelectorAll('.pr-estoque-proprio').forEach(el=>el.style.display='');
     document.getElementById('pr-estini').parentElement.style.display='none';
