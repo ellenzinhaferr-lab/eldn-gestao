@@ -481,6 +481,11 @@ table.gestao tbody tr:hover .tbl-sticky-r{background:#1f1545}
         <div class="table-responsive"><table class="gestao" id="tabela-papelariaProdutos"><thead><tr><th class="th-sort" data-col="nome" onclick="sortBy('papelariaProdutos','nome',renderPapelaria)">Produto</th><th>Materiais</th><th class="th-sort" data-col="custo" onclick="sortBy('papelariaProdutos','custo',renderPapelaria)">Custo Total</th><th class="th-sort" data-col="preco" onclick="sortBy('papelariaProdutos','preco',renderPapelaria)">Preço Venda</th><th>Canal / Taxas</th><th class="th-sort" data-col="lucro" onclick="sortBy('papelariaProdutos','lucro',renderPapelaria)">Lucro</th><th class="th-sort" data-col="margem" onclick="sortBy('papelariaProdutos','margem',renderPapelaria)">Margem</th><th></th></tr></thead><tbody></tbody></table></div>
       </div>
       <div class="table-card" style="margin-top:20px">
+        <div class="table-header"><h6><i class="bi bi-clipboard-check me-2" style="color:#F472B6"></i>Ficha de Montagem (o que vai em cada produto)</h6></div>
+        <div id="pap-fichas" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:16px;padding:16px"></div>
+        <input type="file" id="pap-foto-input" accept="image/*" style="display:none" onchange="papFotoSelecionada(this)">
+      </div>
+      <div class="table-card" style="margin-top:20px">
         <div class="table-header"><h6>Materiais de Papelaria</h6><button class="btn btn-primary btn-sm" onclick="abrirModalPapMaterial()"><i class="bi bi-plus-lg"></i> Novo Material</button></div>
         <div class="table-responsive"><table class="gestao" id="tabela-papelariaMateriais"><thead><tr><th class="th-sort" data-col="nome" onclick="sortBy('papelariaMateriais','nome',renderPapelaria)">Material</th><th class="th-sort" data-col="categoria" onclick="sortBy('papelariaMateriais','categoria',renderPapelaria)">Categoria</th><th>Embalagem comprada</th><th>Em estoque</th><th class="th-sort" data-col="custoUnit" onclick="sortBy('papelariaMateriais','custoUnit',renderPapelaria)">Custo por unidade</th><th class="th-sort" data-col="fornecedor" onclick="sortBy('papelariaMateriais','fornecedor',renderPapelaria)">Fornecedor</th><th>Usado em</th><th></th></tr></thead><tbody></tbody></table></div>
       </div>
@@ -5466,6 +5471,65 @@ function renderPapelaria() {
     return `<tr><td style="font-weight:600;color:#fff">${m.nome}</td><td>${m.categoria||'—'}</td><td>${moeda(m.custoPacote)} / ${papFmtQtd(m.qtdPacote)} ${m.unidade}</td><td>${m.estimativa?'—':`<span style="${papEstoque(m,consumo)<=0?'color:#EF4444;font-weight:600':''}">${papFmtQtd(papEstoque(m,consumo))} ${m.unidade}</span>${consumo[m._docId]?`<div style="font-size:11px;color:var(--cor-texto-suave)">−${papFmtQtd(consumo[m._docId])} usado em vendas</div>`:''}`}</td><td style="color:var(--cor-verde);font-weight:600">${papMoedaUnit(papCustoUnit(m))} <span style="font-size:11px;color:var(--cor-texto-suave)">por ${m.unidade}</span></td><td>${m.fornecedor||'—'}</td><td>${usos?usos+' produto'+(usos>1?'s':''):'—'}</td><td style="white-space:nowrap"><button class="btn-sm-action btn-edit" onclick="editarPapMaterial(${i})"><i class="bi bi-pencil-fill"></i></button><button class="btn-sm-action btn-delete" onclick="deletarPapMaterial(${i})"><i class="bi bi-trash-fill"></i></button></td></tr>`;
   }).join(''):'<tr><td colspan="8"><div class="empty-state"><i class="bi bi-box2"></i>Nenhum material cadastrado</div></td></tr>';
   atualizarThSort('papelariaMateriais',sm.col,sm.dir);
+  renderPapFichas();
+}
+
+// ---------- Ficha de Montagem (materiais + quantidades + foto de cada produto) ----------
+function renderPapFichas() {
+  const el=document.getElementById('pap-fichas'); if(!el) return;
+  const prods=[...dados.papelariaProdutos].sort((a,b)=>(a.nome||'').localeCompare(b.nome||'','pt-BR'));
+  if(!prods.length){ el.innerHTML='<div class="empty-state"><i class="bi bi-clipboard"></i>Nenhum produto montado ainda</div>'; return; }
+  const consumo=papConsumoPorMaterial();
+  el.innerHTML=prods.map(p=>{
+    const id=p._docId, vinc=papProdutoVinculado(p);
+    const foto=p.foto
+      ?`<img src="${p.foto}" alt="Foto do produto" onclick="papVerFoto('${id}')" style="width:100%;height:220px;object-fit:cover;border-radius:10px;cursor:zoom-in;display:block">`
+      :`<div onclick="papEscolherFoto('${id}')" style="height:220px;border:2px dashed rgba(236,72,153,.4);border-radius:10px;display:flex;flex-direction:column;align-items:center;justify-content:center;cursor:pointer;color:#F472B6"><i class="bi bi-camera" style="font-size:32px"></i><span style="font-size:13px;margin-top:6px">Adicionar foto do produto</span></div>`;
+    const itens=(p.itens||[]).map(it=>{
+      const m=papMaterialPorId(it.materialId), q=parseFloat(it.qtd)||0;
+      const nome=escHtml((m&&m.nome)||it.nome||'Material removido'), un=escHtml((m&&m.unidade)||it.unidade||'');
+      const falta=m&&!m.estimativa&&papEstoque(m,consumo)<q;
+      return `<li style="display:flex;gap:10px;justify-content:space-between;padding:6px 0;border-bottom:1px solid rgba(255,255,255,.06)"><span>${nome}${m?'':' <span style="color:#F87171">(não encontrado)</span>'}${falta?' <span style="color:#EF4444;font-size:11px">· falta no estoque</span>':''}</span><b style="white-space:nowrap;color:#fff">${papFmtQtd(q)} ${un}</b></li>`;
+    }).join('');
+    return `<div style="background:rgba(255,255,255,.03);border:1px solid rgba(236,72,153,.25);border-radius:12px;padding:14px">
+      ${foto}
+      <div style="display:flex;gap:6px;margin-top:8px">${p.foto?`<button class="btn btn-outline-secondary btn-sm" onclick="papEscolherFoto('${id}')"><i class="bi bi-camera"></i> Trocar foto</button><button class="btn btn-outline-danger btn-sm" onclick="papRemoverFoto('${id}')"><i class="bi bi-trash"></i></button>`:''}</div>
+      <div style="font-weight:700;color:#fff;font-size:15px;margin-top:10px">${escHtml(p.nome||'')}</div>
+      ${vinc?`<div style="font-family:monospace;font-size:11px;color:var(--cor-secundaria)">${escHtml(vinc.sku)}</div>`:''}
+      <div style="font-size:12px;color:var(--cor-texto-suave);margin-top:8px">Vai dentro de 1 unidade:</div>
+      <ul style="list-style:none;padding:0;margin:4px 0 0;font-size:13px">${itens||'<li>Sem materiais na ficha</li>'}</ul>
+      ${p.obs?`<div style="font-size:12px;color:var(--cor-texto-suave);margin-top:8px"><i class="bi bi-info-circle"></i> ${escHtml(p.obs)}</div>`:''}
+    </div>`;
+  }).join('');
+}
+let papFotoAlvo=null;
+function papEscolherFoto(id){ papFotoAlvo=id; const inp=document.getElementById('pap-foto-input'); inp.value=''; inp.click(); }
+// Reduz a foto (máx. 1000px, JPEG) para caber no documento do Firestore (limite 1MB)
+function papFotoSelecionada(inp) {
+  const f=inp.files&&inp.files[0], id=papFotoAlvo; if(!f||!id) return;
+  const rd=new FileReader();
+  rd.onload=()=>{ const img=new Image(); img.onload=async()=>{
+    let w=img.width,h=img.height; const max=1000; if(w>max||h>max){ const r=Math.min(max/w,max/h); w=Math.round(w*r); h=Math.round(h*r); }
+    const cv=document.createElement('canvas'); cv.width=w; cv.height=h; cv.getContext('2d').drawImage(img,0,0,w,h);
+    let q=0.8, url=cv.toDataURL('image/jpeg',q); while(url.length>700000&&q>0.3){ q-=0.1; url=cv.toDataURL('image/jpeg',q); }
+    try { await db.collection('papelariaProdutos').doc(id).update({foto:url}); }
+    catch(e){ alert('Erro ao salvar a foto: '+e.message); }
+  }; img.onerror=()=>alert('Não consegui abrir essa imagem. Tente uma foto JPG ou PNG.'); img.src=rd.result; };
+  rd.readAsDataURL(f);
+}
+async function papRemoverFoto(id){
+  if(!confirm('Remover a foto deste produto?')) return;
+  try { await db.collection('papelariaProdutos').doc(id).update({foto:firebase.firestore.FieldValue.delete()}); } catch(e){ alert('Erro: '+e.message); }
+}
+function papVerFoto(id){
+  const p=dados.papelariaProdutos.find(x=>x._docId===id); if(!p||!p.foto) return;
+  let m=document.getElementById('modalPapFoto');
+  if(!m){ m=document.createElement('div'); m.className='modal fade'; m.id='modalPapFoto'; m.tabIndex=-1;
+    m.innerHTML='<div class="modal-dialog modal-lg modal-dialog-centered"><div class="modal-content"><div class="modal-header"><h5 class="modal-title" id="modalPapFotoTitulo"></h5><button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button></div><div class="modal-body" style="text-align:center"><img id="modalPapFotoImg" style="max-width:100%;max-height:75vh;border-radius:10px"></div></div></div>';
+    document.body.appendChild(m); }
+  document.getElementById('modalPapFotoTitulo').textContent=p.nome||'';
+  document.getElementById('modalPapFotoImg').src=p.foto;
+  bootstrap.Modal.getOrCreateInstance(m).show();
 }
 
 // ---------- Materiais ----------
@@ -5605,6 +5669,7 @@ async function salvarPapProduto() {
   const idx=v('pp-idx');
   const anterior=idx===''?null:dados.papelariaProdutos[parseInt(idx)];
   if(anterior&&anterior.produtoSku) obj.produtoSku=anterior.produtoSku;
+  if(anterior&&anterior.foto) obj.foto=anterior.foto; // não apagar a foto ao editar
   let papId;
   try {
     if(idx===''){
