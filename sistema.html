@@ -302,8 +302,8 @@ table.gestao tbody tr:hover .tbl-sticky-r{background:#1f1545}
     <div class="page" id="pg-pedidos">
       <div id="ped-abas-mes" style="display:flex;gap:4px;align-items:flex-end;overflow-x:auto;border-bottom:2px solid var(--cor-borda);margin-bottom:16px;padding-bottom:0"></div>
       <div class="table-card">
-        <div class="table-header"><h6>Pedidos Diários</h6><div style="display:flex;gap:8px;"><input type="text" class="input-search" placeholder="Buscar pedido..." oninput="filtrarTabela('tabela-pedidos',this.value)"><button class="btn btn-outline-warning btn-sm" onclick="abrirModalLoteEtiquetas()"><i class="bi bi-tags me-1"></i>Etiquetas em Lote</button><button class="btn btn-outline-success btn-sm" onclick="abrirModalRecebimento()"><i class="bi bi-cash-coin me-1"></i>Receber</button><button class="btn btn-primary btn-sm" onclick="abrirModal('pedido')"><i class="bi bi-plus-lg"></i> Novo</button></div></div>
-        <div class="table-responsive"><table class="gestao" id="tabela-pedidos"><thead><tr><th class="th-sort" data-col="data" onclick="sortBy('pedidos','data',renderPedidos)">Data</th><th class="th-sort" data-col="num" onclick="sortBy('pedidos','num',renderPedidos)">Nº Pedido</th><th class="th-sort" data-col="cliente" onclick="sortBy('pedidos','cliente',renderPedidos)">Cliente</th><th class="th-sort" data-col="valor" onclick="sortBy('pedidos','valor',renderPedidos)">Total</th><th class="th-sort" data-col="liquido" onclick="sortBy('pedidos','liquido',renderPedidos)">Líquido</th><th>Tipo</th><th class="th-sort" data-col="canal" onclick="sortBy('pedidos','canal',renderPedidos)">Plataforma</th><th class="th-sort" data-col="status" onclick="sortBy('pedidos','status',renderPedidos)">Status</th><th>NF</th><th>Recebimento</th><th></th></tr></thead><tbody></tbody></table></div>
+        <div class="table-header"><h6>Pedidos Diários</h6><div style="display:flex;gap:8px;"><input type="text" class="input-search" id="ped-busca" placeholder="Buscar nº, cliente, produto, SKU..." oninput="buscarPedidos(this.value)" style="width:260px" title="Procura em TODOS os meses e anos"><button class="btn btn-outline-warning btn-sm" onclick="abrirModalLoteEtiquetas()"><i class="bi bi-tags me-1"></i>Etiquetas em Lote</button><button class="btn btn-outline-success btn-sm" onclick="abrirModalRecebimento()"><i class="bi bi-cash-coin me-1"></i>Receber</button><button class="btn btn-primary btn-sm" onclick="abrirModal('pedido')"><i class="bi bi-plus-lg"></i> Novo</button></div></div>
+        <div id="ped-busca-aviso" style="padding:0 16px;font-size:12px;color:var(--cor-secundaria)"></div><div class="table-responsive"><table class="gestao" id="tabela-pedidos"><thead><tr><th class="th-sort" data-col="data" onclick="sortBy('pedidos','data',renderPedidos)">Data</th><th class="th-sort" data-col="num" onclick="sortBy('pedidos','num',renderPedidos)">Nº Pedido</th><th class="th-sort" data-col="cliente" onclick="sortBy('pedidos','cliente',renderPedidos)">Cliente</th><th class="th-sort" data-col="valor" onclick="sortBy('pedidos','valor',renderPedidos)">Total</th><th class="th-sort" data-col="liquido" onclick="sortBy('pedidos','liquido',renderPedidos)">Líquido</th><th>Tipo</th><th class="th-sort" data-col="canal" onclick="sortBy('pedidos','canal',renderPedidos)">Plataforma</th><th class="th-sort" data-col="status" onclick="sortBy('pedidos','status',renderPedidos)">Status</th><th>NF</th><th>Recebimento</th><th></th></tr></thead><tbody></tbody></table></div>
       </div>
     </div>
 
@@ -434,7 +434,7 @@ table.gestao tbody tr:hover .tbl-sticky-r{background:#1f1545}
     <div class="page" id="pg-envios">
       <div class="kpi-grid" id="envios-kpis"></div>
       <div class="table-card mb-3">
-        <div class="table-header"><h6><i class="bi bi-box-arrow-up-right me-2" style="color:#EF4444"></i>Envios de hoje <span id="envios-hoje-data" style="font-weight:600;color:var(--cor-secundaria)"></span> <small style="font-weight:500;color:var(--cor-texto-suave);font-size:11px">(tudo que precisa ser postado hoje: data de hoje, atrasados e pedidos sem data programada)</small></h6></div>
+        <div class="table-header"><h6><i class="bi bi-box-arrow-up-right me-2" style="color:#EF4444"></i>Envios de hoje <span id="envios-hoje-data" style="font-weight:600;color:var(--cor-secundaria)"></span> <small style="font-weight:500;color:var(--cor-texto-suave);font-size:11px">(tudo que precisa ser postado hoje: data de hoje, atrasados e pedidos sem data programada)</small></h6><input type="text" class="input-search" placeholder="Buscar pedido, cliente, produto..." oninput="filtrarEnvios(this.value)" style="width:240px"></div>
         <div class="table-responsive"><table class="gestao" id="tabela-envios-hoje"><thead><tr><th>Enviar até</th><th>Prazo</th><th>Pedido</th><th>Venda</th><th>Cliente</th><th>Canal</th><th>Produtos</th><th>NF</th><th>Estoque</th><th>Ações</th></tr></thead><tbody></tbody></table></div>
       </div>
       <div class="table-card">
@@ -445,7 +445,7 @@ table.gestao tbody tr:hover .tbl-sticky-r{background:#1f1545}
     </div>
     <div class="page" id="pg-estoque">
       <div class="table-card">
-        <div class="table-header"><h6><i class="bi bi-archive me-2" style="color:var(--cor-acento)"></i>Saldo em Estoque</h6></div>
+        <div class="table-header"><h6><i class="bi bi-archive me-2" style="color:var(--cor-acento)"></i>Saldo em Estoque</h6><input type="text" class="input-search" placeholder="Buscar produto ou SKU..." oninput="filtrarEstoque(this.value)" style="width:220px"></div>
         <div class="table-responsive"><table class="gestao" id="tabela-estoque"><thead><tr><th class="th-sort" data-col="sku" onclick="sortBy('estoque','sku',renderEstoque)">SKU</th><th class="th-sort" data-col="nome" onclick="sortBy('estoque','nome',renderEstoque)">Produto</th><th class="th-sort" data-col="entradas" onclick="sortBy('estoque','entradas',renderEstoque)" title="Entradas registradas na aba Estoque">+ Entradas</th><th class="th-sort" data-col="vendido" onclick="sortBy('estoque','vendido',renderEstoque)">− Vendas</th><th>Devoluções</th><th class="th-sort" data-col="fisico" onclick="sortBy('estoque','fisico',renderEstoque)" title="O que deve estar fisicamente com você: livre + reservado">Na prateleira</th><th class="th-sort" data-col="reservado" onclick="sortBy('estoque','reservado',renderEstoque)" title="Vendido e ainda não postado (Pendente / Em separação)">Reservado</th><th class="th-sort" data-col="saldo" onclick="sortBy('estoque','saldo',renderEstoque)" title="Pode vender sem faltar para os pedidos já feitos">Livre p/ vender</th><th class="th-sort" data-col="status" onclick="sortBy('estoque','status',renderEstoque)">Status</th></tr></thead><tbody></tbody></table></div>
       </div>
       <div class="table-card mt-3">
@@ -460,7 +460,7 @@ table.gestao tbody tr:hover .tbl-sticky-r{background:#1f1545}
     <!-- CANAIS -->
     <div class="page" id="pg-canais">
       <div class="table-card">
-        <div class="table-header"><h6>Desempenho por Canal de Venda</h6></div>
+        <div class="table-header"><h6>Desempenho por Canal de Venda</h6><input type="text" class="input-search" placeholder="Buscar canal..." oninput="filtrarTabela('tabela-canais',this.value)" style="width:220px"></div>
         <div class="table-responsive"><table class="gestao" id="tabela-canais"><thead><tr><th class="th-sort" data-col="nome" onclick="sortBy('canais','nome',renderCanais)">Canal</th><th class="th-sort" data-col="taxa" onclick="sortBy('canais','taxa',renderCanais)">Taxa %</th><th>Taxa Fixa</th><th class="th-sort" data-col="total" onclick="sortBy('canais','total',renderCanais)">Total Vendas</th><th class="th-sort" data-col="ticket" onclick="sortBy('canais','ticket',renderCanais)">Ticket Médio</th><th class="th-sort" data-col="n" onclick="sortBy('canais','n',renderCanais)">Nº Pedidos</th><th>Status</th></tr></thead><tbody></tbody></table></div>
       </div>
     </div>
@@ -468,7 +468,7 @@ table.gestao tbody tr:hover .tbl-sticky-r{background:#1f1545}
     <!-- AFILIADOS -->
     <div class="page" id="pg-afiliados">
       <div class="table-card">
-        <div class="table-header"><h6>Afiliados & Comissões</h6><button class="btn btn-primary btn-sm" onclick="abrirModal('afiliado')"><i class="bi bi-plus-lg"></i> Novo</button></div>
+        <div class="table-header"><h6>Afiliados & Comissões</h6><div style="display:flex;gap:8px;"><input type="text" class="input-search" placeholder="Buscar afiliado..." oninput="filtrarTabela('tabela-afiliados',this.value)" style="width:220px"><button class="btn btn-primary btn-sm" onclick="abrirModal('afiliado')"><i class="bi bi-plus-lg"></i> Novo</button></div></div>
         <div class="table-responsive"><table class="gestao" id="tabela-afiliados"><thead><tr><th class="th-sort" data-col="cod" onclick="sortBy('afiliados','cod',renderAfiliados)">Cód.</th><th class="th-sort" data-col="nome" onclick="sortBy('afiliados','nome',renderAfiliados)">Nome</th><th>Produtos</th><th class="th-sort" data-col="canal" onclick="sortBy('afiliados','canal',renderAfiliados)">Canal</th><th class="th-sort" data-col="comissao" onclick="sortBy('afiliados','comissao',renderAfiliados)">Comissão %</th><th>Total (R$)</th><th class="th-sort" data-col="forma" onclick="sortBy('afiliados','forma',renderAfiliados)">Forma Pgto</th><th></th></tr></thead><tbody></tbody></table></div>
       </div>
     </div>
@@ -477,7 +477,7 @@ table.gestao tbody tr:hover .tbl-sticky-r{background:#1f1545}
     <div class="page" id="pg-papelaria">
       <div class="kpi-grid" id="kpi-papelaria"></div>
       <div class="table-card">
-        <div class="table-header"><h6>Produtos de Papelaria (custo e margem)</h6><button class="btn btn-primary btn-sm" onclick="abrirModalPapProduto()"><i class="bi bi-plus-lg"></i> Novo Produto</button></div>
+        <div class="table-header"><h6>Produtos de Papelaria (custo e margem)</h6><div style="display:flex;gap:8px;"><input type="text" class="input-search" placeholder="Buscar produto..." oninput="filtrarPapelaria(this.value)" style="width:220px"><button class="btn btn-primary btn-sm" onclick="abrirModalPapProduto()"><i class="bi bi-plus-lg"></i> Novo Produto</button></div></div>
         <div class="table-responsive"><table class="gestao" id="tabela-papelariaProdutos"><thead><tr><th class="th-sort" data-col="nome" onclick="sortBy('papelariaProdutos','nome',renderPapelaria)">Produto</th><th>Materiais</th><th class="th-sort" data-col="custo" onclick="sortBy('papelariaProdutos','custo',renderPapelaria)">Custo Total</th><th class="th-sort" data-col="preco" onclick="sortBy('papelariaProdutos','preco',renderPapelaria)">Preço Venda</th><th>Canal / Taxas</th><th class="th-sort" data-col="lucro" onclick="sortBy('papelariaProdutos','lucro',renderPapelaria)">Lucro</th><th class="th-sort" data-col="margem" onclick="sortBy('papelariaProdutos','margem',renderPapelaria)">Margem</th><th></th></tr></thead><tbody></tbody></table></div>
       </div>
       <div class="table-card" style="margin-top:20px">
@@ -486,7 +486,7 @@ table.gestao tbody tr:hover .tbl-sticky-r{background:#1f1545}
         <input type="file" id="pap-foto-input" accept="image/*" style="display:none" onchange="papFotoSelecionada(this)">
       </div>
       <div class="table-card" style="margin-top:20px">
-        <div class="table-header"><h6>Materiais de Papelaria</h6><button class="btn btn-primary btn-sm" onclick="abrirModalPapMaterial()"><i class="bi bi-plus-lg"></i> Novo Material</button></div>
+        <div class="table-header"><h6>Materiais de Papelaria</h6><div style="display:flex;gap:8px;"><input type="text" class="input-search" placeholder="Buscar material (ex.: fotografico)..." oninput="filtrarTabela('tabela-papelariaMateriais',this.value)" style="width:250px"><button class="btn btn-primary btn-sm" onclick="abrirModalPapMaterial()"><i class="bi bi-plus-lg"></i> Novo Material</button></div></div>
         <div class="table-responsive"><table class="gestao" id="tabela-papelariaMateriais"><thead><tr><th class="th-sort" data-col="nome" onclick="sortBy('papelariaMateriais','nome',renderPapelaria)">Material</th><th class="th-sort" data-col="categoria" onclick="sortBy('papelariaMateriais','categoria',renderPapelaria)">Categoria</th><th>Embalagem comprada</th><th>Em estoque</th><th class="th-sort" data-col="custoUnit" onclick="sortBy('papelariaMateriais','custoUnit',renderPapelaria)">Custo por unidade</th><th class="th-sort" data-col="fornecedor" onclick="sortBy('papelariaMateriais','fornecedor',renderPapelaria)">Fornecedor</th><th>Usado em</th><th></th></tr></thead><tbody></tbody></table></div>
       </div>
     </div>
@@ -1694,7 +1694,20 @@ function toggleRecorrenteFinanceiro() {
 function mascaraCEP(el) { let x=el.value.replace(/\D/g,''); if(x.length>5) x=x.slice(0,5)+'-'+x.slice(5,8); el.value=x; }
 async function buscarCEP() { const cep=v('c-cep').replace(/\D/g,''); if(cep.length!==8) return; try { const r=await fetch(`https://viacep.com.br/ws/${cep}/json/`); const d=await r.json(); if(!d.erro){ document.getElementById('c-logradouro').value=d.logradouro||''; document.getElementById('c-bairro').value=d.bairro||''; document.getElementById('c-cidade').value=d.localidade||''; document.getElementById('c-estado').value=d.uf||''; document.getElementById('c-numero').focus(); } } catch(e){} }
 async function buscarCEPProsp() { const cep=document.getElementById('prosp-cep').value.replace(/\D/g,''); if(cep.length!==8) return; try { const r=await fetch(`https://viacep.com.br/ws/${cep}/json/`); const d=await r.json(); if(!d.erro){ document.getElementById('prosp-logradouro').value=d.logradouro||''; document.getElementById('prosp-bairro').value=d.bairro||''; document.getElementById('prosp-cidade').value=d.localidade||''; document.getElementById('prosp-uf').value=d.uf||''; document.getElementById('prosp-numero').focus(); } } catch(e){} }
-function filtrarTabela(id, termo) { const t=document.getElementById(id); const rows=t.querySelectorAll('tbody tr'); const low=termo.toLowerCase(); rows.forEach(r=>{ if(r.dataset.grupo){ r.style.display=''; return; } r.style.display=r.textContent.toLowerCase().includes(low)?'':'none'; }); }
+// Busca: sem acento, maiúscula/minúscula, várias palavras (todas precisam aparecer). Continua valendo quando a tabela é redesenhada.
+function normBusca(t){ return String(t||'').normalize('NFD').replace(/[̀-ͯ]/g,'').toLowerCase(); }
+function bateBusca(texto, termo){ const pal=normBusca(termo).split(/\s+/).filter(Boolean); if(!pal.length) return true; const h=normBusca(texto); return pal.every(w=>h.includes(w)); }
+const _buscaTermos={}; const _buscaObs={};
+function aplicarFiltroTabela(id){ const t=document.getElementById(id); if(!t) return; const termo=_buscaTermos[id]||''; t.querySelectorAll('tbody tr').forEach(r=>{ if(r.dataset.grupo||r.querySelector('.empty-state')){ r.style.display=''; return; } r.style.display=bateBusca(r.textContent,termo)?'':'none'; }); }
+function filtrarTabela(id, termo) { _buscaTermos[id]=termo||''; aplicarFiltroTabela(id); const tb=document.querySelector('#'+id+' tbody'); if(tb&&!_buscaObs[id]){ _buscaObs[id]=new MutationObserver(()=>aplicarFiltroTabela(id)); _buscaObs[id].observe(tb,{childList:true}); } }
+// Busca em cartões (ex.: Ficha de Montagem da Papelaria)
+const _buscaCards={};
+function aplicarFiltroCards(id){ const el=document.getElementById(id); if(!el) return; const termo=_buscaCards[id]||''; Array.from(el.children).forEach(c=>{ c.style.display=bateBusca(c.textContent,termo)?'':'none'; }); }
+function filtrarCards(id, termo){ const novo=!(id in _buscaCards); _buscaCards[id]=termo||''; aplicarFiltroCards(id); const el=document.getElementById(id); if(el&&novo){ new MutationObserver(()=>aplicarFiltroCards(id)).observe(el,{childList:true}); } }
+// Um campo só filtrando mais de uma tabela
+function filtrarPapelaria(termo){ filtrarTabela('tabela-papelariaProdutos',termo); filtrarCards('pap-fichas',termo); }
+function filtrarEnvios(termo){ filtrarTabela('tabela-envios-hoje',termo); filtrarTabela('tabela-envios-prog',termo); }
+function filtrarEstoque(termo){ filtrarTabela('tabela-estoque',termo); filtrarTabela('tabela-est-mov',termo); }
 function nextNumPedido() { if (!dados.pedidos.length) return 'PED-01'; const nums=dados.pedidos.map(p=>{const m=p.num.match(/PED-(\d+)/);return m?parseInt(m[1]):0;}); return `PED-${String(Math.max(...nums)+1).padStart(2,'0')}`; }
 
 // ============================================================
@@ -3060,7 +3073,7 @@ function renderPedidos() {
   renderAbasMesPed();
   const s=sortState.pedidos;
   const prefixo=pedFiltro.mes?`${pedFiltro.ano}-${String(pedFiltro.mes).padStart(2,'0')}`:String(pedFiltro.ano);
-  const lista=dados.pedidos.filter(p=>(p.data||'').startsWith(prefixo)).sort((a,b)=>{
+  const lista=dados.pedidos.filter(p=>pedBusca?bateBusca(textoBuscaPedido(p),pedBusca):(p.data||'').startsWith(prefixo)).sort((a,b)=>{
     let va,vb;
     if(s.col==='cliente'){va=nomeCliente(a.clienteId).toLowerCase();vb=nomeCliente(b.clienteId).toLowerCase();}
     else if(s.col==='valor'){va=getPedidoTotal(a);vb=getPedidoTotal(b);}
@@ -3082,11 +3095,15 @@ function renderPedidos() {
     const btnRec=recStatus!=='Recebido'?`<button class="btn-sm-action" style="color:#10B981" onclick="marcarRecebido(${ri})" title="Marcar como Recebido"><i class="bi bi-check-circle"></i></button>`:`<button class="btn-sm-action" style="color:#F59E0B;opacity:.7" onclick="desmarcarRecebido(${ri})" title="Desfazer recebimento"><i class="bi bi-arrow-counterclockwise"></i></button>`;
     const btnAprovar=aguardandoAprovacao(p)?`<button class="btn-sm-action" style="color:#F97316" onclick="aprovarPedido(${ri})" title="Aprovar pedido"><i class="bi bi-patch-check-fill"></i></button>`:'';
     return `<tr style="${rowStyle}"><td>${fmtData(p.data)}</td><td style="font-weight:600;color:#fff">${p.num}</td><td>${nomeCliente(p.clienteId)}</td><td style="font-weight:600;color:var(--cor-verde)">${moeda(bruto)}</td><td style="font-weight:600;color:#10B981">${p.liquido!=null?moeda(p.liquido):'—'}</td><td>${badgeTipoPedido(p)}</td><td>${badgeCanal(p.canal)}</td><td>${badgeStatus(p.status)}</td><td>${badgeNF(p)}</td><td style="white-space:nowrap">${recCell}</td><td style="white-space:nowrap">${btnAprovar}${btnRec}<button class="btn-sm-action" style="color:#60A5FA" onclick="verPedido(${ri})" title="Visualizar"><i class="bi bi-eye-fill"></i></button><button class="btn-sm-action btn-edit" onclick="editarPedido(${ri})" title="Editar"><i class="bi bi-pencil-fill"></i></button><button class="btn-sm-action btn-delete" onclick="deletar('pedidos',${ri})" title="Excluir"><i class="bi bi-trash-fill"></i></button></td></tr>`;
-  }).join(''):'<tr><td colspan="11"><div class="empty-state"><i class="bi bi-box-seam"></i>Nenhum pedido neste período</div></td></tr>';
+  }).join(''):'<tr><td colspan="11"><div class="empty-state"><i class="bi bi-box-seam"></i>'+(pedBusca?'Nenhum pedido encontrado em nenhum mês':'Nenhum pedido neste período')+'</div></td></tr>';
+  const avisoB=document.getElementById('ped-busca-aviso'); if(avisoB) avisoB.innerHTML=pedBusca?`<i class="bi bi-search me-1"></i>${lista.length} pedido(s) encontrado(s) em todos os meses · <a href="#" onclick="document.getElementById('ped-busca').value='';buscarPedidos('');return false">limpar busca</a>`:'';
   atualizarThSort('pedidos',s.col,s.dir);
 }
 // Abas estilo planilha: uma por mês + ano inteiro (igual ao Financeiro)
 let pedFiltro={ano:new Date().getFullYear(), mes:new Date().getMonth()+1};
+let pedBusca='';
+function buscarPedidos(t){ pedBusca=(t||'').trim(); renderPedidos(); }
+function textoBuscaPedido(p){ const c=dados.clientes.find(x=>x.id===p.clienteId)||{}; const it=getPedidoItens(p).map(i=>(i.sku||'')+' '+(i.desc||'')+' '+(((dados.produtos||[]).find(pr=>pr.sku&&pr.sku===i.sku)||{}).nome||'')).join(' '); return [p.num,p.data,fmtData(p.data),c.nome,c.id,c.cpf,c.email,c.whatsapp,c.cidade,it,p.canal,p.status,p.pagto,p.obs,p.rastreio,p.codigoRastreio,p.idVenda,p.idExterno,p.nfe&&p.nfe.numero].filter(x=>x!=null).join(' '); }
 function abrirAbaMesPed(ano, mes) { pedFiltro={ano,mes}; renderPedidos(); }
 function renderAbasMesPed() {
   const el=document.getElementById('ped-abas-mes'); if(!el) return;
