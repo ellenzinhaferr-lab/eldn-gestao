@@ -3458,15 +3458,32 @@ function _blocoDeclaracao(p,cliente,rem) {
 function imprimirDeclaracoes(indices) {
   const rem=dados.config.remetente;
   if(!rem||!rem.nome||!rem.doc) return alert('Antes, preencha os dados do Remetente em Configurações → "Remetente da Declaração de Conteúdo".');
+  // Abre a janela já no clique (antes das perguntas), senão o navegador bloqueia como pop-up.
+  const win=window.open('','_blank','width=520,height=760');
+  if(!win) return alert('O navegador bloqueou a janela. Libere pop-ups pro sistema e tente de novo.');
   const paginas=[], semItens=[];
   indices.forEach(i=>{
     const p=dados.pedidos[i];
     if(!p) return;
     if(!_itensDeclaracao(p).itens.length) { semItens.push(p.num); return; }
+    // Mercado Livre: a etiqueta é do Mercado Envios, o rastreio não chega sozinho. Pergunta e já salva no pedido.
+    const ehML=p.canal==='Mercado Livre'||!!p.ml;
+    if(ehML&&!(p.rastreio||p.codigoRastreio)) {
+      const cod=(prompt(`Pedido ${p.num} (Mercado Livre)
+Digite o código de rastreio da etiqueta do Mercado Envios.
+
+Deixe em branco pra imprimir sem o código.`)||'').trim().toUpperCase();
+      if(cod) {
+        p.rastreio=cod;
+        db.collection('pedidos').doc(p._docId).update({rastreio:cod})
+          .then(()=>{ if(currentPage==='pedidos') renderPedidos(); })
+          .catch(err=>alert(`Não consegui salvar o rastreio no pedido ${p.num}: ${err.message}. A declaração saiu com o código, mas confira o pedido.`));
+      }
+    }
     const cliente=dados.clientes.find(x=>x.id===p.clienteId);
     paginas.push(`<div class="pagina">${_blocoDeclaracao(p,cliente,rem)}</div>`);
   });
-  if(!paginas.length) return alert('Nenhum item físico encontrado pra declarar'+(semItens.length?` (pedidos: ${semItens.join(', ')})`:'')+'.');
+  if(!paginas.length) { win.close(); return alert('Nenhum item físico encontrado pra declarar'+(semItens.length?` (pedidos: ${semItens.join(', ')})`:'')+'.'); }
   const html=`<!DOCTYPE html><html><head><meta charset="utf-8"><title>Declaração de Conteúdo</title><style>
     @page{size:${DECL_PAGINA.largura} ${DECL_PAGINA.altura};margin:0}
     *{box-sizing:border-box}
@@ -3490,8 +3507,6 @@ function imprimirDeclaracoes(indices) {
     .assin{display:flex;justify-content:space-between;align-items:flex-end;gap:3mm;margin-top:auto;padding-top:5mm;font-size:7.5px}
     .linha{border-top:1px solid #000;padding-top:.8mm;flex:1;text-align:center}
   </style></head><body>${paginas.join('')}<script>window.onload=function(){window.print();};<\/script></body></html>`;
-  const win=window.open('','_blank','width=520,height=760');
-  if(!win) return alert('O navegador bloqueou a janela. Libere pop-ups pro sistema e tente de novo.');
   win.document.write(html); win.document.close();
   if(semItens.length) alert(`Sem item físico pra declarar (não impressos): ${semItens.join(', ')}`);
 }
