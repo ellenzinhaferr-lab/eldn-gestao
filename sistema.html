@@ -833,6 +833,27 @@ table.gestao tbody tr:hover .tbl-sticky-r{background:#1f1545}
             </div>
           </div>
         </div>
+        <div class="col-12">
+          <div class="chart-card">
+            <h6><i class="bi bi-box-seam me-2" style="color:var(--cor-acento)"></i>Remetente da Declaração de Conteúdo</h6>
+            <p style="font-size:13px;color:var(--cor-texto-suave);margin-bottom:16px">Dados que saem no campo <strong style="color:var(--cor-texto)">Remetente</strong> da declaração de conteúdo impressa em cada pedido. Ficam salvos só no banco do sistema (com login), não no código da página.</p>
+            <div class="row g-2">
+              <div class="col-md-6"><label class="form-label">Nome / Razão social</label><input class="form-control" id="cfg-rem-nome"></div>
+              <div class="col-md-3"><label class="form-label">CPF / CNPJ</label><input class="form-control" id="cfg-rem-doc"></div>
+              <div class="col-md-3"><label class="form-label">CEP</label><input class="form-control" id="cfg-rem-cep"></div>
+              <div class="col-md-6"><label class="form-label">Endereço (rua)</label><input class="form-control" id="cfg-rem-logradouro"></div>
+              <div class="col-md-2"><label class="form-label">Número</label><input class="form-control" id="cfg-rem-numero"></div>
+              <div class="col-md-4"><label class="form-label">Complemento</label><input class="form-control" id="cfg-rem-complemento"></div>
+              <div class="col-md-5"><label class="form-label">Bairro</label><input class="form-control" id="cfg-rem-bairro"></div>
+              <div class="col-md-5"><label class="form-label">Cidade</label><input class="form-control" id="cfg-rem-cidade"></div>
+              <div class="col-md-2"><label class="form-label">UF</label><input class="form-control" id="cfg-rem-uf" maxlength="2"></div>
+            </div>
+            <div style="display:flex;gap:12px;align-items:center;margin-top:12px">
+              <button class="btn btn-primary" onclick="salvarRemetente()"><i class="bi bi-floppy-fill me-1"></i>Salvar Remetente</button>
+              <span id="cfg-rem-msg" style="font-size:13px;color:var(--cor-verde);display:none"><i class="bi bi-check-circle-fill me-1"></i>Salvo!</span>
+            </div>
+          </div>
+        </div>
       </div>
       <div class="row g-3">
         <div class="col-lg-4">
@@ -3380,6 +3401,104 @@ async function gerarEtiquetaMelhorEnvio(i) {
     alert('Erro ao gerar etiqueta: '+e.message);
   }
 }
+// ============================================================
+// DECLARAÇÃO DE CONTEÚDO (modelo Correios) — impressa pra colar na embalagem.
+// Motivo: a etiqueta do Melhor Envio não mostra o produto; pacote de livro foi confundido
+// com eletrônico e extraviado antes da bipagem (nov/2026). Sai 2 vias por pedido numa A4:
+// via externa (colar no pacote) e via interna (dentro da caixa).
+// Pedido com NF-e autorizada: sai "Identificação de Conteúdo" com o nº da NF-e, sem o texto
+// de "não contribuinte" (quem emite NF-e é contribuinte; a declaração seria falsa).
+// ============================================================
+function _itensDeclaracao(p) {
+  const itens=getPedidoItens(p).map(it=>{
+    const prod=dados.produtos.find(x=>x.sku===it.sku);
+    if(!prod||prod.digital||!(it.qtd>0)) return null;
+    return {desc:it.desc||prod.nome||it.sku,qtd:it.qtd,valor:(it.preco||0)*it.qtd};
+  }).filter(Boolean);
+  const peso=itensEnvioPedido(p).reduce((s,x)=>s+(x.prod.peso||0)*x.qtd,0);
+  return {itens,peso};
+}
+function _blocoDeclaracao(p,cliente,rem,via) {
+  const e=s=>escHtml(String(s==null?'':s));
+  const {itens,peso}=_itensDeclaracao(p);
+  const totalQtd=itens.reduce((s,x)=>s+x.qtd,0), totalValor=itens.reduce((s,x)=>s+x.valor,0);
+  const comNFe=p.nfe&&p.nfe.status==='autorizado';
+  const c=cliente||{};
+  const endDest=[c.logradouro,c.numero].filter(Boolean).join(', ')+(c.complemento?' - '+c.complemento:'');
+  const endRem=[rem.logradouro,rem.numero].filter(Boolean).join(', ')+(rem.complemento?' - '+rem.complemento:'');
+  const resumo=itens.map(x=>`${x.qtd}x ${x.desc}`).join(' + ');
+  const hoje=new Date().toLocaleDateString('pt-BR');
+  return `<div class="decl">
+    <div class="via">${via}</div>
+    <h1>${comNFe?'IDENTIFICAÇÃO DE CONTEÚDO':'DECLARAÇÃO DE CONTEÚDO'}</h1>
+    <div class="conteudo">CONTEÚDO DO PACOTE: ${e(resumo.toUpperCase())}</div>
+    <div class="partes">
+      <div class="box"><div class="tit">REMETENTE</div>
+        <div><b>Nome:</b> ${e(rem.nome)}</div>
+        <div><b>Endereço:</b> ${e(endRem)}${rem.bairro?' - '+e(rem.bairro):''}</div>
+        <div><b>Cidade/UF:</b> ${e(rem.cidade)}/${e(rem.uf)} &nbsp; <b>CEP:</b> ${e(rem.cep)}</div>
+        <div><b>CPF/CNPJ:</b> ${e(rem.doc)}</div>
+      </div>
+      <div class="box"><div class="tit">DESTINATÁRIO</div>
+        <div><b>Nome:</b> ${e(c.nome)}</div>
+        <div><b>Endereço:</b> ${e(endDest)}${c.bairro?' - '+e(c.bairro):''}</div>
+        <div><b>Cidade/UF:</b> ${e(c.cidade)}/${e((c.estado||'').toUpperCase())} &nbsp; <b>CEP:</b> ${e(c.cep)}</div>
+        <div><b>CPF/CNPJ:</b> ${e(c.cpf)}</div>
+      </div>
+    </div>
+    <table><thead><tr><th style="width:8%">Item</th><th>Conteúdo</th><th style="width:10%">Quant.</th><th style="width:16%">Valor (R$)</th></tr></thead><tbody>
+      ${itens.map((x,n)=>`<tr><td>${n+1}</td><td>${e(x.desc)}</td><td style="text-align:center">${x.qtd}</td><td style="text-align:right">${moeda(x.valor).replace('R$ ','')}</td></tr>`).join('')}
+      <tr class="tot"><td colspan="2" style="text-align:right">Totais${peso>0?` &nbsp;·&nbsp; Peso total: ${peso.toLocaleString('pt-BR',{maximumFractionDigits:3})} kg`:''}</td><td style="text-align:center">${totalQtd}</td><td style="text-align:right">${moeda(totalValor).replace('R$ ','')}</td></tr>
+    </tbody></table>
+    ${comNFe
+      ?`<div class="decltxt">Mercadoria acompanhada da Nota Fiscal Eletrônica nº <b>${e(p.nfe.numero||'')}</b>${p.nfe.chave?` (chave ${e(String(p.nfe.chave).replace(/^NFe/,''))})`:''}. Pedido ${e(p.num)}. Não contém conteúdo inflamável, explosivo, tóxico, corrosivo, gás ou qualquer outro conteúdo que constitua perigo (art. 13 da Lei Postal nº 6.538/78).</div>`
+      :`<div class="decltxt"><b>DECLARAÇÃO:</b> Declaro que não me enquadro no conceito de contribuinte previsto no art. 4º da Lei Complementar nº 87/1996, uma vez que não realizo, com habitualidade ou em volume que caracterize intuito comercial, operações de circulação de mercadoria, ainda que se iniciem no exterior, ou estou dispensado da emissão da nota fiscal por força da legislação tributária vigente, responsabilizando-me, nos termos da lei e a quem de direito, por informações inverídicas. Declaro ainda que não estou postando conteúdo inflamável, explosivo, causador de combustão espontânea, tóxico, corrosivo, gás ou qualquer outro conteúdo que constitua perigo, conforme o art. 13 da Lei Postal nº 6.538/78.</div>`}
+    <div class="assin"><span>${e(rem.cidade)}, ${hoje}</span><span class="linha">Assinatura do declarante/remetente</span></div>
+    ${comNFe?'':'<div class="obs">Constitui crime contra a ordem tributária suprimir ou reduzir tributo, ou contribuição social e qualquer acessório (Lei 8.137/90, art. 1º, V).</div>'}
+    <div class="ped">Pedido ${e(p.num)}</div>
+  </div>`;
+}
+function imprimirDeclaracoes(indices) {
+  const rem=dados.config.remetente;
+  if(!rem||!rem.nome||!rem.doc) return alert('Antes, preencha os dados do Remetente em Configurações → "Remetente da Declaração de Conteúdo".');
+  const paginas=[], semItens=[];
+  indices.forEach(i=>{
+    const p=dados.pedidos[i];
+    if(!p) return;
+    if(!_itensDeclaracao(p).itens.length) { semItens.push(p.num); return; }
+    const cliente=dados.clientes.find(x=>x.id===p.clienteId);
+    paginas.push(`<div class="pagina">${_blocoDeclaracao(p,cliente,rem,'VIA 1 · COLAR DO LADO DE FORA DA EMBALAGEM')}<div class="corte">✂ - - - - - - - - - - - - - - - - - - - - recortar aqui - - - - - - - - - - - - - - - - - - - -</div>${_blocoDeclaracao(p,cliente,rem,'VIA 2 · VAI DENTRO DO PACOTE')}</div>`);
+  });
+  if(!paginas.length) return alert('Nenhum item físico encontrado pra declarar'+(semItens.length?` (pedidos: ${semItens.join(', ')})`:'')+'.');
+  const html=`<!DOCTYPE html><html><head><meta charset="utf-8"><title>Declaração de Conteúdo</title><style>
+    @page{size:A4;margin:8mm}
+    *{box-sizing:border-box}
+    body{font-family:Arial,Helvetica,sans-serif;color:#000;margin:0;font-size:10.5px}
+    .pagina{page-break-after:always;display:flex;flex-direction:column;gap:2mm}
+    .pagina:last-child{page-break-after:auto}
+    .decl{border:1.5px solid #000;padding:3mm 4mm;height:136mm;display:flex;flex-direction:column;gap:2mm;position:relative}
+    .via{font-size:9px;font-weight:700;letter-spacing:.5px;color:#444}
+    h1{font-size:16px;text-align:center;margin:0;letter-spacing:1px}
+    .conteudo{border:2px solid #000;background:#eee;font-size:15px;font-weight:800;text-align:center;padding:2mm;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+    .partes{display:flex;gap:2mm}
+    .box{flex:1;border:1px solid #000;padding:1.5mm 2mm;line-height:1.45}
+    .tit{font-weight:800;font-size:10px;border-bottom:1px solid #000;margin-bottom:1mm}
+    table{width:100%;border-collapse:collapse}
+    th,td{border:1px solid #000;padding:1mm 1.5mm}
+    th{background:#ddd;font-size:10px;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+    .tot td{font-weight:700}
+    .decltxt{font-size:8.5px;line-height:1.35;text-align:justify}
+    .assin{display:flex;justify-content:space-between;align-items:flex-end;margin-top:auto;padding-top:4mm}
+    .linha{border-top:1px solid #000;padding-top:1mm;width:55%;text-align:center}
+    .obs{font-size:7.5px;color:#333}
+    .ped{position:absolute;top:3mm;right:4mm;font-size:9px;font-weight:700}
+    .corte{text-align:center;font-size:9px;color:#666}
+  </style></head><body>${paginas.join('')}<script>window.onload=function(){window.print();};<\/script></body></html>`;
+  const win=window.open('','_blank','width=900,height=750');
+  if(!win) return alert('O navegador bloqueou a janela. Libere pop-ups pro sistema e tente de novo.');
+  win.document.write(html); win.document.close();
+  if(semItens.length) alert(`Sem item físico pra declarar (não impressos): ${semItens.join(', ')}`);
+}
 // Pedidos com frete Melhor Envio já escolhido, mas ainda sem etiqueta gerada — candidatos ao lote.
 function pedidosProntosParaLote() {
   return dados.pedidos.map((p,i)=>({p,i})).filter(({p})=>!aguardandoAprovacao(p)&&p.melhorEnvio&&p.melhorEnvio.cotacaoEscolhida&&!p.melhorEnvio.orderId&&!p.melhorEnvio.etiquetaManual);
@@ -3547,6 +3666,7 @@ async function gerarEtiquetasLote() {
     if(currentPage==='pedidos') renderPedidos();
     let html=`<div style="color:var(--cor-verde)"><i class="bi bi-check-circle-fill me-1"></i>${sucesso.length} etiqueta(s) gerada(s) com sucesso.</div>`;
     if(linkEtiquetas) html+=`<a href="${escHtml(linkEtiquetas)}" target="_blank" class="btn btn-outline-success btn-sm mt-2"><i class="bi bi-file-earmark-pdf me-1"></i>Baixar PDF com todas as etiquetas</a>`;
+    html+=` <button class="btn btn-outline-light btn-sm mt-2" onclick="imprimirDeclaracoes([${sucesso.map(s=>s.i).join(',')}])"><i class="bi bi-file-earmark-text me-1"></i>Imprimir Declarações de Conteúdo</button>`;
     if(falha.length) html+=`<div style="margin-top:10px;color:#F59E0B">${falha.length} pedido(s) não entraram no lote:<pre style="white-space:pre-wrap;font-size:11px">${escHtml(JSON.stringify(falha,null,2))}</pre></div>`;
     resultadoDiv.innerHTML=html;
   } catch(e) {
@@ -4386,6 +4506,7 @@ function verPedido(i) {
         <div id="me-btn-${i}">${renderBotaoCotarFrete(p,i,cliente)}</div>
         <div id="me-cotacoes-${i}" style="display:none"></div>
         <div id="me-etiqueta-${i}">${renderStatusMelhorEnvio(p,i)}</div>
+        <button class="btn btn-outline-light btn-sm mt-2" style="font-size:11px" onclick="imprimirDeclaracoes([${i}])" title="Imprime 2 vias: uma pra colar do lado de fora do pacote e outra pra ir dentro"><i class="bi bi-file-earmark-text me-1"></i>Declaração de Conteúdo</button>
       </div>
     </div>`:''}
     ${!isPedidoDigital(p)?`<div style="border-top:1px solid var(--cor-borda);padding-top:12px;margin-top:16px">
@@ -5784,10 +5905,27 @@ async function deletarUsuario(docId,nome) {
 
 function renderConfig() {
   document.getElementById('cfg-saldo-inicial').value = fmtM(dados.config.saldoInicial||0);
+  preencherRemetenteConfig();
   document.querySelector('#tabela-config-canais tbody').innerHTML=(dados.config.canais||[]).map((c,i)=>`<tr><td style="font-weight:600;color:#fff">${badgeCanal(c.nome)}</td><td>${(c.taxa*100).toFixed(1)}%</td><td>${c.taxaFixa>0?moeda(c.taxaFixa):'—'}</td><td style="white-space:nowrap"><button class="btn-sm-action btn-edit" onclick="editarCanal(${i})"><i class="bi bi-pencil-fill"></i></button><button class="btn-sm-action btn-delete" onclick="deletar('config.canais',${i})"><i class="bi bi-trash-fill"></i></button></td></tr>`).join('');
   document.querySelector('#tabela-config-pagto tbody').innerHTML=(dados.config.formasPagto||[]).map((f,i)=>`<tr><td style="font-weight:600;color:#fff">${f.nome}</td><td>${(f.taxa*100).toFixed(2)}%</td><td>${f.taxaFixa>0?moeda(f.taxaFixa):'—'}</td><td style="white-space:nowrap"><button class="btn-sm-action btn-edit" onclick="editarFormaPagto(${i})"><i class="bi bi-pencil-fill"></i></button><button class="btn-sm-action btn-delete" onclick="deletar('config.formasPagto',${i})"><i class="bi bi-trash-fill"></i></button></td></tr>`).join('');
   document.getElementById('info-dados').innerHTML=[['Clientes',dados.clientes.length],['Pedidos',dados.pedidos.length],['Produtos',dados.produtos.length],['Compras',dados.compras.length],['Mov. Estoque',dados.estoqueMovimentos.length],['Lançamentos',dados.financeiro.length],['Afiliados',dados.afiliados.length]].map(([k,v])=>`<div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid var(--cor-borda)"><span>${k}</span><strong>${v}</strong></div>`).join('');
   atualizarInfoUltimoBackup();
+}
+const REM_CAMPOS=['nome','doc','cep','logradouro','numero','complemento','bairro','cidade','uf'];
+function preencherRemetenteConfig() {
+  const r=dados.config.remetente||{};
+  REM_CAMPOS.forEach(k=>{ const el=document.getElementById('cfg-rem-'+k); if(el) el.value=r[k]||''; });
+}
+async function salvarRemetente() {
+  const r={};
+  REM_CAMPOS.forEach(k=>{ r[k]=(document.getElementById('cfg-rem-'+k).value||'').trim(); });
+  r.uf=r.uf.toUpperCase();
+  if(!r.nome||!r.doc||!r.logradouro||!r.cidade||!r.uf||!r.cep) return alert('Preencha pelo menos nome, CPF/CNPJ, endereço, cidade, UF e CEP.');
+  dados.config.remetente=r;
+  await db.collection('config').doc('main').update({remetente:r});
+  const msg=document.getElementById('cfg-rem-msg');
+  msg.style.display='inline';
+  setTimeout(()=>msg.style.display='none',3000);
 }
 async function salvarSaldoInicial() {
   const val = pFloat('cfg-saldo-inicial');
