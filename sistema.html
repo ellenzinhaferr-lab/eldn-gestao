@@ -302,7 +302,7 @@ table.gestao tbody tr:hover .tbl-sticky-r{background:#1f1545}
     <div class="page" id="pg-pedidos">
       <div id="ped-abas-mes" style="display:flex;gap:4px;align-items:flex-end;overflow-x:auto;border-bottom:2px solid var(--cor-borda);margin-bottom:16px;padding-bottom:0"></div>
       <div class="table-card">
-        <div class="table-header"><h6>Pedidos Diários</h6><div style="display:flex;gap:8px;"><input type="text" class="input-search" id="ped-busca" placeholder="Buscar nº, cliente, produto, SKU..." oninput="buscarPedidos(this.value)" style="width:260px" title="Procura em TODOS os meses e anos"><button class="btn btn-outline-warning btn-sm" onclick="abrirModalLoteEtiquetas()"><i class="bi bi-tags me-1"></i>Etiquetas em Lote</button><button class="btn btn-outline-success btn-sm" onclick="abrirModalRecebimento()"><i class="bi bi-cash-coin me-1"></i>Receber</button><button class="btn btn-primary btn-sm" onclick="abrirModal('pedido')"><i class="bi bi-plus-lg"></i> Novo</button></div></div>
+        <div class="table-header"><h6>Pedidos Diários</h6><div style="display:flex;gap:8px;"><input type="text" class="input-search" id="ped-busca" placeholder="Buscar nº, cliente, produto, SKU..." oninput="buscarPedidos(this.value)" style="width:260px" title="Procura em TODOS os meses e anos"><button class="btn btn-outline-warning btn-sm" onclick="abrirModalLoteEtiquetas()"><i class="bi bi-tags me-1"></i>Etiquetas em Lote</button><button class="btn btn-sm" style="background:#F59E0B;color:#1a1a1a;font-weight:600;border:none" onclick="abrirModalLoteDeclaracoes()"><i class="bi bi-file-earmark-text me-1"></i>Declarações em Lote</button><button class="btn btn-outline-success btn-sm" onclick="abrirModalRecebimento()"><i class="bi bi-cash-coin me-1"></i>Receber</button><button class="btn btn-primary btn-sm" onclick="abrirModal('pedido')"><i class="bi bi-plus-lg"></i> Novo</button></div></div>
         <div id="ped-busca-aviso" style="padding:0 16px;font-size:12px;color:var(--cor-secundaria)"></div><div class="table-responsive"><table class="gestao" id="tabela-pedidos"><thead><tr><th class="th-sort" data-col="data" onclick="sortBy('pedidos','data',renderPedidos)">Data</th><th class="th-sort" data-col="num" onclick="sortBy('pedidos','num',renderPedidos)">Nº Pedido</th><th class="th-sort" data-col="cliente" onclick="sortBy('pedidos','cliente',renderPedidos)">Cliente</th><th class="th-sort" data-col="valor" onclick="sortBy('pedidos','valor',renderPedidos)">Total</th><th class="th-sort" data-col="liquido" onclick="sortBy('pedidos','liquido',renderPedidos)">Líquido</th><th>Tipo</th><th class="th-sort" data-col="canal" onclick="sortBy('pedidos','canal',renderPedidos)">Plataforma</th><th class="th-sort" data-col="status" onclick="sortBy('pedidos','status',renderPedidos)">Status</th><th>NF</th><th>Recebimento</th><th></th></tr></thead><tbody></tbody></table></div>
       </div>
     </div>
@@ -3494,6 +3494,48 @@ function imprimirDeclaracoes(indices) {
     _imprimirDeclaracoesAgora(indices);
   };
   modal.show();
+}
+// Declarações em lote: pedidos físicos (qualquer canal) ainda não entregues. Já vêm marcados os
+// Pendente / Em separação; os Enviados dos últimos 15 dias aparecem desmarcados (pra reimprimir se precisar).
+function abrirModalLoteDeclaracoes() {
+  const limite=new Date(); limite.setDate(limite.getDate()-15);
+  const limiteStr=limite.toISOString().slice(0,10);
+  const itens=dados.pedidos.map((p,i)=>({p,i}))
+    .filter(({p})=>!isPedidoDigital(p)&&_itensDeclaracao(p).itens.length&&(['Pendente','Em separação'].includes(p.status)||(p.status==='Enviado'&&(p.data||'')>=limiteStr)))
+    .sort((x,y)=>(y.p.data||'').localeCompare(x.p.data||''));
+  let el=document.getElementById('modalLoteDeclaracoes');
+  if(!el){ el=document.createElement('div'); el.className='modal fade'; el.id='modalLoteDeclaracoes'; el.tabIndex=-1; document.body.appendChild(el); }
+  el.innerHTML=`<div class="modal-dialog modal-lg"><div class="modal-content">
+    <div class="modal-header"><h5 class="modal-title"><i class="bi bi-file-earmark-text me-2"></i>Declarações de Conteúdo em Lote</h5><button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button></div>
+    <div class="modal-body">
+      <p style="font-size:12px;color:var(--cor-texto-suave)">Pedidos físicos de todos os canais que ainda não foram entregues. Pendentes e em separação já vêm marcados; os enviados dos últimos 15 dias aparecem desmarcados, caso precise reimprimir. Sai uma declaração por pedido, no tamanho da etiqueta (10x15 cm). Pedidos do Mercado Livre sem rastreio vão pedir o código antes de imprimir.</p>
+      <div style="display:flex;gap:8px;margin-bottom:8px"><button class="btn btn-outline-secondary btn-sm" style="font-size:11px" onclick="document.querySelectorAll('.lote-decl-check').forEach(c=>c.checked=true);atualizarContLoteDecl()">Marcar todos</button><button class="btn btn-outline-secondary btn-sm" style="font-size:11px" onclick="document.querySelectorAll('.lote-decl-check').forEach(c=>c.checked=false);atualizarContLoteDecl()">Desmarcar todos</button></div>
+      <div style="max-height:50vh;overflow-y:auto">${itens.length?itens.map(({p,i})=>{
+        const rastr=p.rastreio||p.codigoRastreio;
+        const resumo=_itensDeclaracao(p).itens.map(x=>x.qtd+'x '+x.desc).join(' + ');
+        return `<label style="display:flex;align-items:center;gap:10px;padding:9px;border-bottom:1px solid var(--cor-borda);cursor:pointer">
+          <input type="checkbox" class="form-check-input lote-decl-check" value="${i}" ${p.status!=='Enviado'?'checked':''} style="margin:0" onchange="atualizarContLoteDecl()">
+          <div style="flex:1">
+            <strong style="color:#fff">${escHtml(String(p.num))}</strong> · ${escHtml(nomeCliente(p.clienteId))} · ${badgeCanal(p.canal)}
+            <div style="font-size:12px;color:var(--cor-texto-suave)">${fmtData(p.data)} · ${escHtml(p.status||'')} · ${escHtml(resumo)} · ${rastr?'Rastreio '+escHtml(rastr):(_ehPedidoML(p)?'<span style="color:#F59E0B">sem rastreio (vai pedir)</span>':'sem rastreio')}</div>
+          </div></label>`;}).join(''):'<div class="empty-state"><i class="bi bi-inbox"></i>Nenhum pedido físico pendente de envio.</div>'}</div>
+    </div>
+    <div class="modal-footer"><span id="lote-decl-cont" style="margin-right:auto;font-size:13px;color:var(--cor-texto-suave)"></span><button class="btn btn-outline-secondary" data-bs-dismiss="modal">Fechar</button><button class="btn" style="background:#F59E0B;color:#1a1a1a;font-weight:600;border:none" onclick="imprimirLoteDeclaracoes()"><i class="bi bi-printer-fill me-1"></i>Imprimir Selecionadas</button></div>
+  </div></div>`;
+  bootstrap.Modal.getOrCreateInstance(el).show();
+  atualizarContLoteDecl();
+}
+function atualizarContLoteDecl() {
+  const n=document.querySelectorAll('.lote-decl-check:checked').length;
+  const sp=document.getElementById('lote-decl-cont'); if(sp) sp.textContent=n+' selecionada(s)';
+}
+function imprimirLoteDeclaracoes() {
+  const sel=[...document.querySelectorAll('.lote-decl-check:checked')].map(c=>+c.value);
+  if(!sel.length) return alert('Marque pelo menos um pedido.');
+  const faltaRastreioML=sel.some(i=>{const p=dados.pedidos[i];return _ehPedidoML(p)&&!(p.rastreio||p.codigoRastreio);});
+  // Se vai abrir a janela do rastreio, fecha a lista antes pra não ficar uma janela em cima da outra.
+  if(faltaRastreioML) bootstrap.Modal.getInstance(document.getElementById('modalLoteDeclaracoes')).hide();
+  imprimirDeclaracoes(sel);
 }
 function _imprimirDeclaracoesAgora(indices) {
   const rem=dados.config.remetente;
