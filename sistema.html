@@ -3455,10 +3455,48 @@ function _blocoDeclaracao(p,cliente,rem) {
     <div class="assin"><span>${e(rem.cidade)}, ${hoje}</span><span class="linha">Assinatura do remetente</span></div>
   </div>`;
 }
+// Mercado Livre: a etiqueta é do Mercado Envios e o rastreio não chega sozinho no sistema.
+// Antes de imprimir, abre uma janela no próprio sistema pedindo o código e salva no pedido.
+function _ehPedidoML(p){ return p.canal==='Mercado Livre'||!!p.ml; }
 function imprimirDeclaracoes(indices) {
   const rem=dados.config.remetente;
   if(!rem||!rem.nome||!rem.doc) return alert('Antes, preencha os dados do Remetente em Configurações → "Remetente da Declaração de Conteúdo".');
-  // Abre a janela já no clique (antes das perguntas), senão o navegador bloqueia como pop-up.
+  const faltam=indices.filter(i=>{const p=dados.pedidos[i];return p&&_ehPedidoML(p)&&!(p.rastreio||p.codigoRastreio)&&_itensDeclaracao(p).itens.length;});
+  if(!faltam.length) return _imprimirDeclaracoesAgora(indices);
+  let el=document.getElementById('modalRastreioDecl');
+  if(!el){
+    el=document.createElement('div');
+    el.className='modal fade'; el.id='modalRastreioDecl'; el.tabIndex=-1; el.style.zIndex=1075;
+    document.body.appendChild(el);
+  }
+  el.innerHTML=`<div class="modal-dialog"><div class="modal-content">
+    <div class="modal-header"><h5 class="modal-title"><i class="bi bi-truck me-2"></i>Rastreio do Mercado Envios</h5><button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button></div>
+    <div class="modal-body">
+      <p style="font-size:13px;color:var(--cor-texto-suave)">Digite o código de rastreio da etiqueta do Mercado Livre. Ele sai na declaração e fica salvo no pedido. Se deixar em branco, a declaração sai com a linha pra escrever à mão.</p>
+      ${faltam.map(i=>{const p=dados.pedidos[i];const c=dados.clientes.find(x=>x.id===p.clienteId)||{};return `<div class="mb-2"><label class="form-label">Pedido ${escHtml(String(p.num))} · ${escHtml(c.nome||'')}</label><input class="form-control decl-rastreio-input" data-i="${i}" placeholder="Código de rastreio" style="text-transform:uppercase"></div>`;}).join('')}
+    </div>
+    <div class="modal-footer"><button class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancelar</button><button class="btn" style="background:#F59E0B;color:#1a1a1a;font-weight:600;border:none" id="btn-decl-rastreio-ok"><i class="bi bi-printer-fill me-1"></i>Salvar e imprimir</button></div>
+  </div></div>`;
+  const modal=bootstrap.Modal.getOrCreateInstance(el);
+  el.addEventListener('shown.bs.modal',()=>{const f=el.querySelector('.decl-rastreio-input');if(f)f.focus();},{once:true});
+  el.querySelectorAll('.decl-rastreio-input').forEach(inp=>inp.addEventListener('keydown',ev=>{if(ev.key==='Enter'){ev.preventDefault();document.getElementById('btn-decl-rastreio-ok').click();}}));
+  document.getElementById('btn-decl-rastreio-ok').onclick=()=>{
+    el.querySelectorAll('.decl-rastreio-input').forEach(inp=>{
+      const cod=(inp.value||'').trim().toUpperCase();
+      const p=dados.pedidos[+inp.dataset.i];
+      if(!cod||!p) return;
+      p.rastreio=cod;
+      db.collection('pedidos').doc(p._docId).update({rastreio:cod})
+        .then(()=>{ if(currentPage==='pedidos') renderPedidos(); })
+        .catch(err=>alert(`Não consegui salvar o rastreio no pedido ${p.num}: ${err.message}. A declaração saiu com o código, mas confira o pedido.`));
+    });
+    modal.hide();
+    _imprimirDeclaracoesAgora(indices);
+  };
+  modal.show();
+}
+function _imprimirDeclaracoesAgora(indices) {
+  const rem=dados.config.remetente;
   const win=window.open('','_blank','width=520,height=760');
   if(!win) return alert('O navegador bloqueou a janela. Libere pop-ups pro sistema e tente de novo.');
   const paginas=[], semItens=[];
@@ -3466,20 +3504,6 @@ function imprimirDeclaracoes(indices) {
     const p=dados.pedidos[i];
     if(!p) return;
     if(!_itensDeclaracao(p).itens.length) { semItens.push(p.num); return; }
-    // Mercado Livre: a etiqueta é do Mercado Envios, o rastreio não chega sozinho. Pergunta e já salva no pedido.
-    const ehML=p.canal==='Mercado Livre'||!!p.ml;
-    if(ehML&&!(p.rastreio||p.codigoRastreio)) {
-      const cod=(prompt(`Pedido ${p.num} (Mercado Livre)
-Digite o código de rastreio da etiqueta do Mercado Envios.
-
-Deixe em branco pra imprimir sem o código.`)||'').trim().toUpperCase();
-      if(cod) {
-        p.rastreio=cod;
-        db.collection('pedidos').doc(p._docId).update({rastreio:cod})
-          .then(()=>{ if(currentPage==='pedidos') renderPedidos(); })
-          .catch(err=>alert(`Não consegui salvar o rastreio no pedido ${p.num}: ${err.message}. A declaração saiu com o código, mas confira o pedido.`));
-      }
-    }
     const cliente=dados.clientes.find(x=>x.id===p.clienteId);
     paginas.push(`<div class="pagina">${_blocoDeclaracao(p,cliente,rem)}</div>`);
   });
