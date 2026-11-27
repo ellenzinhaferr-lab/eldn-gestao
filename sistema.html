@@ -1000,7 +1000,7 @@ table.gestao tbody tr:hover .tbl-sticky-r{background:#1f1545}
 <div class="modal fade" id="modalVerPedido" tabindex="-1"><div class="modal-dialog modal-lg"><div class="modal-content">
   <div class="modal-header"><h5 class="modal-title" id="modalVerPedidoTitulo">Pedido</h5><button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button></div>
   <div class="modal-body" id="modalVerPedidoBody"></div>
-  <div class="modal-footer"><button class="btn btn-outline-secondary" data-bs-dismiss="modal">Fechar</button><button class="btn btn-success" id="btn-imprimir-do-ver" onclick=""><i class="bi bi-printer-fill me-1"></i>Imprimir PDF</button><button class="btn btn-primary" id="btn-editar-do-ver" onclick=""><i class="bi bi-pencil-fill me-1"></i>Editar</button></div>
+  <div class="modal-footer"><button class="btn btn-outline-secondary" data-bs-dismiss="modal">Fechar</button><button class="btn btn-outline-light" id="btn-declaracao-do-ver" onclick="" title="Imprime 2 vias: uma pra colar do lado de fora do pacote e outra pra ir dentro"><i class="bi bi-file-earmark-text me-1"></i>Declaração de Conteúdo</button><button class="btn btn-success" id="btn-imprimir-do-ver" onclick=""><i class="bi bi-printer-fill me-1"></i>Imprimir PDF</button><button class="btn btn-primary" id="btn-editar-do-ver" onclick=""><i class="bi bi-pencil-fill me-1"></i>Editar</button></div>
 </div></div></div>
 
 <div class="modal fade" id="modalLoteEtiquetas" tabindex="-1"><div class="modal-dialog modal-lg"><div class="modal-content">
@@ -3412,14 +3412,15 @@ async function gerarEtiquetaMelhorEnvio(i) {
 function _itensDeclaracao(p) {
   const itens=getPedidoItens(p).map(it=>{
     const prod=dados.produtos.find(x=>x.sku===it.sku);
-    if(!prod||prod.digital||!(it.qtd>0)) return null;
-    return {desc:it.desc||prod.nome||it.sku,qtd:it.qtd,valor:(it.preco||0)*it.qtd};
+    // SKU não cadastrado (ex.: pedido Mercado Livre) entra como item físico; só fica de fora o que é digital.
+    if((prod&&prod.digital)||!(it.qtd>0)) return null;
+    return {desc:it.desc||(prod&&prod.nome)||it.sku,qtd:it.qtd,valor:(it.preco||0)*it.qtd};
   }).filter(Boolean);
   const peso=itensEnvioPedido(p).reduce((s,x)=>s+(x.prod.peso||0)*x.qtd,0);
   return {itens,peso};
 }
 function _blocoDeclaracao(p,cliente,rem,via) {
-  const e=s=>escHtml(String(s==null?'':s));
+  const e=s=>{const t=String(s==null?'':s).trim();return t&&t!=='/'?escHtml(t):'______________';};
   const {itens,peso}=_itensDeclaracao(p);
   const totalQtd=itens.reduce((s,x)=>s+x.qtd,0), totalValor=itens.reduce((s,x)=>s+x.valor,0);
   const comNFe=p.nfe&&p.nfe.status==='autorizado';
@@ -3431,7 +3432,7 @@ function _blocoDeclaracao(p,cliente,rem,via) {
   return `<div class="decl">
     <div class="via">${via}</div>
     <h1>${comNFe?'IDENTIFICAÇÃO DE CONTEÚDO':'DECLARAÇÃO DE CONTEÚDO'}</h1>
-    <div style="text-align:center;font-size:11px"><b>Código de rastreamento:</b> ${p.rastreio?e(p.rastreio):'______________________'}</div>
+    <div style="text-align:center;font-size:11px"><b>Código de rastreamento:</b> ${e(p.rastreio||p.codigoRastreio)}</div>
     <div class="conteudo">CONTEÚDO DO PACOTE: ${e(resumo.toUpperCase())}</div>
     <div class="partes">
       <div class="box"><div class="tit">REMETENTE</div>
@@ -4460,6 +4461,9 @@ function verPedido(i) {
   document.getElementById('modalVerPedidoTitulo').textContent=`Pedido ${p.num}`;
   document.getElementById('btn-editar-do-ver').onclick=()=>{bootstrap.Modal.getInstance(document.getElementById('modalVerPedido')).hide();setTimeout(()=>editarPedido(i),300);};
   document.getElementById('btn-imprimir-do-ver').onclick=()=>imprimirPedido(i);
+  const btnDecl=document.getElementById('btn-declaracao-do-ver');
+  btnDecl.onclick=()=>imprimirDeclaracoes([i]);
+  btnDecl.style.display=isPedidoDigital(p)?'none':'';
   document.getElementById('modalVerPedidoBody').innerHTML=`
     <div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:18px;align-items:center">
       <div style="flex:1;min-width:120px"><div style="font-size:11px;color:var(--cor-texto-suave);text-transform:uppercase;letter-spacing:1px">Data</div><div style="font-weight:600;color:#fff;font-size:15px">${fmtData(p.data)}</div></div>
@@ -4507,7 +4511,6 @@ function verPedido(i) {
         <div id="me-btn-${i}">${renderBotaoCotarFrete(p,i,cliente)}</div>
         <div id="me-cotacoes-${i}" style="display:none"></div>
         <div id="me-etiqueta-${i}">${renderStatusMelhorEnvio(p,i)}</div>
-        <button class="btn btn-outline-light btn-sm mt-2" style="font-size:11px" onclick="imprimirDeclaracoes([${i}])" title="Imprime 2 vias: uma pra colar do lado de fora do pacote e outra pra ir dentro"><i class="bi bi-file-earmark-text me-1"></i>Declaração de Conteúdo</button>
       </div>
     </div>`:''}
     ${!isPedidoDigital(p)?`<div style="border-top:1px solid var(--cor-borda);padding-top:12px;margin-top:16px">
