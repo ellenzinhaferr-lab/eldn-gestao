@@ -1000,7 +1000,7 @@ table.gestao tbody tr:hover .tbl-sticky-r{background:#1f1545}
 <div class="modal fade" id="modalVerPedido" tabindex="-1"><div class="modal-dialog modal-lg"><div class="modal-content">
   <div class="modal-header"><h5 class="modal-title" id="modalVerPedidoTitulo">Pedido</h5><button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button></div>
   <div class="modal-body" id="modalVerPedidoBody"></div>
-  <div class="modal-footer"><button class="btn btn-outline-secondary" data-bs-dismiss="modal">Fechar</button><button class="btn" style="background:#F59E0B;color:#1a1a1a;font-weight:600;border:none" id="btn-declaracao-do-ver" onclick="" title="Imprime 2 vias: uma pra colar do lado de fora do pacote e outra pra ir dentro"><i class="bi bi-file-earmark-text me-1"></i>Declaração de Conteúdo</button><button class="btn btn-success" id="btn-imprimir-do-ver" onclick=""><i class="bi bi-printer-fill me-1"></i>Imprimir PDF</button><button class="btn btn-primary" id="btn-editar-do-ver" onclick=""><i class="bi bi-pencil-fill me-1"></i>Editar</button></div>
+  <div class="modal-footer"><button class="btn btn-outline-secondary" data-bs-dismiss="modal">Fechar</button><button class="btn" style="background:#F59E0B;color:#1a1a1a;font-weight:600;border:none" id="btn-declaracao-do-ver" onclick="" title="Imprime no tamanho da etiqueta (10x15 cm) pra colar na embalagem"><i class="bi bi-file-earmark-text me-1"></i>Declaração de Conteúdo</button><button class="btn btn-success" id="btn-imprimir-do-ver" onclick=""><i class="bi bi-printer-fill me-1"></i>Imprimir PDF</button><button class="btn btn-primary" id="btn-editar-do-ver" onclick=""><i class="bi bi-pencil-fill me-1"></i>Editar</button></div>
 </div></div></div>
 
 <div class="modal fade" id="modalLoteEtiquetas" tabindex="-1"><div class="modal-dialog modal-lg"><div class="modal-content">
@@ -3419,10 +3419,12 @@ function _itensDeclaracao(p) {
   const peso=itensEnvioPedido(p).reduce((s,x)=>s+(x.prod.peso||0)*x.qtd,0);
   return {itens,peso};
 }
-function _blocoDeclaracao(p,cliente,rem,via) {
+// Tamanho da etiqueta do Melhor Envio (10x15 cm) — sai no mesmo formato pra imprimir junto. 1 via, sem preço.
+const DECL_PAGINA={largura:'100mm',altura:'150mm'};
+function _blocoDeclaracao(p,cliente,rem) {
   const e=s=>{const t=String(s==null?'':s).trim();return t&&t!=='/'?escHtml(t):'______________';};
   const {itens,peso}=_itensDeclaracao(p);
-  const totalQtd=itens.reduce((s,x)=>s+x.qtd,0), totalValor=itens.reduce((s,x)=>s+x.valor,0);
+  const totalQtd=itens.reduce((s,x)=>s+x.qtd,0);
   const comNFe=p.nfe&&p.nfe.status==='autorizado';
   const c=cliente||{};
   const endDest=[c.logradouro,c.numero].filter(Boolean).join(', ')+(c.complemento?' - '+c.complemento:'');
@@ -3430,34 +3432,27 @@ function _blocoDeclaracao(p,cliente,rem,via) {
   const resumo=itens.map(x=>`${x.qtd}x ${x.desc}`).join(' + ');
   const hoje=new Date().toLocaleDateString('pt-BR');
   return `<div class="decl">
-    <div class="via">${via}</div>
-    <h1>${comNFe?'IDENTIFICAÇÃO DE CONTEÚDO':'DECLARAÇÃO DE CONTEÚDO'}</h1>
-    <div style="text-align:center;font-size:11px"><b>Código de rastreamento:</b> ${e(p.rastreio||p.codigoRastreio)}</div>
-    <div class="conteudo">CONTEÚDO DO PACOTE: ${e(resumo.toUpperCase())}</div>
-    <div class="partes">
-      <div class="box"><div class="tit">REMETENTE</div>
-        <div><b>Nome:</b> ${e(rem.nome)}</div>
-        <div><b>Endereço:</b> ${e(endRem)}${rem.bairro?' - '+e(rem.bairro):''}</div>
-        <div><b>Cidade/UF:</b> ${e(rem.cidade)}/${e(rem.uf)} &nbsp; <b>CEP:</b> ${e(rem.cep)}</div>
-        <div><b>CPF/CNPJ:</b> ${e(rem.doc)}</div>
-      </div>
-      <div class="box"><div class="tit">DESTINATÁRIO</div>
-        <div><b>Nome:</b> ${e(c.nome)}</div>
-        <div><b>Endereço:</b> ${e(endDest)}${c.bairro?' - '+e(c.bairro):''}</div>
-        <div><b>Cidade/UF:</b> ${e(c.cidade)}/${e((c.estado||'').toUpperCase())} &nbsp; <b>CEP:</b> ${e(c.cep)}</div>
-        <div><b>CPF/CNPJ:</b> ${e(c.cpf)}</div>
-      </div>
+    <div class="topo"><h1>${comNFe?'IDENTIFICAÇÃO DE CONTEÚDO':'DECLARAÇÃO DE CONTEÚDO'}</h1><span class="ped">Pedido ${e(p.num)}</span></div>
+    <div class="rastr"><b>Rastreio:</b> ${e(p.rastreio||p.codigoRastreio)}</div>
+    <div class="conteudo">CONTEÚDO: ${e(resumo.toUpperCase())}</div>
+    <div class="box"><div class="tit">REMETENTE</div>
+      <div>${e(rem.nome)} · CPF/CNPJ: ${e(rem.doc)}</div>
+      <div>${e(endRem)}${rem.bairro?' - '+e(rem.bairro):''}</div>
+      <div>${e(rem.cidade)}/${e(rem.uf)} · CEP ${e(rem.cep)}</div>
     </div>
-    <table><thead><tr><th style="width:8%">Item</th><th>Conteúdo</th><th style="width:10%">Quant.</th><th style="width:16%">Valor (R$)</th></tr></thead><tbody>
-      ${itens.map((x,n)=>`<tr><td>${n+1}</td><td>${e(x.desc)}</td><td style="text-align:center">${x.qtd}</td><td style="text-align:right">${moeda(x.valor).replace('R$ ','')}</td></tr>`).join('')}
-      <tr class="tot"><td colspan="2" style="text-align:right">Totais${peso>0?` &nbsp;·&nbsp; Peso total: ${peso.toLocaleString('pt-BR',{maximumFractionDigits:3})} kg`:''}</td><td style="text-align:center">${totalQtd}</td><td style="text-align:right">${moeda(totalValor).replace('R$ ','')}</td></tr>
+    <div class="box"><div class="tit">DESTINATÁRIO</div>
+      <div>${e(c.nome)} · CPF/CNPJ: ${e(c.cpf)}</div>
+      <div>${e(endDest)}${c.bairro?' - '+e(c.bairro):''}</div>
+      <div>${e(c.cidade)}/${e((c.estado||'').toUpperCase())} · CEP ${e(c.cep)}</div>
+    </div>
+    <table><thead><tr><th style="width:9%">Item</th><th>Conteúdo</th><th style="width:15%">Qtd.</th></tr></thead><tbody>
+      ${itens.map((x,n)=>`<tr><td style="text-align:center">${n+1}</td><td>${e(x.desc)}</td><td style="text-align:center">${x.qtd}</td></tr>`).join('')}
+      <tr class="tot"><td colspan="2" style="text-align:right">Total${peso>0?` · Peso: ${peso.toLocaleString('pt-BR',{maximumFractionDigits:3})} kg`:''}</td><td style="text-align:center">${totalQtd}</td></tr>
     </tbody></table>
     ${comNFe
-      ?`<div class="decltxt">Mercadoria acompanhada da Nota Fiscal Eletrônica nº <b>${e(p.nfe.numero||'')}</b>${p.nfe.chave?` (chave ${e(String(p.nfe.chave).replace(/^NFe/,''))})`:''}. Pedido ${e(p.num)}. Não contém conteúdo inflamável, explosivo, tóxico, corrosivo, gás ou qualquer outro conteúdo que constitua perigo (art. 13 da Lei Postal nº 6.538/78).</div>`
+      ?`<div class="decltxt">Mercadoria acompanhada da NF-e nº <b>${e(p.nfe.numero||'')}</b>. Não contém conteúdo inflamável, explosivo, tóxico, corrosivo, gás ou qualquer outro conteúdo que constitua perigo (art. 13 da Lei Postal nº 6.538/78).</div>`
       :`<div class="decltxt"><b>DECLARAÇÃO:</b> Declaro que não me enquadro no conceito de contribuinte previsto no art. 4º da Lei Complementar nº 87/1996, uma vez que não realizo, com habitualidade ou em volume que caracterize intuito comercial, operações de circulação de mercadoria, ainda que se iniciem no exterior, ou estou dispensado da emissão da nota fiscal por força da legislação tributária vigente, responsabilizando-me, nos termos da lei e a quem de direito, por informações inverídicas. Declaro ainda que não estou postando conteúdo inflamável, explosivo, causador de combustão espontânea, tóxico, corrosivo, gás ou qualquer outro conteúdo que constitua perigo, conforme o art. 13 da Lei Postal nº 6.538/78.</div>`}
-    <div class="assin"><span>${e(rem.cidade)}, ${hoje}</span><span class="linha">Assinatura do declarante/remetente</span></div>
-    ${comNFe?'':'<div class="obs">Constitui crime contra a ordem tributária suprimir ou reduzir tributo, ou contribuição social e qualquer acessório (Lei 8.137/90, art. 1º, V).</div>'}
-    <div class="ped">Pedido ${e(p.num)}</div>
+    <div class="assin"><span>${e(rem.cidade)}, ${hoje}</span><span class="linha">Assinatura do remetente</span></div>
   </div>`;
 }
 function imprimirDeclaracoes(indices) {
@@ -3469,34 +3464,33 @@ function imprimirDeclaracoes(indices) {
     if(!p) return;
     if(!_itensDeclaracao(p).itens.length) { semItens.push(p.num); return; }
     const cliente=dados.clientes.find(x=>x.id===p.clienteId);
-    paginas.push(`<div class="pagina">${_blocoDeclaracao(p,cliente,rem,'VIA 1 · COLAR DO LADO DE FORA DA EMBALAGEM')}<div class="corte">✂ - - - - - - - - - - - - - - - - - - - - recortar aqui - - - - - - - - - - - - - - - - - - - -</div>${_blocoDeclaracao(p,cliente,rem,'VIA 2 · VAI DENTRO DO PACOTE')}</div>`);
+    paginas.push(`<div class="pagina">${_blocoDeclaracao(p,cliente,rem)}</div>`);
   });
   if(!paginas.length) return alert('Nenhum item físico encontrado pra declarar'+(semItens.length?` (pedidos: ${semItens.join(', ')})`:'')+'.');
   const html=`<!DOCTYPE html><html><head><meta charset="utf-8"><title>Declaração de Conteúdo</title><style>
-    @page{size:A4;margin:8mm}
+    @page{size:${DECL_PAGINA.largura} ${DECL_PAGINA.altura};margin:0}
     *{box-sizing:border-box}
-    body{font-family:Arial,Helvetica,sans-serif;color:#000;margin:0;font-size:10.5px}
-    .pagina{page-break-after:always;display:flex;flex-direction:column;gap:2mm}
+    html,body{margin:0;padding:0}
+    body{font-family:Arial,Helvetica,sans-serif;color:#000;font-size:9px;line-height:1.3}
+    .pagina{width:${DECL_PAGINA.largura};height:${DECL_PAGINA.altura};padding:3mm;page-break-after:always;overflow:hidden}
     .pagina:last-child{page-break-after:auto}
-    .decl{border:1.5px solid #000;padding:3mm 4mm;height:136mm;display:flex;flex-direction:column;gap:2mm;position:relative}
-    .via{font-size:9px;font-weight:700;letter-spacing:.5px;color:#444}
-    h1{font-size:16px;text-align:center;margin:0;letter-spacing:1px}
-    .conteudo{border:2px solid #000;background:#eee;font-size:15px;font-weight:800;text-align:center;padding:2mm;-webkit-print-color-adjust:exact;print-color-adjust:exact}
-    .partes{display:flex;gap:2mm}
-    .box{flex:1;border:1px solid #000;padding:1.5mm 2mm;line-height:1.45}
-    .tit{font-weight:800;font-size:10px;border-bottom:1px solid #000;margin-bottom:1mm}
+    .decl{border:1.2px solid #000;height:100%;padding:2.5mm;display:flex;flex-direction:column;gap:1.8mm}
+    .topo{display:flex;justify-content:space-between;align-items:baseline;gap:2mm}
+    h1{font-size:11px;margin:0;letter-spacing:.5px}
+    .ped{font-size:8px;font-weight:700;white-space:nowrap}
+    .rastr{font-size:8px}
+    .conteudo{border:1.8px solid #000;background:#e6e6e6;font-size:12px;font-weight:800;text-align:center;padding:1.8mm;line-height:1.2;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+    .box{border:1px solid #000;padding:1.2mm 1.8mm}
+    .tit{font-weight:800;font-size:7.5px;border-bottom:1px solid #000;margin-bottom:.8mm}
     table{width:100%;border-collapse:collapse}
-    th,td{border:1px solid #000;padding:1mm 1.5mm}
-    th{background:#ddd;font-size:10px;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+    th,td{border:1px solid #000;padding:.8mm 1.2mm}
+    th{background:#ddd;font-size:7.5px;-webkit-print-color-adjust:exact;print-color-adjust:exact}
     .tot td{font-weight:700}
-    .decltxt{font-size:8.5px;line-height:1.35;text-align:justify}
-    .assin{display:flex;justify-content:space-between;align-items:flex-end;margin-top:auto;padding-top:4mm}
-    .linha{border-top:1px solid #000;padding-top:1mm;width:55%;text-align:center}
-    .obs{font-size:7.5px;color:#333}
-    .ped{position:absolute;top:3mm;right:4mm;font-size:9px;font-weight:700}
-    .corte{text-align:center;font-size:9px;color:#666}
+    .decltxt{font-size:7.2px;line-height:1.3;text-align:justify}
+    .assin{display:flex;justify-content:space-between;align-items:flex-end;gap:3mm;margin-top:auto;padding-top:5mm;font-size:7.5px}
+    .linha{border-top:1px solid #000;padding-top:.8mm;flex:1;text-align:center}
   </style></head><body>${paginas.join('')}<script>window.onload=function(){window.print();};<\/script></body></html>`;
-  const win=window.open('','_blank','width=900,height=750');
+  const win=window.open('','_blank','width=520,height=760');
   if(!win) return alert('O navegador bloqueou a janela. Libere pop-ups pro sistema e tente de novo.');
   win.document.write(html); win.document.close();
   if(semItens.length) alert(`Sem item físico pra declarar (não impressos): ${semItens.join(', ')}`);
