@@ -3431,6 +3431,7 @@ function _blocoDeclaracao(p,cliente,rem,via) {
   return `<div class="decl">
     <div class="via">${via}</div>
     <h1>${comNFe?'IDENTIFICAÇÃO DE CONTEÚDO':'DECLARAÇÃO DE CONTEÚDO'}</h1>
+    <div style="text-align:center;font-size:11px"><b>Código de rastreamento:</b> ${p.rastreio?e(p.rastreio):'______________________'}</div>
     <div class="conteudo">CONTEÚDO DO PACOTE: ${e(resumo.toUpperCase())}</div>
     <div class="partes">
       <div class="box"><div class="tit">REMETENTE</div>
