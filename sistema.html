@@ -1000,7 +1000,7 @@ table.gestao tbody tr:hover .tbl-sticky-r{background:#1f1545}
 <div class="modal fade" id="modalVerPedido" tabindex="-1"><div class="modal-dialog modal-lg"><div class="modal-content">
   <div class="modal-header"><h5 class="modal-title" id="modalVerPedidoTitulo">Pedido</h5><button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button></div>
   <div class="modal-body" id="modalVerPedidoBody"></div>
-  <div class="modal-footer"><button class="btn btn-outline-secondary" data-bs-dismiss="modal">Fechar</button><button class="btn" style="background:#F59E0B;color:#1a1a1a;font-weight:600;border:none" id="btn-declaracao-do-ver" onclick="" title="Imprime no tamanho da etiqueta (10x15 cm) pra colar na embalagem"><i class="bi bi-file-earmark-text me-1"></i>Declaração de Conteúdo</button><button class="btn btn-success" id="btn-imprimir-do-ver" onclick=""><i class="bi bi-printer-fill me-1"></i>Imprimir PDF</button><button class="btn btn-primary" id="btn-editar-do-ver" onclick=""><i class="bi bi-pencil-fill me-1"></i>Editar</button></div>
+  <div class="modal-footer"><button class="btn btn-outline-secondary" data-bs-dismiss="modal">Fechar</button><button class="btn" style="background:#F59E0B;color:#1a1a1a;font-weight:600;border:none" id="btn-declaracao-do-ver" onclick="" title="Imprime em A4 no mesmo lugar da etiqueta do Melhor Envio (canto superior esquerdo, até 4 por folha)"><i class="bi bi-file-earmark-text me-1"></i>Declaração de Conteúdo</button><button class="btn btn-success" id="btn-imprimir-do-ver" onclick=""><i class="bi bi-printer-fill me-1"></i>Imprimir PDF</button><button class="btn btn-primary" id="btn-editar-do-ver" onclick=""><i class="bi bi-pencil-fill me-1"></i>Editar</button></div>
 </div></div></div>
 
 <div class="modal fade" id="modalLoteEtiquetas" tabindex="-1"><div class="modal-dialog modal-lg"><div class="modal-content">
@@ -3419,8 +3419,9 @@ function _itensDeclaracao(p) {
   const peso=itensEnvioPedido(p).reduce((s,x)=>s+(x.prod.peso||0)*x.qtd,0);
   return {itens,peso};
 }
-// Tamanho da etiqueta do Melhor Envio (10x15 cm) — sai no mesmo formato pra imprimir junto. 1 via, sem preço.
-const DECL_PAGINA={largura:'100mm',altura:'150mm'};
+// Mesmo layout do PDF de etiquetas do Melhor Envio: folha A4 dividida em 4 quadrantes (2x2),
+// começando no canto superior esquerdo. 1 declaração por quadrante, 1 via, sem preço.
+const DECL_PAGINA={largura:'105mm',altura:'148.5mm'};
 function _blocoDeclaracao(p,cliente,rem) {
   const e=s=>{const t=String(s==null?'':s).trim();return t&&t!=='/'?escHtml(t):'______________';};
   const {itens,peso}=_itensDeclaracao(p);
@@ -3508,7 +3509,7 @@ function abrirModalLoteDeclaracoes() {
   el.innerHTML=`<div class="modal-dialog modal-lg"><div class="modal-content">
     <div class="modal-header"><h5 class="modal-title"><i class="bi bi-file-earmark-text me-2"></i>Declarações de Conteúdo em Lote</h5><button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button></div>
     <div class="modal-body">
-      <p style="font-size:12px;color:var(--cor-texto-suave)">Pedidos físicos de todos os canais que ainda não foram entregues. Pendentes e em separação já vêm marcados; os enviados dos últimos 15 dias aparecem desmarcados, caso precise reimprimir. Sai uma declaração por pedido, no tamanho da etiqueta (10x15 cm). Pedidos do Mercado Livre sem rastreio vão pedir o código antes de imprimir.</p>
+      <p style="font-size:12px;color:var(--cor-texto-suave)">Pedidos físicos de todos os canais que ainda não foram entregues. Pendentes e em separação já vêm marcados; os enviados dos últimos 15 dias aparecem desmarcados, caso precise reimprimir. Sai uma declaração por pedido, em A4, no mesmo lugar das etiquetas do Melhor Envio (até 4 por folha). Pedidos do Mercado Livre sem rastreio vão pedir o código antes de imprimir.</p>
       <div style="display:flex;gap:8px;margin-bottom:8px"><button class="btn btn-outline-secondary btn-sm" style="font-size:11px" onclick="document.querySelectorAll('.lote-decl-check').forEach(c=>c.checked=true);atualizarContLoteDecl()">Marcar todos</button><button class="btn btn-outline-secondary btn-sm" style="font-size:11px" onclick="document.querySelectorAll('.lote-decl-check').forEach(c=>c.checked=false);atualizarContLoteDecl()">Desmarcar todos</button></div>
       <div style="max-height:50vh;overflow-y:auto">${itens.length?itens.map(({p,i})=>{
         const rastr=p.rastreio||p.codigoRastreio;
@@ -3539,7 +3540,7 @@ function imprimirLoteDeclaracoes() {
 }
 function _imprimirDeclaracoesAgora(indices) {
   const rem=dados.config.remetente;
-  const win=window.open('','_blank','width=520,height=760');
+  const win=window.open('','_blank','width=900,height=800');
   if(!win) return alert('O navegador bloqueou a janela. Libere pop-ups pro sistema e tente de novo.');
   const paginas=[], semItens=[];
   indices.forEach(i=>{
@@ -3547,16 +3548,20 @@ function _imprimirDeclaracoesAgora(indices) {
     if(!p) return;
     if(!_itensDeclaracao(p).itens.length) { semItens.push(p.num); return; }
     const cliente=dados.clientes.find(x=>x.id===p.clienteId);
-    paginas.push(`<div class="pagina">${_blocoDeclaracao(p,cliente,rem)}</div>`);
+    paginas.push(`<div class="pagina">${_blocoDeclaracao(p,cliente,rem)}</div>`); // cada uma é 1 quadrante
   });
   if(!paginas.length) { win.close(); return alert('Nenhum item físico encontrado pra declarar'+(semItens.length?` (pedidos: ${semItens.join(', ')})`:'')+'.'); }
+  // Agrupa de 4 em 4 por folha A4 (esquerda→direita, cima→baixo), igual ao PDF do Melhor Envio.
+  const folhasA4=[];
+  for(let n=0;n<paginas.length;n+=4) folhasA4.push(`<div class="folha">${paginas.slice(n,n+4).join('')}</div>`);
   const html=`<!DOCTYPE html><html><head><meta charset="utf-8"><title>Declaração de Conteúdo</title><style>
-    @page{size:${DECL_PAGINA.largura} ${DECL_PAGINA.altura};margin:0}
+    @page{size:A4 portrait;margin:0}
+    .folha{width:210mm;height:297mm;display:grid;grid-template-columns:105mm 105mm;grid-template-rows:148.5mm 148.5mm;page-break-after:always;overflow:hidden}
+    .folha:last-child{page-break-after:auto}
     *{box-sizing:border-box}
     html,body{margin:0;padding:0}
     body{font-family:Arial,Helvetica,sans-serif;color:#000;font-size:9px;line-height:1.3}
-    .pagina{width:${DECL_PAGINA.largura};height:${DECL_PAGINA.altura};padding:3mm;page-break-after:always;overflow:hidden}
-    .pagina:last-child{page-break-after:auto}
+    .pagina{width:${DECL_PAGINA.largura};height:${DECL_PAGINA.altura};padding:3mm;overflow:hidden}
     .decl{border:1.2px solid #000;height:100%;padding:2.5mm;display:flex;flex-direction:column;gap:1.8mm}
     .topo{display:flex;justify-content:space-between;align-items:baseline;gap:2mm}
     h1{font-size:11px;margin:0;letter-spacing:.5px}
@@ -3572,7 +3577,7 @@ function _imprimirDeclaracoesAgora(indices) {
     .decltxt{font-size:7.2px;line-height:1.3;text-align:justify}
     .assin{display:flex;justify-content:space-between;align-items:flex-end;gap:3mm;margin-top:auto;padding-top:5mm;font-size:7.5px}
     .linha{border-top:1px solid #000;padding-top:.8mm;flex:1;text-align:center}
-  </style></head><body>${paginas.join('')}<script>window.onload=function(){window.print();};<\/script></body></html>`;
+  </style></head><body>${folhasA4.join('')}<script>window.onload=function(){window.print();};<\/script></body></html>`;
   win.document.write(html); win.document.close();
   if(semItens.length) alert(`Sem item físico pra declarar (não impressos): ${semItens.join(', ')}`);
 }
