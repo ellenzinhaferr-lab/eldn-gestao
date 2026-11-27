@@ -1000,7 +1000,7 @@ table.gestao tbody tr:hover .tbl-sticky-r{background:#1f1545}
 <div class="modal fade" id="modalVerPedido" tabindex="-1"><div class="modal-dialog modal-lg"><div class="modal-content">
   <div class="modal-header"><h5 class="modal-title" id="modalVerPedidoTitulo">Pedido</h5><button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button></div>
   <div class="modal-body" id="modalVerPedidoBody"></div>
-  <div class="modal-footer"><button class="btn btn-outline-secondary" data-bs-dismiss="modal">Fechar</button><button class="btn btn-outline-light" id="btn-declaracao-do-ver" onclick="" title="Imprime 2 vias: uma pra colar do lado de fora do pacote e outra pra ir dentro"><i class="bi bi-file-earmark-text me-1"></i>Declaração de Conteúdo</button><button class="btn btn-success" id="btn-imprimir-do-ver" onclick=""><i class="bi bi-printer-fill me-1"></i>Imprimir PDF</button><button class="btn btn-primary" id="btn-editar-do-ver" onclick=""><i class="bi bi-pencil-fill me-1"></i>Editar</button></div>
+  <div class="modal-footer"><button class="btn btn-outline-secondary" data-bs-dismiss="modal">Fechar</button><button class="btn" style="background:#F59E0B;color:#1a1a1a;font-weight:600;border:none" id="btn-declaracao-do-ver" onclick="" title="Imprime 2 vias: uma pra colar do lado de fora do pacote e outra pra ir dentro"><i class="bi bi-file-earmark-text me-1"></i>Declaração de Conteúdo</button><button class="btn btn-success" id="btn-imprimir-do-ver" onclick=""><i class="bi bi-printer-fill me-1"></i>Imprimir PDF</button><button class="btn btn-primary" id="btn-editar-do-ver" onclick=""><i class="bi bi-pencil-fill me-1"></i>Editar</button></div>
 </div></div></div>
 
 <div class="modal fade" id="modalLoteEtiquetas" tabindex="-1"><div class="modal-dialog modal-lg"><div class="modal-content">
@@ -3668,7 +3668,7 @@ async function gerarEtiquetasLote() {
     if(currentPage==='pedidos') renderPedidos();
     let html=`<div style="color:var(--cor-verde)"><i class="bi bi-check-circle-fill me-1"></i>${sucesso.length} etiqueta(s) gerada(s) com sucesso.</div>`;
     if(linkEtiquetas) html+=`<a href="${escHtml(linkEtiquetas)}" target="_blank" class="btn btn-outline-success btn-sm mt-2"><i class="bi bi-file-earmark-pdf me-1"></i>Baixar PDF com todas as etiquetas</a>`;
-    html+=` <button class="btn btn-outline-light btn-sm mt-2" onclick="imprimirDeclaracoes([${sucesso.map(s=>s.i).join(',')}])"><i class="bi bi-file-earmark-text me-1"></i>Imprimir Declarações de Conteúdo</button>`;
+    html+=` <button class="btn btn-sm mt-2" style="background:#F59E0B;color:#1a1a1a;font-weight:600;border:none" onclick="imprimirDeclaracoes([${sucesso.map(s=>s.i).join(',')}])"><i class="bi bi-file-earmark-text me-1"></i>Imprimir Declarações de Conteúdo</button>`;
     if(falha.length) html+=`<div style="margin-top:10px;color:#F59E0B">${falha.length} pedido(s) não entraram no lote:<pre style="white-space:pre-wrap;font-size:11px">${escHtml(JSON.stringify(falha,null,2))}</pre></div>`;
     resultadoDiv.innerHTML=html;
   } catch(e) {
